@@ -33,6 +33,10 @@ EXPECTED = (
        "race_finish", "dock_clamp", "dock_chime", "boundary_warning", "ui_click",
        "ambient_space_drone", "station_hum_loop", "traffic_engine_loop", "beacon_ping",
        "door_servo"]
+    # on foot
+    + ["step_suit_%d" % i for i in (1, 2, 3, 4)] + ["step_deck_%d" % i for i in (1, 2, 3, 4)]
+    + ["hatch_open", "hatch_close", "airlock_cycle", "door_slide", "switch_click", "light_on",
+       "light_buzz_loop", "room_tone_loop", "vending_dispense", "console_beep", "holo_on"]
 )
 STEREO = {"ambient_space_drone"}
 

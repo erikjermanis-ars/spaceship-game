@@ -49,6 +49,26 @@ func _ready() -> void:
 func pads() -> Array[Area2D]:
 	return _pads
 
+
+func is_docked() -> bool:
+	return phase == Phase.DOCKED and current_pad != null
+
+
+## True while docked with the clamps holding a settled ship (safe to get out).
+func is_settled() -> bool:
+	return is_docked() and _clamped and GameplayUtil.player_valid() \
+		and Game.player.linear_velocity.length() < 0.6 * Game.PX_PER_M \
+		and absf(Game.player.angular_velocity) < MAX_SPIN
+
+
+## Test/debug hook: dock at `pad` immediately (the ship must already sit on it).
+func force_dock(pad: Area2D) -> void:
+	_leave()
+	current_pad = pad
+	pad_name = String(pad.get_meta(&"pad_name", pad.name))
+	_armed = true
+	_dock()
+
 func _physics_process(delta: float) -> void:
 	_scan_timer -= delta
 	if _scan_timer <= 0.0:

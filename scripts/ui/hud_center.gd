@@ -96,6 +96,10 @@ func _draw() -> void:
 			var bar := Rect2(r3.position + Vector2(40, 46), Vector2(r3.size.x - 80, 6))
 			draw_rect(bar, Color(col2, 0.15))
 			draw_rect(Rect2(bar.position, Vector2(bar.size.x * _dock.progress, bar.size.y)), col2)
+			# Docked and settled: you can get out and walk (OnFootDirector).
+			if _dock.is_settled() and Game.mode == Game.Mode.FLIGHT:
+				var pulse := 0.75 + 0.25 * sin(_t * 3.0)
+				HudStyle.key_hint(self, r3.position + Vector2(r3.size.x * 0.5 - 70.0, r3.size.y + 40.0), "X", "Exit ship", pulse)
 
 func _stripes(r: Rect2) -> void:
 	# Amber hazard stripes: thin parallelograms rising to the right.

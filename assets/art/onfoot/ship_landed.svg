@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- "Meridian" class light courier WREN, LANDED, top-down, nose toward +X.
+     Same silhouette and units as assets/art/ship/ship_hull.svg (1 unit = 1 world px
+     = 0.1 m, origin = centre of mass) but drawn for the on-foot camera (~7.5x zoom):
+     landing gear down, panel detail, rivets, vents, open-able port hatch frame,
+     cockpit interior under the canopy, sensor gear and service markings.
+     Animated parts (hatch door, boarding ramp, lights, engine heat) are drawn in
+     code by scripts/onfoot/landed_ship.gd. Imported at svg/scale 12. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="64" viewBox="-58 -32 116 64">
+  <defs>
+    <linearGradient id="hullG" gradientUnits="userSpaceOnUse" x1="0" y1="-13" x2="0" y2="13">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#EEF2F6"/>
+      <stop offset="0.7" stop-color="#DCE3EA"/>
+      <stop offset="1" stop-color="#AEB9C6"/>
+    </linearGradient>
+    <linearGradient id="wingPG" gradientUnits="userSpaceOnUse" x1="0" y1="-20" x2="0" y2="-9">
+      <stop offset="0" stop-color="#F4F7FA"/>
+      <stop offset="1" stop-color="#D3DBE3"/>
+    </linearGradient>
+    <linearGradient id="wingSG" gradientUnits="userSpaceOnUse" x1="0" y1="9" x2="0" y2="20">
+      <stop offset="0" stop-color="#D3DBE3"/>
+      <stop offset="1" stop-color="#B4BFCB"/>
+    </linearGradient>
+    <linearGradient id="nacPG" gradientUnits="userSpaceOnUse" x1="0" y1="-24.6" x2="0" y2="-17.4">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.45" stop-color="#E4E9EF"/>
+      <stop offset="1" stop-color="#A9B4C1"/>
+    </linearGradient>
+    <linearGradient id="nacSG" gradientUnits="userSpaceOnUse" x1="0" y1="17.4" x2="0" y2="24.6">
+      <stop offset="0" stop-color="#F2F5F8"/>
+      <stop offset="0.55" stop-color="#D5DCE4"/>
+      <stop offset="1" stop-color="#9AA6B4"/>
+    </linearGradient>
+    <radialGradient id="canopyG" gradientUnits="userSpaceOnUse" cx="31" cy="-2" r="11">
+      <stop offset="0" stop-color="#5D86AE" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#21395A" stop-opacity="0.62"/>
+      <stop offset="1" stop-color="#0B1526" stop-opacity="0.85"/>
+    </radialGradient>
+    <linearGradient id="bellG" gradientUnits="userSpaceOnUse" x1="-51" y1="0" x2="-45" y2="0">
+      <stop offset="0" stop-color="#2A313B"/>
+      <stop offset="0.5" stop-color="#4E4A6A"/>
+      <stop offset="1" stop-color="#5B6674"/>
+    </linearGradient>
+    <linearGradient id="coilG" gradientUnits="userSpaceOnUse" x1="-40" y1="0" x2="-6" y2="0">
+      <stop offset="0" stop-color="#1E6F66"/>
+      <stop offset="1" stop-color="#3E8FA8"/>
+    </linearGradient>
+    <linearGradient id="strutG" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9AA6B4"/>
+      <stop offset="1" stop-color="#56616E"/>
+    </linearGradient>
+    <radialGradient id="seatG" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="3">
+      <stop offset="0" stop-color="#3A4A60"/>
+      <stop offset="1" stop-color="#1A2433"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ===== landing gear (under the hull, feet poke out) ===== -->
+  <!-- main gear: outboard of each nacelle -->
+  <g stroke="#2B3440" stroke-width="0.35">
+    <path d="M -27 -24 L -25.5 -28.6 L -21.5 -28.6 L -20 -24 Z" fill="#7D8896"/>
+    <rect x="-27.4" y="-30.2" width="7.8" height="2.6" rx="0.9" fill="#3A4452"/>
+    <path d="M -27 24 L -25.5 28.6 L -21.5 28.6 L -20 24 Z" fill="#7D8896"/>
+    <rect x="-27.4" y="27.6" width="7.8" height="2.6" rx="0.9" fill="#3A4452"/>
+    <!-- nose gear: twin feet either side of the chin -->
+    <path d="M 33 -9 L 34.5 -12.8 L 37.5 -12.8 L 39 -9 Z" fill="#7D8896"/>
+    <rect x="33.2" y="-14.2" width="5.6" height="2.2" rx="0.8" fill="#3A4452"/>
+    <path d="M 33 9 L 34.5 12.8 L 37.5 12.8 L 39 9 Z" fill="#7D8896"/>
+    <rect x="33.2" y="12" width="5.6" height="2.2" rx="0.8" fill="#3A4452"/>
+  </g>
+  <g fill="#FFB000">
+    <rect x="-26.6" y="-29.6" width="1.2" height="1.4"/><rect x="-23.6" y="-29.6" width="1.2" height="1.4"/><rect x="-20.6" y="-29.6" width="0.8" height="1.4"/>
+    <rect x="-26.6" y="28.2" width="1.2" height="1.4"/><rect x="-23.6" y="28.2" width="1.2" height="1.4"/><rect x="-20.6" y="28.2" width="0.8" height="1.4"/>
+  </g>
+
+  <!-- ===== wings / pylons ===== -->
+  <path d="M 8 -10.5 L -13 -19.6 L -33 -19.6 L -31 -9.5 Z" fill="url(#wingPG)" stroke="#4A5563" stroke-width="0.6"/>
+  <path d="M 8 10.5 L -13 19.6 L -33 19.6 L -31 9.5 Z" fill="url(#wingSG)" stroke="#4A5563" stroke-width="0.6"/>
+  <g stroke="#8E9AA8" stroke-width="0.25" fill="none" opacity="0.9">
+    <path d="M -3 -13 L -27 -13 M -20 -10 L -22 -19.6 M -9 -11.3 L -11 -18.8 M -28 -10 L -29.5 -19.6"/>
+    <path d="M -3 13 L -27 13 M -20 10 L -22 19.6 M -9 11.3 L -11 18.8 M -28 10 L -29.5 19.6"/>
+    <path d="M -14 -16.4 L -31.5 -16.4 M -14 16.4 L -31.5 16.4"/>
+  </g>
+  <!-- wing rivet rows -->
+  <g fill="#9AA6B4">
+    <circle cx="-4" cy="-12.2" r="0.22"/><circle cx="-6" cy="-12.2" r="0.22"/><circle cx="-8" cy="-12.2" r="0.22"/><circle cx="-10" cy="-12.2" r="0.22"/><circle cx="-12" cy="-12.2" r="0.22"/><circle cx="-14" cy="-12.2" r="0.22"/><circle cx="-16" cy="-12.2" r="0.22"/><circle cx="-18" cy="-12.2" r="0.22"/><circle cx="-24" cy="-12.2" r="0.22"/><circle cx="-26" cy="-12.2" r="0.22"/>
+    <circle cx="-4" cy="12.2" r="0.22"/><circle cx="-6" cy="12.2" r="0.22"/><circle cx="-8" cy="12.2" r="0.22"/><circle cx="-10" cy="12.2" r="0.22"/><circle cx="-12" cy="12.2" r="0.22"/><circle cx="-14" cy="12.2" r="0.22"/><circle cx="-16" cy="12.2" r="0.22"/><circle cx="-18" cy="12.2" r="0.22"/><circle cx="-24" cy="12.2" r="0.22"/><circle cx="-26" cy="12.2" r="0.22"/>
+  </g>
+  <path d="M -4 -14.2 L -14 -18.6 L -19.5 -18.6 L -10.5 -14.2 Z" fill="#1D3557"/>
+  <path d="M -4 14.2 L -14 18.6 L -19.5 18.6 L -10.5 14.2 Z" fill="#1D3557"/>
+  <path d="M -12.5 -14.2 L -21 -18.6 L -22.6 -18.6 L -14.2 -14.2 Z" fill="#2A9D8F"/>
+  <path d="M -12.5 14.2 L -21 18.6 L -22.6 18.6 L -14.2 14.2 Z" fill="#2A9D8F"/>
+  <!-- NO STEP boxes + walkway grip on the starboard wing root -->
+  <rect x="-25.6" y="-18.4" width="3.2" height="1.4" fill="none" stroke="#E76F51" stroke-width="0.25"/>
+  <rect x="-25.6" y="17" width="3.2" height="1.4" fill="none" stroke="#E76F51" stroke-width="0.25"/>
+  <rect x="-8" y="10.6" width="7" height="2" fill="#3A4452" opacity="0.55"/>
+  <rect x="-8" y="-12.6" width="7" height="2" fill="#3A4452" opacity="0.55"/>
+
+  <!-- ===== engine bells (heat-tinted) ===== -->
+  <path d="M -45 -23.6 L -51 -24.6 L -51 -17.4 L -45 -18.4 Z" fill="url(#bellG)" stroke="#1E242C" stroke-width="0.35"/>
+  <path d="M -45 23.6 L -51 24.6 L -51 17.4 L -45 18.4 Z" fill="url(#bellG)" stroke="#1E242C" stroke-width="0.35"/>
+  <path d="M -46.2 -23.4 L -46.2 -18.6 M -47.6 -23.7 L -47.6 -18.3 M -49 -24 L -49 -18 M -46.2 23.4 L -46.2 18.6 M -47.6 23.7 L -47.6 18.3 M -49 24 L -49 18" stroke="#6B5E86" stroke-width="0.25" opacity="0.8"/>
+  <!-- exhaust-area hazard bands -->
+  <g fill="#FFB000">
+    <path d="M -44.6 -24.6 L -43.4 -24.6 L -44.6 -23.4 Z"/>
+    <path d="M -44.6 17.4 L -43.4 17.4 L -44.6 18.6 Z"/>
+  </g>
+
+  <!-- ===== nacelles ===== -->
+  <path d="M -46 -24.6 L -7 -24.6 C -1.5 -24.6 1.5 -22.6 1.5 -21 C 1.5 -19.4 -1.5 -17.4 -7 -17.4 L -46 -17.4 Z" fill="url(#nacPG)" stroke="#4A5563" stroke-width="0.7"/>
+  <path d="M -46 24.6 L -7 24.6 C -1.5 24.6 1.5 22.6 1.5 21 C 1.5 19.4 -1.5 17.4 -7 17.4 L -46 17.4 Z" fill="url(#nacSG)" stroke="#4A5563" stroke-width="0.7"/>
+  <rect x="-40" y="-22.2" width="33" height="2.4" rx="1.2" fill="#14263F"/>
+  <rect x="-39.2" y="-21.7" width="31.4" height="1.4" rx="0.7" fill="url(#coilG)"/>
+  <rect x="-40" y="19.8" width="33" height="2.4" rx="1.2" fill="#14263F"/>
+  <rect x="-39.2" y="20.3" width="31.4" height="1.4" rx="0.7" fill="url(#coilG)"/>
+  <!-- coil segment ribs -->
+  <path d="M -36 -21.7 L -36 -20.3 M -32 -21.7 L -32 -20.3 M -28 -21.7 L -28 -20.3 M -24 -21.7 L -24 -20.3 M -20 -21.7 L -20 -20.3 M -16 -21.7 L -16 -20.3 M -12 -21.7 L -12 -20.3" stroke="#0E1C30" stroke-width="0.3"/>
+  <path d="M -36 21.7 L -36 20.3 M -32 21.7 L -32 20.3 M -28 21.7 L -28 20.3 M -24 21.7 L -24 20.3 M -20 21.7 L -20 20.3 M -16 21.7 L -16 20.3 M -12 21.7 L -12 20.3" stroke="#0E1C30" stroke-width="0.3"/>
+  <g stroke="#8E9AA8" stroke-width="0.28">
+    <path d="M -30 -24.6 L -30 -22.3 M -20 -24.6 L -20 -22.3 M -30 -17.4 L -30 -19.7 M -20 -17.4 L -20 -19.7 M -43 -24.6 L -43 -17.4"/>
+    <path d="M -30 24.6 L -30 22.3 M -20 24.6 L -20 22.3 M -30 17.4 L -30 19.7 M -20 17.4 L -20 19.7 M -43 24.6 L -43 17.4"/>
+  </g>
+  <!-- nacelle access panels with fasteners -->
+  <g fill="none" stroke="#9AA6B4" stroke-width="0.22">
+    <rect x="-41.5" y="-24.1" width="6" height="1.5"/><rect x="-41.5" y="22.6" width="6" height="1.5"/>
+    <rect x="-41.5" y="-19.0" width="6" height="1.2"/><rect x="-41.5" y="17.8" width="6" height="1.2"/>
+  </g>
+  <!-- intake caps (powered down: dim) -->
+  <path d="M -2 -24 C 1 -23.4 1.4 -21.8 1.4 -21 C 1.4 -20.2 1 -18.6 -2 -18 Z" fill="#3E8FA8"/>
+  <path d="M -2 24 C 1 23.4 1.4 21.8 1.4 21 C 1.4 20.2 1 18.6 -2 18 Z" fill="#3E8FA8"/>
+  <path d="M -1.2 -23.2 L -1.2 -18.8 M -0.2 -22.6 L -0.2 -19.4 M -1.2 23.2 L -1.2 18.8 M -0.2 22.6 L -0.2 19.4" stroke="#1F4B60" stroke-width="0.25"/>
+  <circle cx="-9" cy="-24.9" r="1.1" fill="#7A2626"/>
+  <circle cx="-9" cy="24.9" r="1.1" fill="#24703F"/>
+
+  <!-- ===== main hull ===== -->
+  <path d="M 50 0 C 49 -3.6 44.5 -7.2 35 -9.6 C 23 -12.2 6 -12.6 -10 -11.6 L -34 -8.8 C -39.5 -8.1 -42.5 -5.2 -42.5 0 C -42.5 5.2 -39.5 8.1 -34 8.8 L -10 11.6 C 6 12.6 23 12.2 35 9.6 C 44.5 7.2 49 3.6 50 0 Z"
+        fill="url(#hullG)" stroke="#4A5563" stroke-width="0.8"/>
+  <!-- stern engineering block -->
+  <path d="M -26 -9.6 L -34 -8.8 C -39.5 -8.1 -42.5 -5.2 -42.5 0 C -42.5 5.2 -39.5 8.1 -34 8.8 L -26 9.6 Z" fill="#CBD3DC" stroke="#8E9AA8" stroke-width="0.35"/>
+  <path d="M -29 -6 L -39 -5 M -29 -3 L -40 -2.5 M -29 3 L -40 2.5 M -29 6 L -39 5" stroke="#9AA6B4" stroke-width="0.4"/>
+  <!-- heat-exchanger vent grilles on the stern block -->
+  <g fill="#3A4452">
+    <rect x="-38.2" y="-4.4" width="7" height="0.45"/><rect x="-38.2" y="-3.5" width="7" height="0.45"/><rect x="-38.2" y="-2.6" width="7" height="0.45"/>
+    <rect x="-38.2" y="2.15" width="7" height="0.45"/><rect x="-38.2" y="3.05" width="7" height="0.45"/><rect x="-38.2" y="3.95" width="7" height="0.45"/>
+  </g>
+  <path d="M 46 -2.6 C 42 -6 34 -8.4 24 -9.8 C 12 -11.1 -4 -11.2 -20 -10" stroke="#FFFFFF" stroke-width="1.0" fill="none" opacity="0.75" stroke-linecap="round"/>
+
+  <!-- cargo bay roof doors (dorsal, aft) -->
+  <path d="M -6 -7.6 L -25 -7.2 L -25 7.2 L -6 7.6 Z" fill="#D9E0E7" stroke="#8E9AA8" stroke-width="0.35"/>
+  <path d="M -6 0 L -25 0" stroke="#8E9AA8" stroke-width="0.3"/>
+  <g fill="#9AA6B4">
+    <rect x="-8" y="-6.8" width="1.2" height="0.5"/><rect x="-23.6" y="-6.6" width="1.2" height="0.5"/>
+    <rect x="-8" y="6.3" width="1.2" height="0.5"/><rect x="-23.6" y="6.1" width="1.2" height="0.5"/>
+  </g>
+  <path d="M -10 -4.5 L -21 -4.3 M -10 4.5 L -21 4.3" stroke="#B4BFCB" stroke-width="0.6" stroke-dasharray="1.2 0.8"/>
+
+  <!-- navy cheek swooshes -->
+  <path d="M 36 -9 C 22 -11.6 2 -12 -24 -10.2 L -24 -8.6 C 2 -10.2 20 -9.8 31 -7.4 Z" fill="#1D3557"/>
+  <path d="M 36 9 C 22 11.6 2 12 -24 10.2 L -24 8.6 C 2 10.2 20 9.8 31 7.4 Z" fill="#1D3557"/>
+  <path d="M 29 -6.8 C 18 -8.6 2 -9 -24 -7.7" stroke="#2A9D8F" stroke-width="0.6" fill="none"/>
+  <path d="M 29 6.8 C 18 8.6 2 9 -24 7.7" stroke="#2A9D8F" stroke-width="0.6" fill="none"/>
+
+  <!-- port boarding hatch frame (door + ramp animated in code) -->
+  <rect x="12.6" y="-11.9" width="8.8" height="3.4" rx="0.6" fill="#B4BFCB" stroke="#4A5563" stroke-width="0.35"/>
+  <rect x="13.2" y="-11.5" width="7.6" height="2.6" rx="0.4" fill="#2B3440"/>
+  <g fill="#FFB000">
+    <rect x="12.9" y="-8.3" width="1" height="0.4"/><rect x="14.9" y="-8.3" width="1" height="0.4"/><rect x="16.9" y="-8.3" width="1" height="0.4"/><rect x="18.9" y="-8.3" width="1" height="0.4"/>
+  </g>
+  <!-- starboard service hatch -->
+  <rect x="14" y="8.2" width="5" height="2.4" rx="0.4" fill="none" stroke="#8E9AA8" stroke-width="0.3"/>
+
+  <!-- spine stripe + sensor mast -->
+  <path d="M 17 -1.5 L -41 -2.3 L -41 2.3 L 17 1.5 Z" fill="#1D3557"/>
+  <path d="M 15 -0.35 L -40 -0.5 L -40 0.5 L 15 0.35 Z" fill="#2A9D8F"/>
+  <circle cx="4" cy="0" r="2.6" fill="#E9EEF3" stroke="#4A5563" stroke-width="0.35"/>
+  <circle cx="4" cy="0" r="1.6" fill="#C9D2DC" stroke="#8E9AA8" stroke-width="0.25"/>
+  <circle cx="4.5" cy="-0.5" r="0.6" fill="#FFFFFF" opacity="0.8"/>
+  <path d="M -30 -1 L -36 -4.5 M -30 1 L -36 4.5" stroke="#56616E" stroke-width="0.35"/>
+  <circle cx="-36" cy="-4.5" r="0.4" fill="#56616E"/><circle cx="-36" cy="4.5" r="0.4" fill="#56616E"/>
+
+  <!-- hull panel lines and rivets -->
+  <g stroke="#8E9AA8" stroke-width="0.3" fill="none" opacity="0.9">
+    <path d="M 12 -11.9 C 13 -6 13 6 12 11.9 M -4 -11.9 C -3.4 -6 -3.4 6 -4 11.9 M -18 -10.4 L -18 -7.4 M -18 7.4 L -18 10.4"/>
+    <path d="M 44 -5.2 C 45 -2 45 2 44 5.2 M 26 -10.8 L 22 -10.8 M 26 10.8 L 22 10.8"/>
+  </g>
+  <g fill="#9AA6B4">
+    <circle cx="11.2" cy="-10" r="0.2"/><circle cx="11.6" cy="-8" r="0.2"/><circle cx="11.8" cy="-6" r="0.2"/><circle cx="11.9" cy="-4" r="0.2"/><circle cx="11.9" cy="4" r="0.2"/><circle cx="11.8" cy="6" r="0.2"/><circle cx="11.6" cy="8" r="0.2"/><circle cx="11.2" cy="10" r="0.2"/>
+    <circle cx="-4.8" cy="-10" r="0.2"/><circle cx="-4.4" cy="-8.5" r="0.2"/><circle cx="-4.4" cy="8.5" r="0.2"/><circle cx="-4.8" cy="10" r="0.2"/>
+  </g>
+  <path d="M 4 -5 L 10 -5 L 10 -3.5 L 4 -3.5 Z M 4 3.5 L 10 3.5 L 10 5 L 4 5 Z" fill="#AAB5C1"/>
+
+  <!-- ===== cockpit: interior visible under a tinted canopy ===== -->
+  <path d="M 40 0 C 39 -3.7 34 -5.4 27 -5.4 C 21.5 -5.4 19 -3.2 19 0 C 19 3.2 21.5 5.4 27 5.4 C 34 5.4 39 3.7 40 0 Z" fill="#1B2533"/>
+  <!-- console arc -->
+  <path d="M 37.6 -2.8 C 38.8 -1.2 38.8 1.2 37.6 2.8 L 35.6 2.2 C 36.4 1 36.4 -1 35.6 -2.2 Z" fill="#2B3B52"/>
+  <rect x="36.3" y="-1.6" width="0.7" height="1.2" fill="#3E8FA8"/><rect x="36.3" y="0.4" width="0.7" height="1.2" fill="#3E8FA8"/>
+  <!-- pilot + co-pilot seats (empty) -->
+  <g>
+    <rect x="28.6" y="-4.0" width="4.2" height="3.0" rx="0.8" fill="url(#seatG)" stroke="#0B1220" stroke-width="0.2" transform="translate(-0 0)"/>
+    <rect x="28.6" y="1.0" width="4.2" height="3.0" rx="0.8" fill="url(#seatG)" stroke="#0B1220" stroke-width="0.2"/>
+    <rect x="27.6" y="-3.8" width="1.2" height="2.6" rx="0.5" fill="#2A3648"/>
+    <rect x="27.6" y="1.2" width="1.2" height="2.6" rx="0.5" fill="#2A3648"/>
+    <rect x="29.4" y="-3.6" width="0.5" height="2.2" fill="#2A9D8F" opacity="0.7"/>
+    <rect x="29.4" y="1.4" width="0.5" height="2.2" fill="#2A9D8F" opacity="0.7"/>
+  </g>
+  <!-- rear cabin bench + locker -->
+  <rect x="21" y="-3.2" width="3" height="6.4" rx="0.6" fill="#243245"/>
+  <path d="M 40 0 C 39 -3.7 34 -5.4 27 -5.4 C 21.5 -5.4 19 -3.2 19 0 C 19 3.2 21.5 5.4 27 5.4 C 34 5.4 39 3.7 40 0 Z" fill="url(#canopyG)" stroke="#1D3557" stroke-width="0.8"/>
+  <path d="M 30.5 -5.2 L 30.5 5.2 M 24.5 -5.0 L 24.5 5.0" stroke="#1D3557" stroke-width="0.45"/>
+  <path d="M 37 -2.2 C 35 -4 31 -4.6 27 -4.4" stroke="#CFEFFF" stroke-width="0.6" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M 23 -4.2 C 21.5 -3.4 20.6 -2 20.4 -0.6" stroke="#CFEFFF" stroke-width="0.4" fill="none" opacity="0.5" stroke-linecap="round"/>
+
+  <!-- ===== bow RCS quads ===== -->
+  <rect x="38.4" y="-8.3" width="4.4" height="2.8" rx="0.5" fill="#9AA6B4" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="38.4" y="5.5" width="4.4" height="2.8" rx="0.5" fill="#9AA6B4" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="39.7" y="-9.1" width="1.8" height="0.9" fill="#2B3440"/>
+  <rect x="39.7" y="8.2" width="1.8" height="0.9" fill="#2B3440"/>
+  <rect x="42.6" y="-7.6" width="0.8" height="1.4" fill="#2B3440"/>
+  <rect x="42.6" y="6.2" width="0.8" height="1.4" fill="#2B3440"/>
+  <rect x="38.0" y="-7.6" width="0.6" height="1.4" fill="#2B3440"/>
+  <rect x="38.0" y="6.2" width="0.6" height="1.4" fill="#2B3440"/>
+  <!-- bow pitot + sensor -->
+  <path d="M 49.6 0 L 53.5 0" stroke="#56616E" stroke-width="0.4" stroke-linecap="round"/>
+  <circle cx="46" cy="0" r="0.9" fill="#1D3557"/>
+  <!-- ===== stern RCS ===== -->
+  <rect x="-37.8" y="-10" width="3.6" height="2.4" rx="0.4" fill="#9AA6B4" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="-37.8" y="7.6" width="3.6" height="2.4" rx="0.4" fill="#9AA6B4" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="-36.8" y="-10.7" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="-36.8" y="9.9" width="1.6" height="0.8" fill="#2B3440"/>
+  <circle cx="-42.6" cy="0" r="1.0" fill="#F4F7FA" stroke="#56616E" stroke-width="0.3"/>
+</svg>

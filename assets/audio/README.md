@@ -51,3 +51,15 @@ in **D major**, so chimes always fit the ambient bed (Dmaj9, Gmaj9, Bm9, Asus2, 
 | traffic_engine_loop | SFX | -8 | AudioStreamPlayer2D on each traffic ship, max_distance ~1500 px, random pitch 0.9–1.15 per ship |
 | beacon_ping | SFX | -8 | AudioStreamPlayer2D on buoys, every 2–4 s, max_distance ~3000 px |
 | door_servo | SFX | -4 | AudioStreamPlayer2D when blast doors or crane arms start moving |
+| step_suit_1..4 | SFX | -11 … -6 | on foot outside (vacuum): mag-boot thuds heard through the suit, AudioStreamPlayer2D on the walker |
+| step_deck_1..4 | SFX | -15 … -9 | on foot inside: heel-and-toe on deck plate |
+| hatch_open / hatch_close | SFX | -4 | ship boarding hatch + stairs, positional |
+| airlock_cycle | SFX | -4 | pressurisation (pitch 0.88 for depressurising) |
+| door_slide | SFX | -12 | interior sliding doors, positional |
+| switch_click | SFX | -6 | light switches, lamps, flashlight (pitch 1.25–1.5) |
+| light_on | SFX | -12 | panel light start-up flicker |
+| light_buzz_loop | SFX | -60 → -22 | failing light, positional, follows its flicker |
+| room_tone_loop | Ambient | -17 | interior room tone (music bed drops 6 dB indoors) |
+| vending_dispense | SFX | -6 | |
+| console_beep | SFX | -8 | terminals, hologram off |
+| holo_on | SFX | -8 | hologram projector |

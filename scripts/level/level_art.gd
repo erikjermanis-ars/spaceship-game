@@ -72,6 +72,10 @@ static var _font_regular: Font
 
 ## Registry of depth-band canvas items for the Level's parallax pass.
 static var depth_layers: Array = []
+## 1 = full 2.5D parallax scale (flight). 0 = flat. On foot the walker stands
+## ON the below-deck pad, so the deck must stay locked to the colliding layer;
+## the on-foot director tweens this to 0 while zooming in.
+static var depth_amount := 1.0
 
 
 ## Drops shared static resources (avoids "leaked ObjectDB" noise at exit).
@@ -82,6 +86,7 @@ static func cleanup() -> void:
 	_font = null
 	_font_regular = null
 	depth_layers.clear()
+	depth_amount = 1.0
 
 
 static func glow_texture() -> Texture2D:

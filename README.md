@@ -3,7 +3,8 @@
 A small Godot 4.7 proof of concept: fly a light courier ship around **Meridian Station**, a big, busy orbital
 station in a hopeful near-future setting (rotating habitat ring, commerce pier, drydock, cargo yard, solar
 field, traffic lanes). It is a single sandbox level meant to show off **ship handling**, **level design**,
-**art direction** and **sound design**. Everything (graphics, sound, shaders) is made from scratch in
+**art direction** and **sound design**. Dock on a pad and you can **get out and walk**: around the pad, and on
+Pad 2 through an airlock into the pier's crew concourse (see [On foot](#on-foot)). Everything (graphics, sound, shaders) is made from scratch in
 GDScript, SVG, shader code and a small Python synthesiser. There are no add-ons and no imported asset packs.
 
 Renderer: **Compatibility** (OpenGL), so the project can also be exported to the web.
@@ -40,6 +41,18 @@ After that it runs at the display's refresh rate (110–120 fps measured on an M
 | **Tab / F1** | Live flight-model tuning panel |
 | **F3** | Physics debug overlay (collision shapes, forces, contacts) |
 | **P / Esc** | Pause |
+| **X** | Docked and clamped: get out of the ship |
+
+On foot:
+
+| Key | Action |
+|---|---|
+| **W A S D / arrows** | Walk |
+| **Shift** | Run |
+| **E / Enter** | Use: doors, light switches, lamps, terminals, the vending machine, shutters, the hologram, board the ship |
+| **F** | Helmet flashlight |
+| **Mouse wheel / = / -** | Zoom |
+| **H** | Controls help (shows the on-foot controls while walking) |
 
 Gamepads work too: left stick steers, the triggers are throttle and retro, A is boost, Y is flight assist and
 the shoulder buttons strafe.
@@ -65,6 +78,13 @@ the shoulder buttons strafe.
   clamped, repaired and refuelled. While you keep your hands off the controls the clamps draw the ship onto the
   pad centre and heading and hold it there; any input releases them. The Hangar Bay pad sits behind a blast door
   that cycles open and closed. Its safety interlock holds the leaves while a ship is in the doorway.
+* **Get out and walk.** Dock on Pad 2 (the next pad north of the start pad, on the pier's west side) and
+  press **X**. The camera zooms all the way down to the pad, the ship's hatch opens and its stairs unfold, and
+  you step out in an EVA suit. Follow the painted walkway east to **Airlock 7B** on the pier wall and press
+  **E**. Inside the crew concourse: switch lights on and off (the quarters start dark; try the flashlight),
+  turn on the desk lamp, get a drink from the vending machine, open and close the lounge window shutters,
+  switch the ops hologram, and read the crew and traffic logs. Leave through the airlock, walk back to the ship
+  and press **E** at the stairs to board. Any other pad lets you walk around the pad itself.
 * **Watch the traffic.** Eleven AI shuttles, tugs and freighters follow lanes and do not avoid you.
 * **Tune the physics live** (Tab). Use presets such as "Nimble racer" and "Heavy freighter", or move any slider
   (thrust, thrust point, inertia, drag, bounce and so on). "Reset to Pat Kerr defaults" restores the reference
@@ -127,6 +147,81 @@ predicted path, computed from the ship's live tuning values.
 bars, assist state and a live thruster diagram), a race panel, a radar that expands into a map, a next-gate
 pointer, centre messages, toasts, a damage vignette and the help overlay.
 
+## On foot
+
+Getting out of the ship and walking around is a second layer on top of the flight game, run by
+`OnFootDirector` (`scripts/onfoot/on_foot_director.gd`, node `Main/OnFoot`). Everything on foot uses the same
+units as flight (1 m = 10 px), so the walker, the ship and the station share one physics world and one camera.
+
+```
+FLIGHT ──X (docked)──▶ EXTERIOR ──airlock──▶ INTERIOR
+   ▲                     │  ▲                   │
+   └──E at the stairs────┘  └─────airlock───────┘
+```
+
+**Why the outside is the same scene, zoomed in.** The station is already loaded and simulated, so getting out
+is a camera move: `CameraRig.set_focus()` blends position, zoom (≈1 → 8.5) and rotation from the ship to the
+walker in one continuous shot, with no loading and traffic still flying past. Systems that only make sense in
+flight (race, damage, boundary, docking, flight guide, tuning panel, flight HUD) are paused. Only small on-foot
+pieces are added, and they are freed when you take off:
+* the **walker** (`walker.gd` + `walker_art.gd`), a `CharacterBody2D` with a procedurally animated top-down
+  astronaut. The walk cycle is driven by distance travelled, so the feet never slide, and footsteps are
+  triggered by the same cycle;
+* the **landed ship** (`landed_ship.gd`), a much more detailed model (`assets/art/onfoot/ship_landed.svg`,
+  imported at 12×) with an animated hatch, boarding stairs, nav lights and cooling engines. It is cross-faded
+  with the flight sprite during the zoom. Swapping models by camera distance is the classic *level of detail*
+  (LOD) technique;
+* the **pad site** (`pad_site.gd`): safety railings, invisible walls at the deck edge and close-up deck detail
+  for any pad, plus pad-specific extras listed in `PadSite.EXTRAS` (Pad 2: `scenes/onfoot/sites/pad2_site.tscn`
+  with the airlock vestibule, walkway, crates, fuel cart and a detailed pier facade).
+
+The station's fake-3D parallax (decks drawn slightly smaller, overhead parts slightly larger around the camera)
+is flattened on foot (`LevelArt.depth_amount` → 0). You are standing *on* the deck, so it has to stay locked to
+the colliders.
+
+**Why the inside is a separate scene (level).** An interior is a different space with its own lighting, and
+none of the station is visible from it. Keeping the whole station running behind it would waste time, so the
+director *suspends* the flight world: `process_mode = DISABLED` stops its scripts and audio and removes its
+physics bodies from the simulation, and it is hidden. Then the director adds the interior scene
+(`scenes/onfoot/interiors/pier7_concourse.tscn`) behind a short fade. Leaving resumes the world exactly where
+it was. The interior is placed where the pier really is, so the stars outside the lounge window line up. It is
+**preloaded on a background thread** (`ResourceLoader.load_threaded_request`) while you walk to the airlock,
+so the swap doesn't hitch. When you leave, it is freed and its state (lights, shutters, lamp, hologram, drinks
+left, log position) is saved by the director and restored next time. Suspension is reference-counted, because
+the flight layer and the interior both pause some of the same nodes.
+
+**Building interiors.** Interiors are authored as nodes, so they can be edited in the Godot editor (all
+`@tool`): `InteriorRoom` rectangles with a floor style, `SlidingDoor`s on shared edges, `InteriorWindow`s on wall
+lines, `RoomLight`, `LightSwitch`, `InteriorProp` furniture (beds, desks, consoles, crates and more, all drawn in
+code), and interactive pieces (`DeskLamp`, `VendingMachine`, `HoloTable`, `WindowShutter`, `InfoTerminal`,
+`Airlock`). `InteriorLevel` builds the **walls automatically** from the room edges: it merges shared edges, cuts
+gaps for doors and windows, makes the outer edges thick hull, and creates the collision, the light occluders
+and the cached wall art. A new room is one node.
+
+**Lighting.** Interiors use Godot's 2D lights. A `CanvasModulate` makes everything dark, and lights add
+brightness back. Each `RoomLight` uses a box-shaped falloff texture stretched to its room, so it fills the room
+and stops at the walls without shadow maps. Only the helmet flashlight and the desk lamp cast real shadows (walls,
+doors and tall furniture have `LightOccluder2D`s). Screens, LEDs and the space outside the windows use an
+*unshaded* material, so they glow in the dark.
+
+**Interacting.** Anything you can press E on is an `Interactable` (group `interactable`). Each frame the director
+picks the nearest usable one in reach, preferring what you face. A distance check is cheaper and simpler than an
+`Area2D` per object for the handful in range at any time.
+
+**Performance.** In the Compatibility renderer every antialiased line or circle drawn with `draw_*` becomes its
+own draw call, and a detailed floor is thousands of them (the first version measured about 10 500 draw calls and
+26 fps on foot). All on-foot art therefore goes through `OnFootPainter`, which collects shapes into one triangle
+array per canvas item with a one-pixel transparent "feather" for antialiasing. The station's own art is batched
+the same way. Measured on an M1 Pro at 1600×900 (`--perf`), every mode holds the 120 fps vsync cap: flight about
+340–390 draw calls, on the pad about 155, in the interior about 145. Animated screens redraw at about 10 Hz
+instead of every frame.
+
+**Sound on foot** (same "you hear what your body carries" idea as the cockpit). Outside, in vacuum, footsteps are
+muffled mag-boot thuds heard through the suit. Through the airlock the air comes back: the pressurisation roar
+starts as a low rumble and opens up as the pressure rises, and then steps are crisp heel-and-toe on deck plate,
+with room tone, door whooshes, switch clicks, flickering lights and console blips. The ship's engine bus fades out
+while you're away and back when you board, and the music bed sits a little lower indoors.
+
 ## How the assets were made
 
 * **Sound:** all 38 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
@@ -141,7 +236,10 @@ pointer, centre messages, toasts, a damage vignette and the help overlay.
   `assets/audio/README.md` lists the bus and suggested volume for every file. The bus layout
   (`default_bus_layout.tres`) is Master with a limiter, plus SFX (with light reverb), Engine, Ambient and UI.
 * **Ship art:** hand-written SVG (`assets/art/ship/ship_hull.svg`, plus `ship_damage.svg` as a scorch overlay
-  that fades in as the hull drops), imported at 6× with mipmaps.
+  that fades in as the hull drops), imported at 6× with mipmaps. The landed close-up model is
+  `assets/art/onfoot/ship_landed.svg`, imported at 12×.
+* **On-foot art:** the character, interiors, furniture and pad details are vector-drawn in GDScript through
+  `OnFootPainter` (batched triangles). Light falloff textures are generated at runtime (`OnFootArt`).
 * **Station art:** procedural vector drawing from GDScript (`scripts/level/`), built once into cached canvas
   items. The look follows the palette in `docs/CONTRACT.md` §6: pearl hulls, navy and teal accents, warm
   windows, cyan tech lights and red/green nav lights.
@@ -164,6 +262,16 @@ Any scene accepts these user arguments after `--` (they are parsed by `Game`):
 | `--debug-draw` | Start with the F3 overlay on |
 | `--no-intro`, `--no-guide`, `--kill-at=T` | Skip the intro card, hide the flight guide, or destroy the ship at time T |
 | `--cam-zoom=0.3`, `--cam-rotate`, `--tuning` | Set the camera zoom factor, use rotate mode, or open the tuning panel |
+| `--dock-at=2` | Put the ship on that pad and dock it straight away (add `--on-foot` to also get out) |
+| `--perf` | Print fps, frame time and draw calls every 2 s |
+
+Example: dock at Pad 2, get out, run to the airlock and go inside (on-foot actions are `move_up/down/left/right`,
+`run`, `interact`, `flashlight`):
+```
+/Applications/Godot.app/Contents/MacOS/Godot --path . --fixed-fps 60 --resolution 1600x900 res://scenes/main.tscn -- \
+  --no-intro --dock-at=2 --on-foot --shots=12,18 --shot-dir=/tmp/shots --quit-at=18.2 \
+  "--input=6.0-7.75:move_down+run;7.9-13.4:move_right+run;13.6-13.7:interact"
+```
 
 Example: take off from the pad with flight assist on and fly through the first two gates, with screenshots:
 ```
@@ -179,6 +287,7 @@ $G --headless --path . --fixed-fps 120 res://scenes/test/ship_physics_test.tscn 
 $G --headless --path . --fixed-fps 120 res://scenes/test/level_validate.tscn        # level contract, lanes, prop impacts
 $G --headless --path . --fixed-fps 120 res://scenes/test/gate_clearance_check.tscn  # every race gate clear of structure
 $G --headless --path . --fixed-fps 120 res://scenes/test/gameplay_race_test.tscn    # race logic, splits, best lap saved
+$G --headless --path . --fixed-fps 120 res://scenes/test/onfoot_flow_test.tscn      # disembark, airlock, interior, state, board
 $G --headless --path . --quit-after 600 res://scenes/main.tscn                     # whole game: should print nothing
 ```
 

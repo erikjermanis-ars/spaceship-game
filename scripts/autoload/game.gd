@@ -15,6 +15,8 @@ const LAYER_PLAYER := 2     # layer 2: the player ship
 const LAYER_PROPS := 4      # layer 3: free-floating props (containers, debris)
 const LAYER_TRAFFIC := 8    # layer 4: AI traffic ships
 const LAYER_TRIGGERS := 16  # layer 5: Area2D triggers (race gates, docking pads)
+const LAYER_WALK := 32      # layer 6: on-foot obstacles only the walker hits (railings, furniture, interior walls)
+const LAYER_WALKER := 64    # layer 7: the on-foot player character
 
 # -------------------------------------------------------- z-index plan ----
 ## Absolute z_index values for top-level containers. Children stay relative 0.
@@ -25,6 +27,22 @@ const Z_SHIP := 5             # player ship
 const Z_FX := 8               # sparks, explosions, debris
 const Z_OVERHEAD := 20        # non-colliding structure the ship flies UNDER
 const Z_OVERHEAD_FX := 30     # lights/glows on overhead structure
+## On foot the same plan applies: decks/floors are below, the walker stands at
+## Z_WALKER (just above a landed ship), interior wall tops cover it.
+const Z_WALKER := 6
+const Z_WALL_TOP := 12
+
+# --------------------------------------------------------- game mode ----
+## FLIGHT: you fly the ship. ON_FOOT: you walk around (outside on a pad or
+## inside an interior). Systems that only make sense in one mode check this
+## or listen to `mode_changed`.
+enum Mode { FLIGHT, ON_FOOT }
+var mode: Mode = Mode.FLIGHT:
+	set(v):
+		if v == mode:
+			return
+		mode = v
+		mode_changed.emit(v)
 
 # -------------------------------------------------------------- signals ----
 ## A collision worth reacting to. `speed_mps` is the closing speed along the
@@ -45,12 +63,19 @@ signal docked(pad_name: String)
 signal undocked(pad_name: String)
 ## HUD toast message.
 signal message(text: String, duration: float)
+signal mode_changed(new_mode: Mode)
+## On-foot milestones (pad name / interior name), for HUD, audio and tests.
+signal disembarked(pad_name: String)
+signal boarded(pad_name: String)
+signal entered_interior(interior_name: String)
+signal exited_interior(interior_name: String)
 signal debug_draw_changed(enabled: bool)
 
 # ------------------------------------------------------ shared refs ------
 var player: RigidBody2D      ## set by the player ship in _ready
 var camera: Camera2D         ## set by the camera rig in _ready
 var level: Node2D            ## set by the level root in _ready
+var walker: Node2D           ## the on-foot character while it exists (else null)
 ## Playable area in pixels; the level overwrites this in _ready.
 var world_bounds := Rect2(-8000, -6000, 16000, 12000)
 ## Physics/collision debug overlay (toggled with F3).
@@ -133,6 +158,18 @@ func _register_inputs() -> void:
 	_action(&"pause", [KEY_P, KEY_ESCAPE])
 	_action(&"radar_toggle", [KEY_M])
 	_action(&"debug_draw", [KEY_F3])
+	# On foot. Separate actions from flight so the two control schemes can be
+	# rebound independently even where they share keys (W, E, F ...).
+	_action(&"move_up", [KEY_W, KEY_UP], [JOY_BUTTON_DPAD_UP], [[JOY_AXIS_LEFT_Y, -1.0]])
+	_action(&"move_down", [KEY_S, KEY_DOWN], [JOY_BUTTON_DPAD_DOWN], [[JOY_AXIS_LEFT_Y, 1.0]])
+	_action(&"move_left", [KEY_A, KEY_LEFT], [JOY_BUTTON_DPAD_LEFT], [[JOY_AXIS_LEFT_X, -1.0]])
+	_action(&"move_right", [KEY_D, KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], [[JOY_AXIS_LEFT_X, 1.0]])
+	_action(&"run", [KEY_SHIFT], [JOY_BUTTON_B])
+	_action(&"interact", [KEY_E, KEY_ENTER], [JOY_BUTTON_X])
+	_action(&"flashlight", [KEY_F, KEY_L], [JOY_BUTTON_Y])
+	# Docked: leave the cockpit. X is free in flight (E strafes, which would
+	# release the docking clamps).
+	_action(&"disembark", [KEY_X], [JOY_BUTTON_X])
 
 func _action(action: StringName, keys: Array, joy_buttons := [], joy_axes := []) -> void:
 	if not InputMap.has_action(action):

@@ -72,3 +72,16 @@ static func seg_bar(ci: CanvasItem, r: Rect2, frac: float, col: Color, segments 
 		ci.draw_rect(rect, Color(col.r, col.g, col.b, 0.12))
 		if on > 0.0:
 			ci.draw_rect(Rect2(x, r.position.y, w * on, r.size.y), col)
+
+## Key-cap prompt: a small outlined key with its label to the right, e.g.
+## [X] EXIT SHIP. `pos` is the left end of the baseline row. Returns the width.
+static func key_hint(ci: CanvasItem, pos: Vector2, key: String, label_text: String, a := 1.0, size := 18, col := CYAN) -> float:
+	var f := font()
+	var kw := maxf(f.get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + 16.0, size * 1.6)
+	var kr := Rect2(pos + Vector2(0, -size * 1.05), Vector2(kw, size * 1.45))
+	ci.draw_rect(kr, Color(0.02, 0.05, 0.1, 0.8 * a))
+	ci.draw_rect(kr, Color(col, 0.9 * a), false, 1.5, true)
+	ci.draw_line(kr.position + Vector2(2, kr.size.y + 1.5), kr.end + Vector2(-2, 1.5), Color(col, 0.45 * a), 2.0)
+	ci.draw_string(f, Vector2(kr.position.x, pos.y), key, HORIZONTAL_ALIGNMENT_CENTER, kw, size, Color(WHITE, a))
+	ci.draw_string(f, pos + Vector2(kw + 10.0, 0), label_text.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, size - 1, Color(WHITE, 0.92 * a))
+	return kw + 10.0 + f.get_string_size(label_text.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, size - 1).x

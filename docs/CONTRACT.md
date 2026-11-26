@@ -19,9 +19,14 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
 
 * `Game.PX_PER_M = 10.0` — world units are pixels, **1 m = 10 px**. Tune physics in SI and convert.
 * Collision layer bit values: `LAYER_WORLD=1` (stations), `LAYER_PLAYER=2`, `LAYER_PROPS=4`
-  (containers/debris), `LAYER_TRAFFIC=8` (AI ships), `LAYER_TRIGGERS=16` (Area2D gates/pads).
+  (containers/debris), `LAYER_TRAFFIC=8` (AI ships), `LAYER_TRIGGERS=16` (Area2D gates/pads),
+  `LAYER_WALK=32` (on-foot obstacles only the walker hits), `LAYER_WALKER=64` (the walker).
 * Z-index plan (absolute on top-level containers): `Z_BELOW_DECK=-50`, `Z_STRUCTURE=-10`,
-  `Z_PROPS=0`, `Z_SHIP=5`, `Z_FX=8`, `Z_OVERHEAD=20`, `Z_OVERHEAD_FX=30`.
+  `Z_PROPS=0`, `Z_SHIP=5`, `Z_WALKER=6`, `Z_FX=8`, `Z_WALL_TOP=12` (interior wall tops), `Z_OVERHEAD=20`,
+  `Z_OVERHEAD_FX=30`.
+* Game mode: `Game.mode` (`Game.Mode.FLIGHT` / `ON_FOOT`) with `mode_changed(mode)`; on-foot milestones
+  `disembarked(pad)`, `boarded(pad)`, `entered_interior(name)`, `exited_interior(name)`; `Game.walker` is the
+  on-foot character while it exists.
 * Signals (the event bus): `impact(pos, normal, speed_mps, source, other)`,
   `scrape(pos, normal, tangent_speed_mps, source)`, `hull_changed(hull, max_hull)`,
   `ship_destroyed(pos)`, `ship_respawned(pos)`, `race_started()`,
@@ -37,7 +42,8 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
   `strafe_left` (Q), `strafe_right` (E), `boost` (Space/Shift), `flight_assist` (F),
   `camera_mode` (C), `zoom_in`/`zoom_out` (wheel, =/-), `tuning_panel` (Tab/F1), `help` (H),
   `restart_race` (R), `respawn` (T), `pause` (P/Esc), `radar_toggle` (M), `debug_draw` (F3).
-  Gamepad bindings are included.
+  On foot: `move_up/down/left/right` (WASD/arrows, left stick), `run` (Shift), `interact` (E/Enter),
+  `flashlight` (F/L), and `disembark` (X) while docked. Gamepad bindings are included.
 * **Test harness** via user args after `--`:
   `--spawn=x_px,y_px,heading_deg`, `--input=0.5-3:thrust_forward;1-1.6:turn_left+boost`,
   `--shots=1,2.5` (PNG captures at physics-time seconds), `--shot-dir=/abs/dir`,
@@ -65,6 +71,12 @@ viewport 1920×1080 with `canvas_items` stretch/expand, window 1600×900.
 | SHIP (flight model, ship art, ship FX & audio, camera, tuning panel) | `scripts/ship/**`, `scenes/ship/**`, `assets/art/ship/**`, `scenes/ui/tuning_panel.tscn`, `scripts/ui/tuning_panel.gd`, `scenes/test/ship_*`, `tests/ship_*` |
 | LEVEL (stations, props, traffic, layout) | `scripts/level/**`, `scenes/level/**`, `assets/art/level/**`, `scenes/test/level_*` |
 | GAMEPLAY (impact FX, damage, race, docking, boundary, HUD, main scene) | `scripts/systems/**`, `scripts/ui/**` (except tuning_panel.gd), `scenes/ui/**` (except tuning_panel.tscn), `assets/art/fx/**`, `scenes/main.tscn`, `scripts/main.gd`, `scenes/test/gameplay_*` |
+| ON-FOOT (walking, landed ship model, pad sites, interiors) | `scripts/onfoot/**`, `scenes/onfoot/**`, `assets/art/onfoot/**`, `scenes/test/onfoot_*`, `tests/onfoot_*` |
+
+The on-foot stage added small hooks outside its own paths. `game.gd` got the layers, mode, signals and actions
+above. `CameraRig` got `set_focus()`, `clear_focus()` and `snap_focus()`. `LevelArt.depth_amount` flattens the
+2.5D parallax. `DockingSystem` got `is_docked()`, `is_settled()` and `force_dock()`. `AmbientAudio` got
+`set_level_offset()`. The HUD got the "X Exit ship" prompt, `HudStyle.key_hint()` and the on-foot help page.
 
 `docs/CONTRACT.md` and `scripts/autoload/game.gd` are frozen: if you truly need a
 change, put a note in `docs/requests/<workstream>.md` instead.
@@ -111,7 +123,12 @@ change, put a note in `docs/requests/<workstream>.md` instead.
     Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio
     HUD               (instance hud.tscn)
     TuningPanel       (instance tuning_panel.tscn)
+    OnFoot (Node)     OnFootDirector: walker, landed ship, pad site, interiors, on-foot HUD
   ```
+* On foot: `res://scenes/onfoot/sites/<pad>_site.tscn` holds pad-specific extras in world coordinates
+  (registered in `PadSite.EXTRAS`). It may emit `enter_requested` and provide `get_interior_path()`,
+  `outside_point()`, `inside_point()`, `door` and `set_cycling()`. `res://scenes/onfoot/interiors/*.tscn` has an
+  `InteriorLevel` root whose origin is placed at the site's origin, plus an `Airlock` node.
 
 ## 4. PlayerShip API (SHIP implements, GAMEPLAY/HUD consume)
 

@@ -61,7 +61,7 @@ func _update_depth() -> void:
 		var parent := ci.get_parent() as Node2D
 		if parent == null:
 			continue
-		var s: float = e[1]
+		var s: float = lerpf(1.0, e[1], LevelArt.depth_amount)
 		var off: Vector2 = e[2]
 		var base := parent.global_transform
 		ci.global_transform = Transform2D(base.x * s, base.y * s, c + (base.origin - c) * s + off)

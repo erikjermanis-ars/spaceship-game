@@ -883,6 +883,279 @@ def door_servo(rng):
     return [finish_oneshot(x, fade_in_s=0.003, fade_out_s=0.1, hp=30)], False
 
 
+
+# ================================================================ on foot ===
+# Same conceit, now outside the cockpit. In vacuum you hear only what your
+# suit carries: footsteps are muffled thuds through the mag-boots (low-passed,
+# no air). Indoors the air is back: crisp heel-and-sole steps on deck plate,
+# the hum of the room, doors and switches you can actually hear.
+
+def step_suit(rng, v):
+    """Mag-boot footstep heard from inside a suit: a soft low thud through
+    the leg, the boot magnet's damped clack, a whisper of suit fabric."""
+    n = ns(0.32)
+    x = zeros(n)
+    add_into(x, norm(thump(n, rng.uniform(105, 130), 62, 0.05, 0.09, rng, attack=0.003, drive=1.3)), 1.0)
+    m = n - ns(0.012)
+    clack = decaying_sines(m, metal_modes(rng, rng.uniform(380, 460), PLATE[:6], 0.05,
+                                          hardness_hz=1400, split=0.2))
+    clack = biquad(norm(clack), "lp", 1300, 0.7)
+    add_into(x, clack, 0.35, ns(0.012))
+    rustle = biquad(mul(white(n, rng), env_points(n, [(0, 0), (0.02, 1.0), (0.12, 0.25), (0.3, 0)])), "bp", 900, 0.8)
+    add_into(x, norm(rustle), 0.12)
+    x = biquad(x, "lp", 1800, 0.7)
+    return [finish_oneshot(x, fade_in_s=0.001, fade_out_s=0.05, hp=35)], False
+
+
+def step_deck(rng, v):
+    """Indoor step on metal deck plate: heel tap, a short plate ring under the
+    rubber sole, then the toe and a little scuff."""
+    n = ns(0.36)
+    x = zeros(n)
+    heel = norm(noise_burst(n, rng, 0.006, kind="bp", f=rng.uniform(1700, 2400), q=0.9))
+    add_into(heel, norm(thump(n, rng.uniform(150, 190), 95, 0.02, 0.05, rng, attack=0.0008, drive=1.2)), 0.8)
+    ring = decaying_sines(n, metal_modes(rng, rng.uniform(520, 640), PLATE[:10], 0.11,
+                                         hardness_hz=3500, split=0.4))
+    add_into(heel, norm(ring), 0.22)
+    add_into(x, heel, 1.0)
+    toe_t = rng.uniform(0.055, 0.075)
+    m = n - ns(toe_t)
+    toe = norm(noise_burst(m, rng, 0.004, kind="bp", f=rng.uniform(2600, 3200), q=0.9))
+    add_into(toe, norm(thump(m, 210, 130, 0.015, 0.03, rng, attack=0.0006, drive=1.1)), 0.4)
+    add_into(x, toe, 0.45, ns(toe_t))
+    scuff = biquad(mul(white(m, rng), env_perc(m, 0.004, 0.06)), "bp", 3800, 0.7)
+    add_into(x, norm(scuff), 0.08, ns(toe_t))
+    return [finish_oneshot(x, fade_in_s=0.0003, fade_out_s=0.05, hp=70)], False
+
+
+def _servo(n, rng, f0, f1, run_s, level=1.0):
+    """Small electric actuator: spin-up, run, spin-down (gear whine)."""
+    run = ns(run_s)
+    fr = []
+    for i in range(run):
+        t = i / SR
+        k = min(1.0, t / 0.08) * min(1.0, (run_s - t) / 0.1)
+        fr.append((f0 + (f1 - f0) * t / run_s) * (0.6 + 0.4 * max(0.0, k)))
+    raw = osc_var(fr, table=saw_table(24, 1.0))
+    y = scale(biquad(raw, "bp", 900, 1.2), 0.6)
+    add_into(y, biquad(raw, "lp", 600, 0.7), 0.5)
+    add_into(y, osc_var([f * 7.0 for f in fr]), 0.06)
+    y = mul(y, env_points(run, [(0, 0), (0.04, 1.0), (run_s - 0.08, 1.0), (run_s, 0.0)]))
+    out = zeros(n)
+    add_into(out, norm(y), level)
+    return out
+
+
+def hatch_open(rng):
+    """Ship boarding hatch: latch clunk, seal hiss, door servo, stairs servo,
+    then the stair foot thunking onto the deck."""
+    n = ns(1.6)
+    x = zeros(n)
+    latch = norm(thump(n, 95, 60, 0.05, 0.18, rng))
+    add_into(latch, norm(decaying_sines(n, metal_modes(rng, 240, PLATE[:10], 0.25, hardness_hz=2500))), 0.6)
+    add_into(x, latch, 0.8)
+    m = n - ns(0.05)
+    hiss = biquad_tv(white(m, rng), "bp", sweep(m, 5200, 2400, "exp", 0.6), 0.9)
+    hiss = mul(hiss, env_points(m, [(0, 0), (0.01, 1.0), (0.35, 0.3), (0.6, 0.0)]))
+    add_into(x, norm(hiss), 0.45, ns(0.05))
+    add_into(x, _servo(n - ns(0.15), rng, 150, 175, 0.5), 0.45, ns(0.15))
+    add_into(x, _servo(n - ns(0.55), rng, 120, 150, 0.75), 0.4, ns(0.55))
+    m2 = n - ns(1.32)
+    foot = norm(thump(m2, 85, 50, 0.06, 0.2, rng))
+    add_into(foot, norm(decaying_sines(m2, metal_modes(rng, 180, PLATE[:10], 0.3, hardness_hz=2200))), 0.5)
+    add_into(x, foot, 0.75, ns(1.32))
+    x = saturate(norm(x), 1.2)
+    return [finish_oneshot(x, fade_in_s=0.0005, fade_out_s=0.08, hp=30)], False
+
+
+def hatch_close(rng):
+    """Stairs retract, door slides shut, seal locks with a thunk and a puff."""
+    n = ns(1.4)
+    x = zeros(n)
+    add_into(x, _servo(n, rng, 150, 120, 0.7), 0.4)
+    add_into(x, _servo(n - ns(0.55), rng, 175, 150, 0.45), 0.4, ns(0.55))
+    m = n - ns(1.02)
+    seal = norm(thump(m, 90, 55, 0.05, 0.22, rng))
+    add_into(seal, norm(decaying_sines(m, metal_modes(rng, 210, PLATE[:10], 0.3, hardness_hz=2400))), 0.6)
+    add_into(x, seal, 0.9, ns(1.02))
+    m2 = n - ns(1.06)
+    puff = biquad(mul(white(m2, rng), env_perc(m2, 0.005, 0.18)), "bp", 3000, 0.8)
+    add_into(x, norm(puff), 0.3, ns(1.06))
+    x = saturate(norm(x), 1.2)
+    return [finish_oneshot(x, fade_in_s=0.003, fade_out_s=0.08, hp=30)], False
+
+
+def airlock_cycle(rng):
+    """Airlock pressurisation. Sound needs air: the roar of incoming gas
+    starts as a dull rumble felt through the boots and opens up (low-pass
+    sweeping 250 Hz -> 7 kHz) as the pressure rises, then settles, a valve
+    clunks shut and a soft D-major chime says it's safe."""
+    n = ns(3.2)
+    x = zeros(n)
+    valve = norm(thump(n, 80, 50, 0.06, 0.25, rng))
+    add_into(valve, norm(decaying_sines(n, metal_modes(rng, 150, PLATE, 0.4, hardness_hz=1800))), 0.6)
+    add_into(x, valve, 0.7)
+    m = ns(2.5)
+    src = white(m, rng)
+    roar = biquad_tv(src, "lp", sweep(m, 250, 7000, "exp", 0.8), 0.7)
+    add_into(roar, biquad_tv(src, "bp", sweep(m, 400, 3000, "exp", 0.7), 1.2), 0.4)
+    roar = mul(roar, env_points(m, [(0, 0), (0.25, 0.6), (1.4, 1.0), (2.1, 0.5), (2.5, 0.0)]))
+    add_into(x, norm(roar), 0.8, ns(0.08))
+    pump = mul(add_sines(m, [(55.0, 1.0), (110.0, 0.5), (165.0, 0.2)]),
+               env_points(m, [(0, 0), (0.3, 1.0), (2.0, 0.8), (2.5, 0.0)]))
+    add_into(x, norm(pump), 0.25, ns(0.08))
+    m2 = n - ns(2.55)
+    shut = norm(thump(m2, 90, 55, 0.04, 0.18, rng))
+    add_into(shut, norm(decaying_sines(m2, metal_modes(rng, 260, PLATE[:10], 0.2, hardness_hz=3000))), 0.5)
+    add_into(x, shut, 0.6, ns(2.55))
+    m3 = n - ns(2.7)
+    chime = soft_mallet(m3, A5, 0.6, rng)
+    add_into(chime, soft_mallet(m3, D6, 0.8, rng), 0.9)
+    add_into(x, norm(chime), 0.35, ns(2.7))
+    x = saturate(norm(x), 1.15)
+    return [finish_oneshot(x, fade_in_s=0.002, fade_out_s=0.12, hp=30)], False
+
+
+def add_sines(n, parts):
+    y = zeros(n)
+    for f, a in parts:
+        add_into(y, sine(n, f), a)
+    return y
+
+
+def door_slide(rng):
+    """Interior sliding door: pneumatic whoosh with a soft motor under it and
+    a gentle rubber-stop thud."""
+    n = ns(0.62)
+    x = zeros(n)
+    m = ns(0.42)
+    wh = biquad_tv(white(m, rng), "bp", sweep(m, 1500, 650, "exp", 0.7), 0.9)
+    wh = mul(wh, env_points(m, [(0, 0), (0.06, 1.0), (0.3, 0.6), (0.42, 0.0)]))
+    add_into(x, norm(wh), 0.6)
+    add_into(x, _servo(n, rng, 210, 230, 0.42), 0.25)
+    m2 = n - ns(0.4)
+    stop = norm(thump(m2, 130, 80, 0.02, 0.07, rng, attack=0.001, drive=1.1))
+    add_into(x, stop, 0.35, ns(0.4))
+    return [finish_oneshot(x, fade_in_s=0.004, fade_out_s=0.06, hp=60)], False
+
+
+def switch_click(rng):
+    """Rocker switch: plastic snap with a tiny spring ping."""
+    n = ns(0.09)
+    x = decaying_sines(n, [(3300, 1.0, 0.012, 0.0), (5100, 0.5, 0.008, 0.3), (1900, 0.35, 0.02, 0.0)])
+    add_into(x, norm(noise_burst(n, rng, 0.0015, kind="hp", f=2500)), 0.6 * peak(x))
+    m = n - ns(0.018)
+    y = decaying_sines(m, [(2600, 0.5, 0.01, 0.0), (4300, 0.3, 0.006, 0.0)])
+    add_into(x, y, 1.0, ns(0.018))
+    return [finish_oneshot(x, fade_in_s=0.0002, fade_out_s=0.01, hp=200)], False
+
+
+def light_on(rng):
+    """Panel light starting: starter tick, two flicker tinks with a burst of
+    buzz each, then the steady hum swelling in and fading."""
+    n = ns(0.75)
+    x = zeros(n)
+    for t, a in [(0.0, 0.7), (0.07, 0.5), (0.23, 0.6), (0.43, 0.9)]:
+        tick = tinkle(rng, rng.uniform(2800, 3600), 0.03)
+        add_into(x, norm(tick), a * 0.6, ns(t))
+        m = ns(0.05)
+        bz = biquad(saturate(sine(m, 100.0), 5.0), "bp", 1200, 0.8)
+        add_into(x, mul(bz, env_perc(m, 0.002, 0.05)), a * 0.25, ns(t))
+    m = n - ns(0.43)
+    hum = biquad(saturate(sine(m, 100.0), 3.0), "bp", 600, 0.7)
+    add_into(hum, sine(m, 200.0), 0.2)
+    hum = mul(hum, env_points(m, [(0, 0), (0.05, 1.0), (0.32, 0.0)]))
+    add_into(x, norm(hum), 0.18, ns(0.43))
+    return [finish_oneshot(x, fade_in_s=0.0005, fade_out_s=0.05, hp=80)], False
+
+
+def light_buzz_loop(rng):
+    """A failing light: mains buzz with irregular arcing crackle (1 s loop)."""
+    P = ns(1.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    bz = saturate(sine(N, q(100.0)), 6.0)
+    add_into(bz, saturate(sine(N, q(200.0)), 3.0), 0.3)
+    bz = biquad(bz, "bp", 1100, 0.6)
+    bz = mul(bz, smooth_random(N, 6.0, rng, P, 0.3, 1.0))
+    times = [rng.uniform(0, 1.0) for _ in range(7)]
+    cr = zeros(P)
+    add_into(cr, burst_events(P, rng, times, [rng.uniform(0.002, 0.01) for _ in times],
+                              [rng.uniform(0.4, 1.0) for _ in times]))
+    cr = biquad(tile(cr, 2), "hp", 2000, 0.7)   # two periods, like the buzz (seamless)
+    mix = [a + 0.5 * b for a, b in zip(norm(bz), norm(cr))]
+    return [finish_loop(mix, P)], True
+
+
+def room_tone_loop(rng):
+    """Interior room tone (8 s loop): air handling through vents with slow
+    breathing, faint 50/100 Hz station hum, a whisper of electronics."""
+    P = ns(8.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    src = pnoise(P, 2, rng)
+    air = biquad(src, "lp", 650, 0.7)
+    add_into(air, biquad(src, "bp", 1700, 0.5), 0.15)
+    air = at_rms(mul(air, [0.85 + 0.15 * a for a in lfo(N, 2, P)]), -18)
+    hum = zeros(N)
+    for f, a in [(50, 0.5), (100, 1.0), (150, 0.25), (200, 0.15)]:
+        add_into(hum, sine(N, q(f), rng.uniform(0, TAU)), a)
+    hum = at_rms(hum, -30)
+    el = at_rms(mul(sine(N, q(4200.0)), smooth_random(N, 0.3, rng, P, 0.0, 1.0)), -48)
+    mix = [a + b + c for a, b, c in zip(air, hum, el)]
+    return [finish_loop(mix, P)], True
+
+
+def vending_dispense(rng):
+    """Drinks machine: motor turns the spiral, the can drops with a hollow
+    clunk into the tray and rolls to a stop."""
+    n = ns(1.5)
+    x = zeros(n)
+    add_into(x, _servo(n, rng, 70, 80, 0.55), 0.5)
+    m = n - ns(0.62)
+    clunk = norm(thump(m, 140, 70, 0.03, 0.12, rng))
+    add_into(clunk, norm(decaying_sines(m, metal_modes(rng, 330, PLATE[:12], 0.18, hardness_hz=3500))), 0.7)
+    add_into(clunk, norm(noise_burst(m, rng, 0.008, kind="lp", f=2500)), 0.5)
+    add_into(x, clunk, 1.0, ns(0.62))
+    roll_t = [0.74 + 0.07 * i + rng.uniform(-0.01, 0.01) for i in range(7)]
+    for i, t in enumerate(roll_t):
+        add_into(x, norm(tinkle(rng, rng.uniform(900, 1300), 0.05)), 0.25 * (1.0 - i / 8.0), ns(t))
+    x = saturate(norm(x), 1.2)
+    return [finish_oneshot(x, fade_in_s=0.003, fade_out_s=0.08, hp=40)], False
+
+
+def console_beep(rng):
+    """Friendly two-note console blip, A5 -> D6 (inside D major)."""
+    n = ns(0.3)
+    x = zeros(n)
+    for t, f in [(0.0, A5), (0.075, D6)]:
+        m = ns(0.08)
+        y = sine(m, f)
+        add_into(y, sine(m, 2 * f), 0.12)
+        y = mul(y, tone_env(m, 0.004, 0.05, 0.08))
+        add_into(x, y, 1.0, ns(t))
+    x = wet_mix(x, 0.4, 0.5, 0.15)
+    return [finish_oneshot(x, fade_in_s=0.0, fade_out_s=0.04, hp=150)], False
+
+
+def holo_on(rng):
+    """Hologram projector: a rising FM shimmer and a quick D-major arpeggio
+    of glassy bells with a sparkle of noise."""
+    n = ns(1.3)
+    x = zeros(n)
+    m = ns(0.6)
+    fr = sweep(m, 300, 1200, "exp", 0.8)
+    sh = mul(osc_var(fr), env_points(m, [(0, 0), (0.1, 0.6), (0.5, 0.4), (0.6, 0.0)]))
+    add_into(sh, mul(osc_var([f * 1.5 for f in fr]), env_perc(m, 0.05, 0.5)), 0.3)
+    add_into(x, norm(sh), 0.4)
+    for i, f in enumerate([D5, Fs5, A5, D6]):
+        t = 0.12 + i * 0.07
+        add_into(x, norm(bell(n - ns(t), f, 0.7, rng, bright=1.3)), 0.35, ns(t))
+    sp = biquad(mul(white(n, rng), env_points(n, [(0, 0), (0.2, 0.5), (0.6, 0.2), (1.3, 0.0)])), "hp", 6000, 0.7)
+    add_into(x, norm(sp), 0.08)
+    x = wet_mix(x, 1.0, 0.8, 0.3)
+    return [finish_oneshot(x, fade_in_s=0.002, fade_out_s=0.15, hp=120)], False
+
 # ================================================================== jobs ===
 JOBS = [
     # (output name, recipe, extra args, seed)
@@ -924,6 +1197,26 @@ JOBS = [
     ("traffic_engine_loop", traffic_engine_loop, (), 93),
     ("beacon_ping", beacon_ping, (), 94),
     ("door_servo", door_servo, (), 95),
+    # on foot
+    ("step_suit_1", step_suit, (0,), 101),
+    ("step_suit_2", step_suit, (1,), 102),
+    ("step_suit_3", step_suit, (2,), 103),
+    ("step_suit_4", step_suit, (3,), 104),
+    ("step_deck_1", step_deck, (0,), 111),
+    ("step_deck_2", step_deck, (1,), 112),
+    ("step_deck_3", step_deck, (2,), 113),
+    ("step_deck_4", step_deck, (3,), 114),
+    ("hatch_open", hatch_open, (), 121),
+    ("hatch_close", hatch_close, (), 122),
+    ("airlock_cycle", airlock_cycle, (), 123),
+    ("door_slide", door_slide, (), 124),
+    ("switch_click", switch_click, (), 125),
+    ("light_on", light_on, (), 126),
+    ("light_buzz_loop", light_buzz_loop, (), 127),
+    ("room_tone_loop", room_tone_loop, (), 128),
+    ("vending_dispense", vending_dispense, (), 129),
+    ("console_beep", console_beep, (), 130),
+    ("holo_on", holo_on, (), 131),
 ]
 
 
@@ -942,7 +1235,7 @@ def main(argv):
     wanted = [a for a in argv if not a.startswith("-")]
     jobs = [j for j in JOBS if not wanted or any(j[0].startswith(w) for w in wanted)]
     # longest job first so the pool finishes sooner
-    jobs.sort(key=lambda j: 0 if j[0].startswith("ambient") else 1)
+    jobs.sort(key=lambda j: 0 if j[0].startswith(("ambient", "room_tone")) else 1)
     t0 = time.time()
     with Pool(min(len(jobs), os.cpu_count() or 4)) as pool:
         for name, dur, nch, loop, secs in pool.imap_unordered(run_job, jobs):

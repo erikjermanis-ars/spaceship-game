@@ -22,6 +22,20 @@ const CONTROLS := [
 	["Tab / F1", "Flight-model tuning panel"],
 	["F3", "Physics debug overlay"],
 	["P / Esc", "Pause"],
+	["X", "Exit the ship (when docked)"],
+	["H", "This help"],
+]
+const CONTROLS_ON_FOOT := [
+	["On foot", ""],
+	["W A S D / ↑ ← ↓ →", "Walk"],
+	["Shift", "Run"],
+	["E / Enter", "Use: doors, switches, terminals, board ship"],
+	["F", "Helmet flashlight"],
+	["Wheel  = / -", "Zoom"],
+	["Docked ship", ""],
+	["X", "Exit the ship (when docked and clamped)"],
+	["Game", ""],
+	["P / Esc", "Pause"],
 	["H", "This help"],
 ]
 const INTRO_TIME := 7.0
@@ -54,15 +68,16 @@ func _draw() -> void:
 		_draw_intro(clampf(minf(_intro_t * 2.0, (INTRO_TIME - _intro_t) * 1.2), 0.0, 1.0))
 	if _a <= 0.01:
 		return
+	var rows: Array = CONTROLS_ON_FOOT if Game.mode == Game.Mode.ON_FOOT else CONTROLS
 	var w := 720.0
-	var h := 64.0 + CONTROLS.size() * 30.0
+	var h := 64.0 + rows.size() * 30.0
 	var r := Rect2((size - Vector2(w, h)) * 0.5, Vector2(w, h))
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.01, 0.03, 0.45 * _a))
 	HudStyle.draw_panel(self, r, 18.0, Color(HudStyle.CYAN, 0.8 * _a), Color(0.02, 0.05, 0.1, 0.88 * _a))
 	HudStyle.text(self, r.position + Vector2(32, 44), "CONTROLS", 26, Color(HudStyle.WHITE, _a))
 	HudStyle.text(self, r.position + Vector2(0, 44), "H to close", 16, Color(HudStyle.MUTED, _a), HORIZONTAL_ALIGNMENT_RIGHT, w - 32.0)
 	var y := r.position.y + 84.0
-	for row in CONTROLS:
+	for row in rows:
 		if row[1] == "":
 			HudStyle.label(self, Vector2(r.position.x + 32, y), row[0], Color(HudStyle.CYAN, _a), 15)
 			draw_line(Vector2(r.position.x + 110, y - 5), Vector2(r.end.x - 32, y - 5), Color(HudStyle.CYAN, 0.2 * _a), 1.0)

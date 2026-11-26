@@ -281,8 +281,9 @@ func _ship_view(ship: RigidBody2D, dt: float) -> Dictionary:
 			_look += _look_vel * h
 
 	var floor_trauma := 0.0
-	if ship is PlayerShip and (ship as PlayerShip).boosting:
-		floor_trauma = 0.2
+	# A faint rumble when the main engine runs in its top range (the old boost).
+	if ship is PlayerShip:
+		floor_trauma = 0.2 * smoothstep(0.6, 1.0, (ship as PlayerShip).main_output)
 
 	# ---- rotation ----
 	# Follow the ship's interpolated (rendered) transform, not the raw 120 Hz

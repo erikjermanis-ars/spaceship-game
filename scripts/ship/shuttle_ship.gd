@@ -1,19 +1,18 @@
 class_name ShuttleShip
 extends PlayerShip
-## PETREL: a point-and-go hover shuttle. "It moves the way you walk."
+## PETREL: a heavy cargo hover shuttle.
 ##
-## Where the courier WREN makes you master its drift (all thrust at the bow,
-## counter-steer everything), the PETREL is fly-by-wire:
-##   * WASD is a DIRECTION, not engines. A reaction-wheel gyro (pure torque at
-##     the centre of mass) swings the nose to that direction with a stopping
-##     controller, and the twin stern engines only open up as the nose lines
-##     up ("point, then go"). Pilot RCS pushes along the input at once.
+## It flies the WREN's model (PlayerShip): W at the throttle setting, S retro,
+## A/D turn thrusters, Q/E strafe, F flight assist. Its numbers make it a
+## heavy hauler (2.6 t, ~4.6 m/s² at full throttle, slow to spin up), and its
+## turn thrusters fire as a COUPLE: the bow quads push one way, the stern
+## quads the other, so it pivots in place instead of swinging out.
+## On top of that:
 ##   * Space = HOVER: station-keeping RCS brakes you to a stop with the
-##     heading locked; WASD slides without turning. Keep holding over any
+##     heading held; W/S and Q/E slide, A/D yaw slowly. Keep holding over any
 ##     station deck and it descends onto magnetic skids: LAND ANYWHERE.
-##   * Q / LMB = mag-line (MagLine): hook cargo, structure, traffic.
-##   * The gyro can overheat (heavy tow, hooking the ring, repeated hits):
-##     it saturates, loses authority and the engines trim differentially.
+##   * LMB / V = mag-line (MagLine): hook cargo, structure, traffic;
+##     RMB / B reels in. L = floodlights.
 ## Altitude is a fake Z (metres) that only drives landing and visuals;
 ## collisions stay 2D.
 
@@ -30,19 +29,28 @@ const HULL := [Vector2(70, 0), Vector2(60, -14), Vector2(52, -21.6), Vector2(38,
 ## port side. Landing needs deck and clear space there too.
 const RAMP_POINTS := [Vector2(-0.5, -3.6), Vector2(-0.5, -4.6), Vector2(-0.5, -6.0)]
 
+## The PETREL's flight model: the "PETREL default" tuning preset and what
+## the ship starts with (applied in _init; the scene doesn't override these).
+const PETREL_DEFAULTS := {
+	"main_thrust_n": 12000.0, "reverse_scale": 0.3, "side_thrust_n": 3400.0,
+	"thrust_point_m": 5.0, "strafe_thrust_n": 3600.0, "turn_couple": 1.0, "stern_point_m": 4.6,
+	"mass_kg": 2600.0, "inertia_per_mass_m2": 14.0, "linear_drag": 0.1, "angular_drag": 0.8,
+	"bounce": 0.05, "friction": 0.3, "throttle_rate": 0.35,
+	"assist_rot_gain": 2.0, "assist_slip_gain": 0.8,
+}
+
 @export_group("PETREL engines")
-@export var engine_n := 4500.0          ## each of two stern engines
+## Stern engine bells (port one mirrored), for visuals and the debug overlay.
 @export var engine_pos_m := Vector2(-6.6, 1.4)
-@export var rcs_n := 1800.0
-@export var trim := 0.2                 ## differential when the gyro saturates
-@export_group("PETREL gyro")
-@export var gyro_alpha := 6.0           ## rad/s^2 authority
-@export var gyro_omega := 3.5           ## rad/s max turn rate
-@export var gyro_gain := 14.0
 @export_group("PETREL hover & landing")
 @export var hover_brake := 2.0          ## 1/s
-@export var hover_nudge_n := 4500.0
-@export var hover_cap_n := 10800.0
+@export var hover_nudge_n := 5200.0
+@export var hover_cap_n := 14000.0
+## A/D yaw rate of the held heading while hovering (rad/s).
+@export var hover_yaw_rate := 0.5
+## Heading-hold controller (critically damped, capped by the turn thrusters).
+@export var hover_hold_kp := 9.0
+@export var hover_hold_kd := 6.0
 @export var cruise_alt_m := 3.0
 @export var descent_mps := 2.2
 @export var max_land_speed := 2.0
@@ -50,16 +58,11 @@ const RAMP_POINTS := [Vector2(-0.5, -3.6), Vector2(-0.5, -4.6), Vector2(-0.5, -6
 @export var tow_eye_m := Vector2(-1.0, 0.0)
 
 # ---- live state (HUD / FX / audio read these) ----
-var intent := Vector2.ZERO
 var aim_dir := Vector2.RIGHT
 var hover_strength := 0.0
-var main_frac := 0.0
-var engine_out := Vector2.ZERO          ## port, starboard (0..~1.8)
-var rcs_force := Vector2.ZERO           ## N, global (for puffs)
-var heading_err := 0.0
-var gyro_frac := 0.0                    ## |torque| / max
-var gyro_heat := 0.0
-var gyro_saturated := false
+var engine_out := Vector2.ZERO          ## port, starboard main engine (0..1 of full)
+## Fore/aft RCS push while hovering, fraction of side thrust (+ = forward).
+var long_rcs_output := 0.0
 var altitude_m := 3.0
 var skids := 0.0                        ## 0 up .. 1 down
 var land_state: Land = Land.CRUISE
@@ -74,12 +77,17 @@ var line: MagLine
 var _hover_heading := 0.0
 var _hover_ok_t := 0.0
 var _probe_t := 0.0
-var _intent_rot := 0.0
-var _had_intent := false
+var _wants_move := false
 var _lift_block_t := 0.0
 var _mouse_t := 99.0
 var _hull_px := PackedVector2Array()
 var _snd := {}
+
+
+func _init() -> void:
+	for k in PETREL_DEFAULTS:
+		set(k, PETREL_DEFAULTS[k])
+	throttle_default = 0.5
 
 
 func _ready() -> void:
@@ -163,12 +171,8 @@ func park() -> void:
 ## Nothing firing: used whenever the flight model stops running (landed,
 ## parked, dead), so FX/audio/HUD don't keep showing the last thrust.
 func _zero_outputs() -> void:
-	intent = Vector2.ZERO
-	main_frac = 0.0
 	engine_out = Vector2.ZERO
-	rcs_force = Vector2.ZERO
-	gyro_frac = 0.0
-	heading_err = 0.0
+	long_rcs_output = 0.0
 	throttle_input = 0.0
 	turn_input = 0.0
 	strafe_input = 0.0
@@ -204,8 +208,6 @@ func respawn_at(xform: Transform2D) -> void:
 	land_state = Land.CRUISE
 	altitude_m = cruise_alt_m
 	skids = 0.0
-	gyro_heat = 0.0
-	gyro_saturated = false
 	_zero_outputs()
 	# Home is the hangar berth: arrive landed there, fly from a race gate.
 	if xform.origin.distance_to(home_transform().origin) < 1.0:
@@ -229,28 +231,24 @@ func destroy() -> void:
 
 # ================================================================== input
 
+func _controls_active() -> bool:
+	return controls_enabled and alive and powered and Game.player == self and Game.mode == Game.Mode.FLIGHT
+
+
 func _read_input(delta: float) -> void:
-	var active := controls_enabled and alive and powered and Game.player == self and Game.mode == Game.Mode.FLIGHT
-	var mv := Vector2.ZERO
-	if active:
-		mv = Vector2(_act(&"move_right") - _act(&"move_left"), _act(&"move_down") - _act(&"move_up"))
-		if mv.length() > 1.0:
-			mv = mv.normalized()
-		if mv.length() < 0.2:
-			mv = Vector2.ZERO
-		# Rotate-with-ship camera: input is screen-relative, latched when you
-		# start pushing so the turning camera can't chase itself.
-		var cam := Game.camera as CameraRig
-		if cam and cam.rotate_with_ship and mv != Vector2.ZERO:
-			if not _had_intent:
-				_intent_rot = cam.rotation
-			mv = mv.rotated(_intent_rot)
-	_had_intent = mv != Vector2.ZERO
-	intent = mv
+	super._read_input(delta)
+	var active := _controls_active()
+	_wants_move = active and (_raw_fwd > 0.2 or _raw_rev > 0.2 or absf(turn_input) > 0.2 or absf(strafe_input) > 0.2)
 	hover_strength = _act(&"ship_hover") if active else 0.0
-	var hovering := hover_strength > 0.1
-	_update_boost(active and _act(&"boost") > 0.5 and not hovering and land_state != Land.LANDED, delta)
-	if active and Input.is_action_just_pressed(&"flight_assist"):
+	if land_state == Land.LANDED:
+		# Sitting on the skids: inputs only mean "lift off" (_tick_landing).
+		throttle_input = 0.0
+		turn_input = 0.0
+		strafe_input = 0.0
+	elif land_state == Land.HOVER or land_state == Land.DESCENT:
+		# A/D swing the held heading slowly (line the ramp up to land).
+		_hover_heading = wrapf(_hover_heading + turn_input * hover_yaw_rate * delta, -PI, PI)
+	if active and Input.is_action_just_pressed(&"ship_lights"):
 		floodlights = not floodlights
 		GameplayUtil.play_oneshot(self, GameplayUtil.load_audio("switch_click.wav"), -10.0, 1.2, &"UI")
 	_update_aim(active)
@@ -289,85 +287,67 @@ func _physics_process(delta: float) -> void:
 	_tick_landing(delta)
 	if line:
 		line.physics_tick(delta, controls_enabled and Game.player == self and _act(&"ship_reel") > 0.5)
-	# Gyro heat: sustained max torque heats it, rest cools it (and a frozen
-	# or dead ship's gyro is idle).
 	if freeze or not alive:
-		gyro_frac = 0.0
-	if gyro_frac > 0.8:
-		gyro_heat = minf(1.0, gyro_heat + 0.35 * gyro_frac * delta)
-	else:
-		gyro_heat = maxf(0.0, gyro_heat - 0.5 * delta)
-	if gyro_heat >= 1.0 and not gyro_saturated:
-		gyro_saturated = true
-		Game.toast("GYRO SATURATED", 1.2)
-	elif gyro_saturated and gyro_heat < 0.4:
-		gyro_saturated = false
+		_zero_outputs()
 
 
 func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: Vector2, w: float) -> void:
-	var fwd := xf.x.normalized()
-	var heading := xf.get_rotation()
-	var i_si := mass_kg * inertia_per_mass_m2
-	var tau_max := i_si * gyro_alpha * (0.35 if gyro_saturated else 1.0)
-	var hover_mode := land_state == Land.HOVER or land_state == Land.DESCENT
-	# ---- gyro: swing the nose to the input direction (or hold it) ----
-	var err := 0.0
-	var steer := false
-	if hover_mode:
-		err = wrapf(_hover_heading - heading, -PI, PI)
-		steer = true
-	elif intent != Vector2.ZERO:
-		err = wrapf(intent.angle() - heading, -PI, PI)
-		steer = true
-	heading_err = err
-	var w_des := 0.0
-	if steer:
-		w_des = signf(err) * minf(minf(5.0 * absf(err), sqrt(2.0 * 0.8 * gyro_alpha * absf(err))), gyro_omega)
-	var tau := clampf(i_si * gyro_gain * (w_des - w), -tau_max, tau_max)
-	gyro_frac = absf(tau) / (i_si * gyro_alpha)
-	# ---- engines: open as the nose lines up; no reverse (S means "go south") ----
-	var ab := boost_multiplier if boosting else 1.0
-	main_frac = 0.0
-	if not hover_mode:
-		main_frac = intent.length() * smoothstep(cos(deg_to_rad(60.0)), cos(deg_to_rad(15.0)), cos(err))
-		if boosting and intent == Vector2.ZERO:
-			main_frac = 1.0
-	var t := trim * signf(err) if gyro_saturated and main_frac > 0.0 else 0.0
-	var f_port := engine_n * main_frac * ab * (1.0 + t)
-	var f_stbd := engine_n * main_frac * ab * (1.0 - t)
-	engine_out = Vector2(main_frac * ab * (1.0 + t), main_frac * ab * (1.0 - t))
-	var off_p := xf.basis_xform(Vector2(engine_pos_m.x, -engine_pos_m.y) * PX)
-	var off_s := xf.basis_xform(Vector2(engine_pos_m.x, engine_pos_m.y) * PX)
-	if f_port > 0.0:
-		state.apply_force(fwd * f_port * PX, off_p)
-	if f_stbd > 0.0:
-		state.apply_force(fwd * f_stbd * PX, off_s)
-	# ---- RCS: pilot push along the input, or hover station-keeping ----
-	var v_si := v / PX
-	var f_rcs := intent * rcs_n
-	if hover_mode:
-		f_rcs = -mass_kg * hover_brake * hover_strength * v_si + intent * hover_nudge_n
-		f_rcs = f_rcs.limit_length(hover_cap_n)
-	rcs_force = f_rcs
-	state.apply_central_force(f_rcs * PX)
-	state.apply_torque(tau * PX * PX)
-	# ---- drag (explicit forces, as the courier) ----
-	state.apply_central_force(-v * mass_kg * linear_drag)
-	state.apply_torque(-inertia * angular_drag * w)
+	if land_state == Land.HOVER or land_state == Land.DESCENT:
+		_apply_hover_forces(state, xf, v, w)
+	else:
+		# Cruise: exactly the WREN's model with the PETREL's numbers.
+		super._apply_flight_forces(state, xf, v, w)
+		long_rcs_output = 0.0
+	var eng := maxf(main_output, 0.0)
+	engine_out = Vector2(eng, eng)
 	# ---- mag-line pull at the tow eye ----
 	if line and line.ship_force != Vector2.ZERO:
 		state.apply_force(line.ship_force * PX, xf.basis_xform(tow_eye_m * PX))
-	# ---- outputs for HUD / FX / debug ----
-	throttle_input = main_frac
-	turn_input = clampf(tau / (i_si * gyro_alpha), -1.0, 1.0)
-	strafe_input = clampf(f_rcs.dot(xf.y.normalized()) / rcs_n, -1.0, 1.0)
-	main_output = main_frac * ab
-	bow_lateral_output = strafe_input * 0.5
-	stern_lateral_output = strafe_input * 0.5
-	dbg_main_force = fwd * (f_port + f_stbd)
+
+
+## Hover / descent: station-keeping RCS brakes to a stop and the turn
+## thrusters hold the heading; W/S and Q/E nudge (ship frame), A/D yaw the
+## held heading (see _read_input). Main engine off.
+func _apply_hover_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: Vector2, w: float) -> void:
+	var fwd := xf.x.normalized()
+	var right := xf.y.normalized()
+	var v_si := v / PX
+	var nudge := fwd * (_raw_fwd - _raw_rev) + right * strafe_input
+	var f_rcs := -mass_kg * hover_brake * hover_strength * v_si + nudge.limit_length(1.0) * hover_nudge_n
+	f_rcs = f_rcs.limit_length(hover_cap_n)
+	var i_si := mass_kg * inertia_per_mass_m2
+	var max_t := max_turn_torque_nm()
+	var err := wrapf(_hover_heading - xf.get_rotation(), -PI, PI)
+	var tau := clampf(i_si * (hover_hold_kp * err - hover_hold_kd * w), -max_t, max_t)
+	state.apply_central_force(f_rcs * PX)
+	state.apply_torque(tau * PX * PX)
+	state.apply_central_force(-v * mass_kg * linear_drag)
+	state.apply_torque(-inertia * angular_drag * w)
+	# ---- outputs: RCS quads split the push; the hold torque is a couple ----
+	main_output = 0.0
+	var lat := f_rcs.dot(right) / maxf(side_thrust_n, 1.0)
+	var couple := tau / maxf(max_t, 1.0)
+	bow_lateral_output = lat * 0.5 + couple * 0.5
+	stern_lateral_output = lat * 0.5 - couple * 0.5
+	long_rcs_output = f_rcs.dot(fwd) / maxf(side_thrust_n, 1.0)
+	dbg_main_force = Vector2.ZERO
 	dbg_side_force = Vector2.ZERO
 	dbg_strafe_force = f_rcs
 	dbg_assist_torque = tau
+
+
+## Which RCS quad groups fire, 0..~1 each (ShuttleVisuals puffs and
+## ShuttleAudio hiss/puffs read this): bow port, bow starboard, stern port,
+## stern starboard, aft-pushing (bow quads firing forward: S retro, hover
+## braking) and fore-pushing (stern quads firing aft: hover). + lateral output
+## = push to starboard = gas out of the PORT quad.
+func rcs_levels() -> PackedFloat32Array:
+	var bow := bow_lateral_output
+	var stern := stern_lateral_output
+	var retro := maxf(-main_output, 0.0) / maxf(reverse_scale, 0.05)
+	return PackedFloat32Array([
+		maxf(bow, 0.0), maxf(-bow, 0.0), maxf(stern, 0.0), maxf(-stern, 0.0),
+		maxf(-long_rcs_output, 0.0) + retro, maxf(long_rcs_output, 0.0)])
 
 
 func thrust_point_local() -> Vector2:
@@ -444,7 +424,7 @@ func _tick_landing(delta: float) -> void:
 			skids = 1.0
 			if Game.player == self and controls_enabled and powered and Game.mode == Game.Mode.FLIGHT:
 				_lift_block_t -= delta
-				if (intent.length() > 0.2 or _act(&"boost") > 0.5) and _lift_block_t <= 0.0:
+				if _wants_move and _lift_block_t <= 0.0:
 					_lift_off()
 		Land.LIFTING:
 			altitude_m = move_toward(altitude_m, cruise_alt_m, cruise_alt_m / 0.8 * delta)
@@ -509,7 +489,6 @@ func _touch_down(lat: float) -> void:
 	var deck := String(probe.get("deck_name", "deck"))
 	if on_pad:
 		repair(max_hull)
-		refill_boost()
 		Game.toast("%s  ·  LANDED · %s  ·  pad services: hull repaired" % [grade, deck], 3.0)
 	else:
 		Game.toast("%s  ·  LANDED · %s  ·  X get out · move to lift off" % [grade, deck], 3.0)

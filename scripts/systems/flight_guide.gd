@@ -12,12 +12,7 @@ const STEPS := 36
 ## Contract defaults (SI), used when the ship doesn't expose a property.
 ## Keys are the PlayerShip's exported property names so live tuning-panel
 ## changes are reflected in the prediction.
-const DEFAULTS := {
-	"main_thrust_n": 5000.0, "reverse_scale": 0.6, "side_thrust_n": 2600.0,
-	"strafe_thrust_n": 1200.0, "thrust_point_m": 4.0, "boost_multiplier": 2.0,
-	"linear_drag": 0.12, "angular_drag": 0.35, "inertia_per_mass_m2": 8.37,
-	"mass_kg": 1000.0, "assist_rot_gain": 3.0, "assist_slip_gain": 1.2,
-}
+const DEFAULTS := PlayerShip.WREN_DEFAULTS
 
 var enabled := true
 var _pts := PackedVector2Array()
@@ -67,21 +62,26 @@ func _predict() -> void:
 	var turn := float(GameplayUtil.pget(ship, &"turn_input", 0.0))
 	var strafe := float(GameplayUtil.pget(ship, &"strafe_input", 0.0))
 	var assist := bool(GameplayUtil.pget(ship, &"flight_assist", false))
-	# Fly-by-wire ships (the PETREL) steer themselves: show a coast path
-	# (drag only) rather than modelling their controller.
-	if ship.has_method(&"ship_id") and ship.call(&"ship_id") != &"wren":
+	# A hovering PETREL is station-keeping on its own controller: show a
+	# coast path (drag only) rather than modelling it.
+	var petrel := ship as ShuttleShip
+	if petrel and (petrel.land_state == ShuttleShip.Land.HOVER or petrel.land_state == ShuttleShip.Land.DESCENT):
 		throttle = 0.0
 		turn = 0.0
 		strafe = 0.0
 		assist = false
-	var boost := _param(ship, "boost_multiplier") if bool(GameplayUtil.pget(ship, &"boosting", false)) else 1.0
-	var main := throttle * _param(ship, "main_thrust_n") * boost
+	# throttle_input already carries the throttle setting (W x setting).
+	var main := throttle * _param(ship, "main_thrust_n")
 	if throttle < 0.0:
 		main *= _param(ship, "reverse_scale")
 	var side_max := _param(ship, "side_thrust_n")
-	var side := turn * side_max * boost
+	var side := turn * side_max
 	var strafe_max := _param(ship, "strafe_thrust_n")
-	var arm := _param(ship, "thrust_point_m")
+	# Turn torque: bow thruster plus the opposing stern share (turn couple);
+	# the couple's stern push cancels that much of the bow's sideways shove.
+	var couple := _param(ship, "turn_couple")
+	var arm := _param(ship, "thrust_point_m") + couple * _param(ship, "stern_point_m")
+	var max_t := side_max * arm
 	var lin_drag := _param(ship, "linear_drag")
 	var ang_drag := _param(ship, "angular_drag")
 	var rot_gain := _param(ship, "assist_rot_gain")
@@ -101,13 +101,12 @@ func _predict() -> void:
 		var lat := strafe * strafe_max
 		if assist:
 			if is_zero_approx(turn):
-				var max_t := side_max * arm
 				torque += clampf(-inertia * rot_gain * w, -max_t, max_t)
 			if is_zero_approx(strafe):
 				lat = clampf(-m * slip_gain * v.dot(right), -strafe_max, strafe_max)
 		w += (torque / inertia - ang_drag * w) * dt
 		th += w * dt
-		var f := fwd * main + right * (side + lat)
+		var f := fwd * main + right * (side * (1.0 - couple) + lat)
 		v += (f / m - lin_drag * v) * dt
 		p += v * dt
 		_pts[i] = p * Game.PX_PER_M

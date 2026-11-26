@@ -27,12 +27,12 @@ in **D major**, so chimes always fit the ambient bed (Dmaj9, Gmaj9, Bm9, Asus2, 
 
 | File | Bus | volume_db | Notes |
 |---|---|---|---|
-| engine_main_loop | Engine | -16 idle → -3 full | `pitch_scale` 0.75 at idle → 1.25 at full throttle (≈1.35 boosting); smooth it ~0.15 s. Reverse thrust also drives it. |
-| engine_boost_loop | Engine | -40 → -4 | crossfade in over ~0.12 s while boosting, out over ~0.3 s; pitch 0.95–1.1 |
-| rcs_hiss_loop | Engine | -40 → -12 | level from \|turn\| + \|strafe\| (attack fast, release ~0.1 s); pitch 0.95–1.1 |
-| rcs_puff_1..3 | Engine | -12 | on each thruster key press; `Game.get_variations()` |
+| engine_main_loop | Engine | -16 idle → -3 full | `pitch_scale` 0.75 at idle → 1.25 at full throttle (≈1.35 at 100 % throttle); smooth it ~0.15 s. Reverse thrust also drives it. |
+| engine_boost_loop | Engine | -40 → -4 | fades in over the upper half of the throttle (50 → 100 %), ~0.12 s attack, ~0.3 s release; pitch 0.95–1.1 |
+| rcs_hiss_loop | Engine | -40 → -12 | level from \|turn\| + \|strafe\| (attack fast, release ~0.1 s); pitch 0.95–1.1. Also voices the PETREL's RCS (A/D turn couple, Q/E, S retro, hover station-keeping) via `ShuttleShip.rcs_levels()`, peaking at -15 dB, pitch 0.88–1.0 |
+| rcs_puff_1..3 | Engine | -12 | on each thruster key press, both ships (the PETREL: whenever a quad group opens); `Game.get_variations()` |
 | engine_ignite | Engine | -6 | when throttle goes from 0 to >0 (cooldown ~0.5 s) |
-| boost_kick | Engine | -3 | when boost engages |
+| boost_kick | Engine | -3 | when the throttle comes up into its top range |
 | low_hull_alarm | UI | -14 | loop while hull < ~25 % |
 | impact_light_1..4 | SFX | -14 … -6 | closing speed ~0.8–4 m/s |
 | impact_medium_1..3 | SFX | -8 … -2 | ~4–10 m/s, optionally layered with a light hit at -10 |
@@ -63,9 +63,9 @@ in **D major**, so chimes always fit the ambient bed (Dmaj9, Gmaj9, Bm9, Asus2, 
 | vending_dispense | SFX | -6 | |
 | console_beep | SFX | -8 | terminals, hologram off |
 | holo_on | SFX | -8 | hologram projector |
-| petrel_engine_loop | Engine | -16 idle → -4 full | PETREL twin engines (smoother, higher than the WREN; slow beating between the two). `pitch_scale` 0.8 idle → 1.25 full, smooth ~0.15 s |
-| petrel_afterburner_loop | Engine | -40 → -6 | brighter afterburner roar layered on the engine loop; fade in ~0.12 s, out ~0.3 s; pitch 0.95–1.1 |
-| gyro_whine_loop | Engine | -40 → -16 | reaction-wheel whine centred ~600 Hz; `pitch_scale` 0.5–2.3 from wheel speed / turn rate |
+| petrel_engine_loop | Engine | -16 idle → -4 full | PETREL twin engines (smoother, higher than the WREN; slow beating between the two). `pitch_scale` 0.8 idle → 1.25 full, smooth ~0.15 s. S retro also lifts it to ~60 % (spooled like W) |
+| petrel_afterburner_loop | Engine | -40 → -6 | PETREL's high-power layer over the upper half of the throttle (50 → 100 %); pitch 0.95–1.1 |
+| gyro_whine_loop | — | — | valve whine centred ~600 Hz. Currently unused: the PETREL's RCS uses rcs_hiss_loop + rcs_puff_1..3 |
 | hover_hum_loop | Engine | -18 | calm station-keeping hiss + low hum while hovering; fade ~0.3 s |
 | skids_deploy | SFX | -8 | landing skids out (servo + two lock clacks); at pitch 0.9 it can double as retract |
 | touchdown_clunk_1..4 | SFX | -8 … -2 | mag-clamp engaging on touchdown, level from vertical speed; `Game.get_variations()` |

@@ -1,10 +1,10 @@
 extends Control
-## Bottom-left flight panel: speed, heading & drift, hull and boost bars,
-## flight-assist state and a live thruster diagram (top-down ship icon whose
-## jets light up from the ship's actual thruster outputs). Flying the PETREL
-## it shows that ship's own instruments instead: fly-by-wire mode, a gyro
-## compass (nose vs. where you push, engines opening as they line up), an
-## altitude tape, the landing status line and the mag-line panel.
+## Bottom-left flight panel: speed, heading & drift, hull bar, the throttle
+## setting, flight-assist state and a live thruster diagram (top-down ship
+## icon whose jets light up from the ship's actual thruster outputs). Flying
+## the PETREL it shows that ship's own instruments instead: mode + assist, a
+## nav compass (nose, velocity, engine plumes), an altitude tape, the landing
+## status line and the mag-line panel.
 
 const PANEL_SIZE := Vector2(560, 236)
 const MARGIN := Vector2(32, 32)
@@ -74,16 +74,20 @@ func _draw() -> void:
 	HudStyle.seg_bar(self, Rect2(o + Vector2(56, 150), Vector2(250, 12)), hf, hcol, 20)
 	HudStyle.text(self, o + Vector2(316, 163), "%d%%" % int(ceil(hf * 100.0)), 18, hcol, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
 
-	# --- boost ---
+	# --- throttle setting (Shift / Ctrl·Z); bright while the engine burns ---
 	var petrel := ship as ShuttleShip
-	var bf := clampf(float(GameplayUtil.pget(ship, &"boost_energy", 1.0)), 0.0, 1.0)
-	var boosting := bool(GameplayUtil.pget(ship, &"boosting", false))
-	var bcol := Color(0.75, 0.95, 1.0) if boosting else HudStyle.CYAN_DIM.lerp(HudStyle.CYAN, 0.5)
-	if bf < 0.15 and not boosting:
-		bcol = HudStyle.AMBER
-	HudStyle.label(self, o + Vector2(0, 190), "Burn" if petrel else "Boost")
-	HudStyle.seg_bar(self, Rect2(o + Vector2(56, 178), Vector2(250, 12)), bf, bcol, 20)
-	HudStyle.text(self, o + Vector2(316, 191), "%d%%" % int(round(bf * 100.0)), 18, bcol, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
+	var tf := clampf(float(GameplayUtil.pget(ship, &"throttle_setting", 0.0)), 0.0, 1.0)
+	var burning := float(GameplayUtil.pget(ship, &"main_output", 0.0)) > 0.01
+	var tcol := HudStyle.CYAN_DIM.lerp(HudStyle.CYAN, 0.5)
+	if burning:
+		tcol = HudStyle.CYAN.lerp(Color(0.75, 0.95, 1.0), smoothstep(0.5, 1.0, tf))
+	HudStyle.label(self, o + Vector2(0, 190), "Thr")
+	var tbar := Rect2(o + Vector2(56, 178), Vector2(250, 12))
+	HudStyle.seg_bar(self, tbar, tf, tcol, 20)
+	# 50 % tick: cruise flame below, the hot top range above.
+	var mid := tbar.position.x + tbar.size.x * 0.5
+	draw_line(Vector2(mid, tbar.position.y - 3), Vector2(mid, tbar.end.y + 3), Color(1, 1, 1, 0.35), 1.0)
+	HudStyle.text(self, o + Vector2(316, 191), "%d%%" % int(round(tf * 100.0)), 18, tcol, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
 
 	if petrel:
 		_draw_petrel(r, o, petrel)
@@ -109,7 +113,6 @@ func _draw_thrusters(c: Vector2, ship: Object, vel: Vector2) -> void:
 	var strafe := float(GameplayUtil.pget(ship, &"strafe_input", 0.0))
 	var bow := float(GameplayUtil.pget(ship, &"bow_lateral_output", turn + strafe * 0.5))
 	var stern := float(GameplayUtil.pget(ship, &"stern_lateral_output", strafe * 0.5))
-	var boosting := bool(GameplayUtil.pget(ship, &"boosting", false))
 	var head := c + Vector2(0, -40)
 	var pod := c + Vector2(0, 28)
 	var hull_col := Color(0.85, 0.9, 0.95, 0.9)
@@ -132,14 +135,16 @@ func _draw_thrusters(c: Vector2, ship: Object, vel: Vector2) -> void:
 	draw_arc(pod, 17.0, 0.0, TAU, 28, hull_col, 1.5, true)
 	draw_arc(c, 2.5, 0.0, TAU, 8, HudStyle.WHITE, 1.5, true)   # CoM
 
-	var hot := Color(0.75, 0.95, 1.0) if boosting else HudStyle.CYAN
-	# Main engine (forward thrust): flame out of the stern pod.
+	var hot := HudStyle.CYAN.lerp(Color(0.75, 0.95, 1.0), clampf(main * 2.0 - 1.0, 0.0, 1.0))
+	# Main engine (forward thrust): flame out of the stern pod (main is a
+	# fraction of full thrust; 100 % draws as long as the old boost).
 	if main > 0.02:
-		_jet(pod + Vector2(0, 18), Vector2.DOWN, main * (1.6 if boosting else 1.0), hot)
+		_jet(pod + Vector2(0, 18), Vector2.DOWN, main * 1.6, hot)
 	# Retro: twin jets out of the bow, pointing forward.
 	elif main < -0.02:
-		_jet(head + Vector2(-9, -12), Vector2(-0.25, -1).normalized(), -main, hot)
-		_jet(head + Vector2(9, -12), Vector2(0.25, -1).normalized(), -main, hot)
+		var retro := -main / maxf(float(GameplayUtil.pget(ship, &"reverse_scale", 0.6)), 0.05)
+		_jet(head + Vector2(-9, -12), Vector2(-0.25, -1).normalized(), retro, hot)
+		_jet(head + Vector2(9, -12), Vector2(0.25, -1).normalized(), retro, hot)
 	# Bow lateral: pushing to starboard (+) means exhaust to port (left).
 	if absf(bow) > 0.02:
 		var s := signf(bow)
@@ -167,23 +172,21 @@ const MODE_NAMES := ["CRUISE", "HOVER", "DESCENT", "LANDED", "LIFT-OFF"]
 
 
 func _draw_petrel(r: Rect2, o: Vector2, ship: ShuttleShip) -> void:
-	# --- mode chips: FBW · mode, gyro saturation, floodlights
+	# --- mode chips: flight mode, flight assist, floodlights
 	var mode: String = MODE_NAMES[ship.land_state]
 	if ship.line and ship.line.is_attached():
 		mode = "TETHERED"
-	var chip := Rect2(o + Vector2(0, 204), Vector2(150, 22))
+	var chip := Rect2(o + Vector2(0, 204), Vector2(120, 22))
 	draw_rect(chip, Color(HudStyle.GREEN, 0.14))
 	draw_rect(chip, Color(HudStyle.GREEN, 0.7), false, 1.0)
-	HudStyle.text(self, chip.position + Vector2(8, 17), "FBW  ·  %s" % mode, 14, HudStyle.GREEN)
-	if ship.gyro_saturated or ship.gyro_heat > 0.6:
-		var sat := Rect2(o + Vector2(158, 204), Vector2(92, 22))
-		var sc := HudStyle.RED if ship.gyro_saturated else HudStyle.AMBER
-		if ship.gyro_saturated and fmod(_t, 0.4) < 0.2:
-			sc = sc.darkened(0.4)
-		draw_rect(sat, Color(sc, 0.18))
-		draw_rect(sat, Color(sc, 0.8), false, 1.0)
-		HudStyle.text(self, sat.position + Vector2(8, 17), "GYRO SAT" if ship.gyro_saturated else "GYRO HOT", 14, sc)
-	HudStyle.text(self, o + Vector2(262, 221), "LIGHTS %s [F]" % ("ON" if ship.floodlights else "OFF"), 13, HudStyle.MUTED)
+	HudStyle.text(self, chip.position + Vector2(8, 17), mode, 14, HudStyle.GREEN)
+	var fa := ship.flight_assist
+	var fa_col := HudStyle.GREEN if fa else HudStyle.MUTED
+	var fa_rect := Rect2(o + Vector2(128, 204), Vector2(120, 22))
+	draw_rect(fa_rect, Color(fa_col, 0.14 if fa else 0.06))
+	draw_rect(fa_rect, Color(fa_col, 0.7), false, 1.0)
+	HudStyle.text(self, fa_rect.position + Vector2(8, 17), "ASSIST %s [F]" % ("ON" if fa else "OFF"), 14, fa_col)
+	HudStyle.text(self, o + Vector2(262, 221), "LIGHTS %s [L]" % ("ON" if ship.floodlights else "OFF"), 13, HudStyle.MUTED)
 	_draw_compass(r.position + Vector2(PANEL_SIZE.x - 120, 128), ship)
 	_draw_altitude(r.position + Vector2(PANEL_SIZE.x - 34, 46), ship)
 	_draw_landing_line(Vector2(r.position.x, r.position.y - 14), ship)
@@ -193,29 +196,20 @@ func _draw_petrel(r: Rect2, o: Vector2, ship: ShuttleShip) -> void:
 		_draw_line_panel(Rect2(Vector2(r.position.x, r.position.y - 36 - h), Vector2(PANEL_SIZE.x, h)), ship.line)
 
 
-## North-up compass: the nose tick, where you are pushing (intent), and an
-## arc between them that fills as the engines open ("point, then go").
+## North-up nav compass: the ship icon at its heading with its two engine
+## plumes (hotter in the top half of the throttle), the turn thrusters'
+## puffs and the velocity vector (where you are actually going).
 func _draw_compass(c: Vector2, ship: ShuttleShip) -> void:
-	HudStyle.label(self, c + Vector2(-34, -82), "Gyro")
+	HudStyle.label(self, c + Vector2(-26, -82), "Nav")
 	var R := 58.0
-	var heat_col := HudStyle.CYAN.lerp(HudStyle.RED, clampf((ship.gyro_heat - 0.3) / 0.7, 0.0, 1.0))
-	draw_arc(c, R, 0.0, TAU, 48, Color(heat_col, 0.55), 2.0, true)
+	var ring := HudStyle.CYAN
+	draw_arc(c, R, 0.0, TAU, 48, Color(ring, 0.55), 2.0, true)
 	for i in 8:
 		var a := TAU * i / 8.0
 		var d := Vector2.from_angle(a)
-		draw_line(c + d * (R - (8.0 if i % 2 == 0 else 4.0)), c + d * R, Color(heat_col, 0.6), 1.5, true)
+		draw_line(c + d * (R - (8.0 if i % 2 == 0 else 4.0)), c + d * R, Color(ring, 0.6), 1.5, true)
 	HudStyle.text(self, c + Vector2(-5, -R - 6), "N", 12, HudStyle.MUTED)
 	var hd := ship.global_rotation
-	if ship.intent != Vector2.ZERO:
-		var ia := ship.intent.angle()
-		var d := angle_difference(hd, ia)
-		var steps := 16
-		var pts := PackedVector2Array()
-		for i in steps + 1:
-			pts.append(c + Vector2.from_angle(hd + d * i / steps) * (R - 12.0))
-		draw_polyline(pts, Color(HudStyle.AMBER, 0.35 + 0.6 * ship.main_frac), 4.0 + 4.0 * ship.main_frac, true)
-		var ip := c + Vector2.from_angle(ia) * (R + 6.0)
-		draw_colored_polygon(PackedVector2Array([ip, ip - Vector2.from_angle(ia) * 12.0 + Vector2.from_angle(ia).orthogonal() * 6.0, ip - Vector2.from_angle(ia) * 12.0 - Vector2.from_angle(ia).orthogonal() * 6.0]), HudStyle.AMBER)
 	# Ship icon at the centre, rotated to the heading, with two plume bars.
 	var f := Vector2.from_angle(hd)
 	var rt := f.orthogonal()
@@ -226,7 +220,15 @@ func _draw_compass(c: Vector2, ship: ShuttleShip) -> void:
 		var amt := ship.engine_out.x if i == 0 else ship.engine_out.y
 		var base := c - f * 15.0 + rt * (-5.0 if i == 0 else 5.0)
 		if amt > 0.02:
-			draw_line(base, base - f * (6.0 + 18.0 * amt), Color(0.75, 0.95, 1.0, 0.9) if ship.boosting else HudStyle.CYAN, 3.0, true)
+			var col := HudStyle.CYAN.lerp(Color(0.75, 0.95, 1.0), clampf(amt * 2.0 - 1.0, 0.0, 1.0))
+			draw_line(base, base - f * (6.0 + 30.0 * amt), col, 3.0, true)
+	# Turn couple: bow and stern puffs (+ = push to starboard).
+	for end in 2:
+		var o := ship.bow_lateral_output if end == 0 else ship.stern_lateral_output
+		if absf(o) > 0.05:
+			var at := c + f * (16.0 if end == 0 else -10.0)
+			var gas := -rt * signf(o)
+			draw_line(at + gas * 8.0, at + gas * (8.0 + 12.0 * minf(absf(o), 1.0)), Color(0.9, 0.95, 1.0, 0.8), 2.0, true)
 	# Velocity vector (where you are actually going).
 	var v := ship.linear_velocity / Game.PX_PER_M
 	if v.length() > 0.3:
@@ -274,7 +276,7 @@ func _draw_line_panel(r: Rect2, line: MagLine) -> void:
 	HudStyle.draw_panel(self, r, 10.0, Color(HudStyle.CYAN, 0.45), Color(0.02, 0.05, 0.1, 0.5))
 	var o := r.position + Vector2(24, 0)
 	HudStyle.label(self, o + Vector2(0, 26), "Mag-line")
-	var state := "READY  ·  Q / LMB hold to hook"
+	var state := "READY  ·  LMB / V hold to hook"
 	var col := HudStyle.MUTED
 	match line.state:
 		MagLine.State.ATTACHED:
@@ -283,7 +285,7 @@ func _draw_line_panel(r: Rect2, line: MagLine) -> void:
 		MagLine.State.COOLDOWN:
 			state = "COOLDOWN"
 	if line.state == MagLine.State.READY and not line.scan_result().is_empty():
-		state = "TARGET  ·  %s  ·  hold Q / LMB" % line.scan_result().kind
+		state = "TARGET  ·  %s  ·  hold LMB / V" % line.scan_result().kind
 		col = HudStyle.WHITE
 	HudStyle.text(self, o + Vector2(96, 26), state, 15, col)
 	if line.state != MagLine.State.ATTACHED:

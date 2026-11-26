@@ -1,9 +1,10 @@
 extends Node
-## Headless flight-model test. Spawns the PlayerShip with no world, drives it
-## with scripted input and checks the numbers against the Pat Kerr reference:
-##   forward terminal 41.7 m/s, boosted 83.3 m/s, turning gives BOTH rotation
-##   and lateral drift toward the turn, spin rate -> F*arm/(I*k), assist stops
-##   rotation. Prints PASS/FAIL per check and exits with code 0/1.
+## Headless flight-model test. Spawns the PlayerShip (WREN) with no world,
+## drives it with scripted input and checks the numbers: W fires at the
+## throttle setting (terminal = setting x thrust / (m*k)), Shift/Ctrl move the
+## setting, retro is a fixed burn, turning gives BOTH rotation and lateral
+## drift toward the turn, spin rate -> F*arm/(I*k), assist stops rotation.
+## Prints PASS/FAIL per check and exits with code 0/1.
 ## Run:
 ##   Godot --headless --path <root> --fixed-fps 120 res://scenes/test/ship_physics_test.tscn
 
@@ -32,13 +33,14 @@ func _check(name: String, ok: bool, detail: String) -> void:
 
 
 func _release_all() -> void:
-	for a in [&"thrust_forward", &"thrust_reverse", &"turn_left", &"turn_right", &"boost", &"strafe_left", &"strafe_right"]:
+	for a in [&"thrust_forward", &"thrust_reverse", &"turn_left", &"turn_right", &"throttle_up", &"throttle_down", &"strafe_left", &"strafe_right"]:
 		Input.action_release(a)
 
 
 func _reset() -> void:
 	_release_all()
 	ship.flight_assist = false
+	ship.throttle_setting = ship.throttle_default
 	ship.respawn_at(Transform2D(0.0, Vector2.ZERO))
 	await get_tree().physics_frame
 	await get_tree().physics_frame
@@ -60,31 +62,50 @@ func _run() -> void:
 	_check("inertia conversion", is_equal_approx(ship.inertia, inertia_si * PX * PX),
 		"inertia=%.0f expected %.0f" % [ship.inertia, inertia_si * PX * PX])
 
-	# 1) Forward terminal speed.
+	_check("WREN stock numbers", is_equal_approx(ship.main_thrust_n, 10900.0) and is_equal_approx(ship.strafe_thrust_n, 2080.0),
+		"main %.0f N, strafe %.0f N" % [ship.main_thrust_n, ship.strafe_thrust_n])
+
+	# 1) Forward terminal speed at the default (50 %) throttle setting.
 	await _reset()
 	await _hold([&"thrust_forward"], 55.0)
-	var expected := ship.main_thrust_n / (m * ship.linear_drag)
+	var full := ship.main_thrust_n / (m * ship.linear_drag)
+	var expected := full * ship.throttle_setting
 	var v := ship.speed_mps()
-	_check("forward terminal speed", absf(v - expected) / expected < 0.05,
+	_check("forward terminal speed @ %d%%" % int(ship.throttle_setting * 100.0), absf(v - expected) / expected < 0.05,
 		"%.2f m/s (expected %.2f ±5%%)" % [v, expected])
 	_check("forward = +X heading kept", absf(ship.angular_velocity) < 0.001 and absf(ship.velocity_mps().y) < 0.05,
 		"omega=%.4f vy=%.3f" % [ship.angular_velocity, ship.velocity_mps().y])
 
-	# 2) Boosted terminal speed (infinite energy for the test).
+	# 2) Full throttle (what boost used to be).
 	await _reset()
-	var drain := ship.boost_drain_per_s
-	ship.boost_drain_per_s = 0.0
-	await _hold([&"thrust_forward", &"boost"], 55.0)
-	ship.boost_drain_per_s = drain
-	var expected_b := expected * ship.boost_multiplier
+	ship.throttle_setting = 1.0
+	await _hold([&"thrust_forward"], 55.0)
 	v = ship.speed_mps()
-	_check("boosted terminal speed", absf(v - expected_b) / expected_b < 0.05,
-		"%.2f m/s (expected %.2f ±5%%)" % [v, expected_b])
+	_check("terminal speed @ 100%", absf(v - full) / full < 0.05,
+		"%.2f m/s (expected %.2f ±5%%)" % [v, full])
+	_check("100% output reads 1.0", absf(ship.main_output - 1.0) < 0.001, "main_output=%.3f" % ship.main_output)
 
-	# 2b) Reverse terminal.
+	# 2a) Throttle keys ramp the setting and clamp; W at 0 % does nothing.
 	await _reset()
+	var s0 := ship.throttle_setting
+	await _hold([&"throttle_up"], 0.5)
+	_release_all()
+	var s1 := ship.throttle_setting
+	_check("Shift raises throttle", absf((s1 - s0) - ship.throttle_rate * 0.5) < 0.02,
+		"%.2f -> %.2f (rate %.2f/s)" % [s0, s1, ship.throttle_rate])
+	await _hold([&"throttle_down"], 4.0)
+	_release_all()
+	_check("Ctrl lowers throttle to 0 and clamps", ship.throttle_setting == 0.0, "setting=%.3f" % ship.throttle_setting)
+	await _hold([&"thrust_forward"], 1.0)
+	_check("W at 0% throttle: no thrust", ship.speed_mps() < 0.01 and ship.main_output == 0.0,
+		"v=%.3f out=%.3f" % [ship.speed_mps(), ship.main_output])
+	_release_all()
+
+	# 2b) Reverse terminal: a fixed burn, independent of the throttle setting.
+	await _reset()
+	ship.throttle_setting = 0.2
 	await _hold([&"thrust_reverse"], 55.0)
-	var expected_r := expected * ship.reverse_scale
+	var expected_r := full * ship.reverse_scale
 	v = ship.velocity_mps().x
 	_check("reverse terminal speed", absf(-v - expected_r) / expected_r < 0.05,
 		"vx=%.2f m/s (expected -%.2f)" % [v, expected_r])
@@ -140,9 +161,4 @@ func _run() -> void:
 	_check("strafe right: pure lateral", ship.velocity_mps().y > 1.0 and absf(ship.angular_velocity) < 0.001,
 		"vy=%.2f omega=%.4f" % [ship.velocity_mps().y, ship.angular_velocity])
 
-	# 7) Boost energy drains and locks out.
-	await _reset()
-	await _hold([&"thrust_forward", &"boost"], 6.0)
-	_check("boost energy drains to lockout", ship.boost_energy < 0.05 and not ship.boosting,
-		"energy=%.2f boosting=%s" % [ship.boost_energy, ship.boosting])
-	_release_all()
+

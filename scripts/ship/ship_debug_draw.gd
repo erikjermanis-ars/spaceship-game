@@ -134,5 +134,5 @@ func _draw() -> void:
 	var slip_mps := v.dot(right) / Game.PX_PER_M
 	var info := "v %.1f m/s   slip %+.1f m/s   ω %+.2f rad/s   thr %+.2f  turn %+.2f%s%s" % [
 		speed, slip_mps, w, ship.throttle_input, ship.turn_input,
-		"  BOOST" if ship.boosting else "", "  ASSIST" if ship.flight_assist else ""]
+		"  THR %d%%" % int(round(ship.throttle_setting * 100.0)), "  ASSIST" if ship.flight_assist else ""]
 	_text(com + Vector2(-80.0, 110.0) / z, info, Color(0.9, 0.95, 1.0), fs)

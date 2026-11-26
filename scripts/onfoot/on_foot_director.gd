@@ -295,7 +295,7 @@ func board(ship: RigidBody2D = null) -> void:
 	state = State.FLIGHT
 	if ship is ShuttleShip and not _petrel_tip_shown:
 		_petrel_tip_shown = true
-		Game.toast("PETREL  ·  WASD go · Shift afterburner · Space hover / land · Q hook · E reel · let go to fling · X out when landed · H help", 8.0)
+		Game.toast("PETREL  ·  flies like the WREN, heavier · A/D turn in place · Shift/Ctrl throttle · Space hover / land · LMB hook · RMB reel · L lights · H help", 8.0)
 	else:
 		Game.toast("%s  ·  welcome aboard" % String(ship.get(&"vehicle_name")).to_upper(), 3.0)
 	Game.boarded.emit(pad_name)

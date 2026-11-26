@@ -39,13 +39,13 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
   `Game.get_variations([paths]) -> AudioStreamRandomizer`.
 * Input actions are registered at runtime by `Game` (NOT in project.godot):
   `thrust_forward` (W/↑), `thrust_reverse` (S/↓), `turn_left` (A/←), `turn_right` (D/→),
-  `strafe_left` (Q), `strafe_right` (E), `boost` (Space/Shift), `flight_assist` (F),
+  `strafe_left` (Q), `strafe_right` (E), `throttle_up` (Shift), `throttle_down` (Ctrl/Z), `flight_assist` (F),
   `camera_mode` (C), `zoom_in`/`zoom_out` (wheel, =/-), `tuning_panel` (Tab/F1), `help` (H),
   `restart_race` (R), `respawn` (T), `pause` (P/Esc), `radar_toggle` (M), `debug_draw` (F3).
   On foot: `move_up/down/left/right` (WASD/arrows, left stick), `run` (Shift), `interact` (E/Enter),
   `flashlight` (F/L), and `disembark` (X) while docked. Gamepad bindings are included.
 * **Test harness** via user args after `--`:
-  `--spawn=x_px,y_px,heading_deg`, `--input=0.5-3:thrust_forward;1-1.6:turn_left+boost`,
+  `--spawn=x_px,y_px,heading_deg`, `--input=0.5-3:thrust_forward;1-1.6:turn_left+throttle_up`,
   `--shots=1,2.5` (PNG captures at physics-time seconds), `--shot-dir=/abs/dir`,
   `--quit-at=6`, `--debug-draw`, `--log=0.5` (prints player state).
   Example windowed capture run (works on this Mac; window pops up briefly):
@@ -143,22 +143,20 @@ change, put a note in `docs/requests/<workstream>.md` instead.
 ```
 class_name PlayerShip extends RigidBody2D
 var hull: float = 100.0          var max_hull: float = 100.0
-var boost_energy: float = 1.0    # 0..1
+var throttle_setting: float = 0.5   # 0..1, W fires the main engine at this
 var flight_assist: bool = false  # F toggles
 var alive: bool = true
 var controls_enabled: bool = true
-# live input readouts for HUD (after assist/boost logic):
+# live input readouts for HUD (throttle_input = W x throttle_setting - S):
 var throttle_input: float   # -1..1
 var turn_input: float       # -1..1 (negative = left / counter-clockwise on screen)
 var strafe_input: float     # -1..1
-var boosting: bool
 func velocity_mps() -> Vector2
 func speed_mps() -> float
 func take_damage(amount: float, at: Vector2) -> void   # emits Game.hull_changed; at 0 -> destroy()
 func repair(amount: float) -> void
-func refill_boost() -> void
 func destroy() -> void            # hides ship, disables collision & controls, emits Game.ship_destroyed
-func respawn_at(xform: Transform2D) -> void   # resets velocity/hull/boost, emits Game.ship_respawned
+func respawn_at(xform: Transform2D) -> void   # resets velocity/hull, emits Game.ship_respawned
 ```
 The ship emits `Game.impact(..., source=self, other=collider)` for every NEW contact with closing
 speed > ~0.8 m/s (per-collider cooldown ~0.15 s) and `Game.scrape` every physics frame it is
@@ -181,8 +179,9 @@ separation 6 m → centre of mass sits 4 m behind the head. ALL thrust is applie
 * side thrust `2600 N` along ship ±Y **at the thrust point** → it both turns the ship AND pushes
   the whole craft sideways (characteristic swinging, drifting feel; you must counter-steer to stop
   rotating). Turn left = bow pushed to the ship's left (−Y local in Godot's y-down space).
-* boost ×2 on both main and side thrust; boost pressed alone (no turn) also adds forward thrust.
-* linear drag force `−m·0.12·v` (gentle; terminal ≈ 41.7 m/s, ≈ 83 m/s boosted),
+* (Since reworked) the main engine runs at a throttle setting: 10.9 kN at 100 %, so 50 % ≈ the reference
+  5 kN cruise and 100 % ≈ the old ×2 boost. Retro is a fixed 0.275 × full thrust. Strafe is 2080 N.
+* linear drag force `−m·0.12·v` (gentle; terminal ≈ 45 m/s at 50 %, ≈ 91 m/s at 100 %),
   angular drag torque `−I·0.35·ω`. No speed caps.
 * semi-implicit Euler at fixed 120 Hz (Godot's RigidBody2D integrator does this). Disable
   Godot's own damping (`linear_damp_mode/angular_damp_mode = REPLACE`, value 0) and apply drag
@@ -192,7 +191,6 @@ separation 6 m → centre of mass sits 4 m behind the head. ALL thrust is applie
   `apply_force(force, offset)` takes the offset in GLOBAL orientation relative to the origin.
 Additions beyond the reference (all tunable live in the tuning panel):
 * strafe thrusters (Q/E): small lateral force at the CoM (default 1200 N), no torque.
-* boost energy: drains while boosting, recharges after a short delay.
 * optional **flight assist** (F, OFF by default): counters rotation with a pure torque (capped by
   side thruster authority) when no turn input, and bleeds lateral slip with strafe thrusters.
 * collisions: `continuous_cd = CCD_MODE_CAST_SHAPE`, `contact_monitor = true`,

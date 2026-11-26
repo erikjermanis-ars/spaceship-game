@@ -4,11 +4,11 @@ extends Control
 
 const CONTROLS := [
 	["Flight", ""],
-	["W / ↑", "Main engine (thrust at the bow)"],
+	["W / ↑", "Main engine at the throttle setting (thrust at the bow)"],
+	["Shift  /  Ctrl · Z", "Throttle up / down (hold). 100 % = full power"],
 	["S / ↓", "Retro thrust"],
 	["A D / ← →", "Bow side thrusters — turn AND push sideways"],
 	["Q / E", "Strafe thrusters"],
-	["Space / Shift", "Boost (alone = punch forward)"],
 	["F", "Flight assist (damps spin and slip)"],
 	["Game", ""],
 	["R", "Race: restart with 3-2-1 countdown"],
@@ -27,14 +27,17 @@ const CONTROLS := [
 ]
 const CONTROLS_PETREL := [
 	["PETREL shuttle", ""],
-	["W A S D / ↑ ← ↓ →", "Go that way: the gyro swings the nose, engines open as it lines up"],
-	["Shift", "Afterburner"],
-	["Space (hold)", "Hover: brake to a stop, heading locked, WASD slides"],
+	["W / ↑  ·  S / ↓", "Main engines at the throttle setting  ·  retro"],
+	["Shift  /  Ctrl · Z", "Throttle up / down (hold)"],
+	["A D / ← →", "Turn in place: bow and stern thrusters push opposite ways"],
+	["Q / E", "Strafe thrusters"],
+	["F", "Flight assist (damps spin and slip)"],
+	["Space (hold)", "Hover: brake to a stop, heading held; W/S Q/E slide, A/D yaw"],
 	["Space over a deck", "Keep holding: descend onto mag-skids (land anywhere)"],
-	["Q / LMB (hold)", "Mag-line: hook cargo, structure or traffic; let go to fling"],
-	["E / RMB (hold)", "Reel the line in (stalls under heavy load)"],
-	["F", "Floodlights"],
-	["X", "Get out (when landed)  ·  any move input lifts off"],
+	["LMB / V (hold)", "Mag-line: hook cargo, structure or traffic; let go to fling"],
+	["RMB / B (hold)", "Reel the line in (stalls under heavy load)"],
+	["L", "Floodlights"],
+	["X", "Get out (when landed)  ·  any flight input lifts off"],
 	["View", ""],
 	["C · Wheel · M · G", "Camera · zoom · map · flight guide"],
 	["R / T", "Race / reset (best lap kept per ship)"],
@@ -113,7 +116,7 @@ func _draw_intro(a: float) -> void:
 	HudStyle.draw_panel(self, r, 18.0, Color(HudStyle.CYAN, 0.8 * a), Color(0.02, 0.05, 0.1, 0.7 * a))
 	HudStyle.text(self, r.position + Vector2(0, 54), "MERIDIAN APPROACH", 40, Color(HudStyle.WHITE, a), HORIZONTAL_ALIGNMENT_CENTER, w)
 	HudStyle.text(self, r.position + Vector2(0, 84), "Meridian Station · traffic control space · courier flight", 17, Color(HudStyle.CYAN, a), HORIZONTAL_ALIGNMENT_CENTER, w)
-	var line := "W thrust   A/D bow thrusters   Q/E strafe   Space boost   F flight assist"
+	var line := "W thrust   Shift/Ctrl throttle   A/D bow thrusters   Q/E strafe   F assist"
 	var line2 := "R start race   H help   Tab tuning   F3 physics debug"
 	HudStyle.text(self, r.position + Vector2(0, 114), line, 18, Color(HudStyle.WHITE, 0.9 * a), HORIZONTAL_ALIGNMENT_CENTER, w)
 	HudStyle.text(self, r.position + Vector2(0, 138), line2, 18, Color(HudStyle.MUTED.lightened(0.2), a), HORIZONTAL_ALIGNMENT_CENTER, w)

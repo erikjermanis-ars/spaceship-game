@@ -5,8 +5,15 @@ extends RigidBody2D
 ## 6 m apart) with ALL thrust applied at the head, 4 m ahead of the centre of
 ## mass. A sideways push at the bow both rotates the ship and shoves the whole
 ## craft sideways, which is what gives it that swinging, drifting, counter-steer
-## feel. Drag is applied as explicit forces so the SI numbers match the
-## reference (terminal speed 41.7 m/s, 83 m/s boosted).
+## feel. Drag is applied as explicit forces (terminal speed = thrust / (m*k)).
+##
+## The main engine runs at a THROTTLE SETTING (0-100 %, Shift raises it,
+## Ctrl/Z lowers it): W lights the engine at that setting. 50 % matches the
+## old cruise thrust, 100 % the old boost.
+##
+## The PETREL (ShuttleShip) flies this same model with its own numbers; its
+## turn thrusters fire as a couple (bow one way, stern the other, see
+## turn_couple), so it pivots in place instead of swinging.
 ##
 ## Everything is tuned in SI units (metres, kg, newtons) and converted with
 ## Game.PX_PER_M (1 m = 10 px): forces x PX, torques/inertia x PX^2.
@@ -34,30 +41,33 @@ const PX := GameScript.PX_PER_M
 		_apply_mass()
 
 @export_group("Thrusters")
-@export_range(0.0, 30000.0, 50.0, "suffix:N") var main_thrust_n := 5000.0
-## Reverse thrust as a fraction of main thrust.
-@export_range(0.0, 1.5, 0.01) var reverse_scale := 0.6
+## Main engine thrust at 100 % throttle.
+@export_range(0.0, 60000.0, 50.0, "suffix:N") var main_thrust_n := 10900.0
+## Retro thrust (S) as a fraction of FULL main thrust. Retro is a fixed-power
+## RCS burn: the throttle setting only drives the main engine.
+@export_range(0.0, 1.5, 0.005) var reverse_scale := 0.275
 ## Lateral thrust of the bow RCS quads (applied at the thrust point).
 @export_range(0.0, 20000.0, 50.0, "suffix:N") var side_thrust_n := 2600.0
 ## Distance of the thrust point ahead of the centre of mass.
 @export_range(0.0, 8.0, 0.05, "suffix:m") var thrust_point_m := 4.0
 ## Pure lateral thrust at the CoM (Q/E). Not in the reference model.
-@export_range(0.0, 10000.0, 50.0, "suffix:N") var strafe_thrust_n := 1200.0
-## Multiplier on main AND side thrust while boosting.
-@export_range(1.0, 4.0, 0.05) var boost_multiplier := 2.0
+@export_range(0.0, 20000.0, 10.0, "suffix:N") var strafe_thrust_n := 2080.0
+## Turn as a couple: the stern thrusters fire OPPOSITE the bow ones at this
+## fraction of their thrust. 0 = bow only (turn AND slide sideways, the
+## WREN), 1 = equal and opposite (pure rotation in place, the PETREL).
+@export_range(0.0, 1.0, 0.01) var turn_couple := 0.0
+## Distance of the stern turn thrusters behind the centre of mass.
+@export_range(0.0, 8.0, 0.05, "suffix:m") var stern_point_m := 3.6
+## How fast holding throttle up/down moves the setting (fraction per second).
+@export_range(0.05, 3.0, 0.05, "suffix:/s") var throttle_rate := 0.5
+## Throttle setting the ship starts (and respawns) with.
+@export_range(0.0, 1.0, 0.05) var throttle_default := 0.5
 
 @export_group("Drag")
 ## Linear drag coefficient: F = -m * k * v  (1/s).
 @export_range(0.0, 2.0, 0.005, "suffix:1/s") var linear_drag := 0.12
 ## Angular drag coefficient: T = -I * k * omega  (1/s).
 @export_range(0.0, 5.0, 0.01, "suffix:1/s") var angular_drag := 0.35
-
-@export_group("Boost energy")
-@export_range(0.0, 2.0, 0.01, "suffix:/s") var boost_drain_per_s := 0.22
-@export_range(0.0, 2.0, 0.01, "suffix:/s") var boost_recharge_per_s := 0.16
-@export_range(0.0, 5.0, 0.05, "suffix:s") var boost_recharge_delay_s := 1.2
-## After running dry, boost re-arms only once energy has climbed back to this.
-@export_range(0.0, 1.0, 0.01) var boost_rearm_level := 0.15
 
 @export_group("Flight assist")
 ## How hard assist fights rotation (1/s). Capped by bow RCS authority.
@@ -84,10 +94,21 @@ const PX := GameScript.PX_PER_M
 ## Minimum tangential speed for Game.scrape.
 @export var scrape_min_speed_mps := 1.0
 
+## The WREN's flight model. Also the "WREN default" preset in the tuning
+## panel (ShuttleShip.PETREL_DEFAULTS is the other one).
+const WREN_DEFAULTS := {
+	"main_thrust_n": 10900.0, "reverse_scale": 0.275, "side_thrust_n": 2600.0,
+	"thrust_point_m": 4.0, "strafe_thrust_n": 2080.0, "turn_couple": 0.0, "stern_point_m": 3.6,
+	"mass_kg": 1000.0, "inertia_per_mass_m2": 8.37, "linear_drag": 0.12, "angular_drag": 0.35,
+	"bounce": 0.05, "friction": 0.2, "throttle_rate": 0.5,
+	"assist_rot_gain": 3.0, "assist_slip_gain": 1.2,
+}
+
 # ------------------------------------------------------------ public API --
 var hull: float = 100.0
 var max_hull: float = 100.0
-var boost_energy: float = 1.0
+## Main engine throttle setting, 0..1 (Shift / Ctrl·Z). W fires at this.
+var throttle_setting: float = 0.5
 var flight_assist: bool = false
 var alive: bool = true
 var controls_enabled: bool = true
@@ -98,15 +119,16 @@ var powered: bool = true
 @export var start_as_player := true
 ## Shown on location cards and toasts.
 @export var vehicle_name := "WREN"
-## Live input readouts for the HUD (after assist/boost logic).
+## Live input readouts for the HUD. throttle_input is the engine command:
+## forward = W x throttle_setting (0..1), retro = -S (-1..0).
 var throttle_input: float = 0.0   # -1..1
 var turn_input: float = 0.0       # -1..1, negative = left / counter-clockwise
 var strafe_input: float = 0.0     # -1..1, negative = left
-var boosting: bool = false
 
-## Thruster outputs for visuals/audio/debug, as signed fractions of the
-## nominal (un-boosted) thrust. Lateral sign: + = force toward starboard (+Y),
-## so the gas leaves on the PORT side.
+## Thruster outputs for visuals/audio/debug. main_output is a fraction of
+## FULL main thrust (1.0 = 100 % throttle; retro is negative, -reverse_scale
+## at most). Lateral ones are fractions of side thrust. Lateral sign:
+## + = force toward starboard (+Y), so the gas leaves on the PORT side.
 var main_output: float = 0.0
 var bow_lateral_output: float = 0.0
 var stern_lateral_output: float = 0.0
@@ -122,8 +144,8 @@ var recent_contacts: Array[Dictionary] = []
 signal contact_impact(pos: Vector2, normal: Vector2, speed_mps: float, other: Node)
 
 # --------------------------------------------------------------- private --
-var _boost_cooldown := 0.0
-var _boost_locked := false
+var _raw_fwd := 0.0               # W / S as pressed (before the throttle setting)
+var _raw_rev := 0.0
 var _prev_lin_vel := Vector2.ZERO
 var _prev_ang_vel := 0.0
 var _contacts_prev := {}          # collider instance id -> true
@@ -168,6 +190,7 @@ func _ready() -> void:
 	collision_mask = Game.LAYER_WORLD | Game.LAYER_PROPS | Game.LAYER_TRAFFIC
 	z_index = Game.Z_SHIP
 	z_as_relative = false
+	throttle_setting = throttle_default
 	_apply_mass()
 	_apply_material()
 	_build_sensor()
@@ -183,6 +206,8 @@ func _apply_mass() -> void:
 func _apply_material() -> void:
 	if _material == null:
 		_material = PhysicsMaterial.new()
+	# Also re-claim it after a scene's own material (loaded after _init) lands.
+	if physics_material_override != _material:
 		physics_material_override = _material
 	_material.bounce = bounce
 	_material.friction = friction
@@ -249,45 +274,35 @@ func _process(_delta: float) -> void:
 		_visuals.transform = global_transform.affine_inverse() * render_transform()
 
 
+## Override: may the pilot's inputs drive this ship right now?
+func _controls_active() -> bool:
+	return controls_enabled and alive
+
+
 func _read_input(delta: float) -> void:
-	if Input.is_action_just_pressed(&"flight_assist") and controls_enabled and alive:
+	var active := _controls_active()
+	if Input.is_action_just_pressed(&"flight_assist") and active:
 		flight_assist = not flight_assist
 		Game.toast("Flight assist %s" % ("ON" if flight_assist else "OFF"), 1.6)
 
-	var thr := 0.0
+	var fwd := 0.0
+	var rev := 0.0
 	var trn := 0.0
 	var stf := 0.0
-	var want_boost := false
-	if controls_enabled and alive:
-		thr = _act(&"thrust_forward") - _act(&"thrust_reverse")
+	if active:
+		var dthr := _act(&"throttle_up") - _act(&"throttle_down")
+		if dthr != 0.0:
+			throttle_setting = clampf(throttle_setting + dthr * throttle_rate * delta, 0.0, 1.0)
+		fwd = _act(&"thrust_forward")
+		rev = _act(&"thrust_reverse")
 		trn = _act(&"turn_right") - _act(&"turn_left")
 		stf = _act(&"strafe_right") - _act(&"strafe_left")
-		want_boost = _act(&"boost") > 0.5
-
-	_update_boost(want_boost, delta)
-
-	# Boost on its own (no throttle, no turn) means "punch it forward".
-	if boosting and is_zero_approx(thr) and is_zero_approx(trn):
-		thr = 1.0
-	throttle_input = clampf(thr, -1.0, 1.0)
+	_raw_fwd = fwd
+	_raw_rev = rev
+	# W fires the engine at the throttle setting; S is a fixed retro burn.
+	throttle_input = clampf(fwd * throttle_setting - rev, -1.0, 1.0)
 	turn_input = clampf(trn, -1.0, 1.0)
 	strafe_input = clampf(stf, -1.0, 1.0)
-
-
-## Boost energy with a lockout once empty, so it can't be feathered at 0%.
-func _update_boost(want_boost: bool, delta: float) -> void:
-	if _boost_locked and boost_energy >= boost_rearm_level:
-		_boost_locked = false
-	boosting = want_boost and not _boost_locked and boost_energy > 0.0
-	if boosting:
-		boost_energy = maxf(boost_energy - boost_drain_per_s * delta, 0.0)
-		_boost_cooldown = boost_recharge_delay_s
-		if boost_energy <= 0.0:
-			_boost_locked = true
-	else:
-		_boost_cooldown = maxf(_boost_cooldown - delta, 0.0)
-		if _boost_cooldown <= 0.0:
-			boost_energy = minf(boost_energy + boost_recharge_per_s * delta, 1.0)
 
 
 ## Input latch: actions held at the moment you take control (the E, Shift or
@@ -327,29 +342,40 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	_prev_ang_vel = state.angular_velocity
 
 
+## Main engine force (N, along the nose) for an engine command (-1..1).
+func main_force_n(cmd: float) -> float:
+	return cmd * main_thrust_n * (reverse_scale if cmd < 0.0 else 1.0)
+
+
+## Torque (N·m) the turn thrusters make at full deflection: bow thruster at
+## thrust_point_m plus the opposing stern one (turn_couple) at stern_point_m.
+func max_turn_torque_nm() -> float:
+	return side_thrust_n * (thrust_point_m + turn_couple * stern_point_m)
+
+
 ## Override: this ship's flight model (forces, torques, HUD/FX outputs).
-## The courier: barbell, all thrust at the bow point.
+## Barbell: main and bow side thrust at the bow point; with turn_couple > 0
+## the stern thrusters push the other way so the turn is (partly) a couple.
 func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: Vector2, w: float) -> void:
 	var fwd := xf.x.normalized()
 	var right := xf.y.normalized()     # starboard
-	var boost_mul := boost_multiplier if boosting else 1.0
 	var bow := fwd * thrust_point_m * PX   # global-oriented offset from the CoM
+	var stern := -fwd * stern_point_m * PX
 
 	# ---- main engine (at the bow thrust point, along the axis) ----
-	var main_n := throttle_input * main_thrust_n * boost_mul
-	if throttle_input < 0.0:
-		main_n *= reverse_scale
+	var main_n := main_force_n(throttle_input)
 	var f_main := fwd * main_n
-	# ---- bow side thrusters: turn AND push sideways ----
-	var side_n := turn_input * side_thrust_n * boost_mul
+	# ---- turn thrusters: bow pushes, stern (couple share) pushes back ----
+	var side_n := turn_input * side_thrust_n
 	var f_side := right * side_n
+	var f_stern := -f_side * turn_couple
 	# ---- strafe at the CoM ----
 	var strafe_n := strafe_input * strafe_thrust_n
 	var assist_torque := 0.0  # N·m
+	var max_t := max_turn_torque_nm()
 	if flight_assist:
 		var inertia_si := mass_kg * inertia_per_mass_m2
 		if is_zero_approx(turn_input):
-			var max_t := side_thrust_n * thrust_point_m
 			assist_torque = clampf(-inertia_si * assist_rot_gain * w, -max_t, max_t)
 		if is_zero_approx(strafe_input):
 			var slip_mps := v.dot(right) / PX
@@ -358,6 +384,8 @@ func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: V
 
 	state.apply_force(f_main * PX, bow)
 	state.apply_force(f_side * PX, bow)
+	if turn_couple > 0.0:
+		state.apply_force(f_stern * PX, stern)
 	state.apply_central_force(f_strafe * PX)
 	if assist_torque != 0.0:
 		state.apply_torque(assist_torque * PX * PX)
@@ -370,11 +398,11 @@ func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: V
 	var side_frac := side_n / maxf(side_thrust_n, 1.0)
 	var strafe_frac := strafe_n / maxf(side_thrust_n, 1.0)
 	# Assist torque is a couple: bow pushes one way, stern the other.
-	var couple := assist_torque / maxf(side_thrust_n * thrust_point_m, 1.0)
+	var couple := assist_torque / maxf(max_t, 1.0)
 	bow_lateral_output = side_frac + strafe_frac * 0.5 + couple * 0.5
-	stern_lateral_output = strafe_frac * 0.5 - couple * 0.5
+	stern_lateral_output = -side_frac * turn_couple + strafe_frac * 0.5 - couple * 0.5
 	dbg_main_force = f_main
-	dbg_side_force = f_side
+	dbg_side_force = f_side + f_stern
 	dbg_strafe_force = f_strafe
 	dbg_assist_torque = assist_torque
 
@@ -488,17 +516,11 @@ func repair(amount: float) -> void:
 	Game.hull_changed.emit(hull, max_hull)
 
 
-func refill_boost() -> void:
-	boost_energy = 1.0
-	_boost_locked = false
-
-
 func destroy() -> void:
 	if not alive:
 		return
 	alive = false
 	controls_enabled = false
-	boosting = false
 	throttle_input = 0.0
 	turn_input = 0.0
 	strafe_input = 0.0
@@ -571,7 +593,6 @@ func park() -> void:
 	throttle_input = 0.0
 	turn_input = 0.0
 	strafe_input = 0.0
-	boosting = false
 	linear_velocity = Vector2.ZERO
 	angular_velocity = 0.0
 	set_deferred(&"freeze", true)
@@ -617,8 +638,6 @@ func damage_scale(_other: Node, _speed_mps: float) -> float:
 
 func respawn_at(xform: Transform2D) -> void:
 	hull = max_hull
-	boost_energy = 1.0
-	_boost_locked = false
 	alive = true
 	controls_enabled = true
 	visible = true

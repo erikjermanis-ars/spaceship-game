@@ -2,7 +2,7 @@ class_name DockingSystem
 extends Node
 ## Docking pads (Area2D in group `docking_pad`). Settle on a pad slowly,
 ## without spinning, roughly aligned with its +X (either way round), and hold
-## for HOLD_TIME to dock: clamps engage, hull is repaired, boost refilled.
+## for HOLD_TIME to dock: clamps engage, hull is repaired.
 ##
 ## A pad only arms when the ship flies onto it from outside, so sitting on
 ## the spawn pad (at start or after a respawn) doesn't "dock", and guidance
@@ -196,15 +196,13 @@ func _dock() -> void:
 	var ship := Game.player
 	if ship.has_method(&"repair"):
 		ship.call(&"repair", float(GameplayUtil.pget(ship, &"max_hull", 100.0)))
-	if ship.has_method(&"refill_boost"):
-		ship.call(&"refill_boost")
 	GameplayUtil.play_oneshot(self, _snd_clamp, -2.0)
 	var t := get_tree().create_timer(0.35, false)
 	t.timeout.connect(func() -> void: GameplayUtil.play_oneshot(self, _snd_chime, -4.0, 1.0, &"UI"))
 	if Game.camera and Game.camera.has_method(&"add_trauma"):
 		Game.camera.call(&"add_trauma", 0.12)
 	Game.docked.emit(pad_name)
-	Game.toast("DOCKED AT %s — hull repaired, boost refilled" % pad_name.to_upper(), 3.5)
+	Game.toast("DOCKED AT %s — hull repaired" % pad_name.to_upper(), 3.5)
 
 func _leave() -> void:
 	if phase == Phase.DOCKED:

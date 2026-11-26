@@ -4,9 +4,10 @@ extends Node2D
 ## ShuttleShip's outputs every frame (local px, nose = +X).
 ##   * hull sprite that grows slightly with altitude, shadow that slides away
 ##     with it (the fake Z you land from)
-##   * two separate stern plumes (uneven during differential trim)
-##   * RCS puffs from the quads opposite to the push
-##   * gyro shimmer around the centre of mass (red when saturated)
+##   * two stern plumes that follow the throttle (cruise flame up to 50 %,
+##     then hotter, longer, with shock diamonds up to 100 %)
+##   * RCS puffs from the quads that actually fire: turning is a couple, so
+##     a bow quad and the opposite stern quad puff together
 ##   * nav lights, strobe, floodlight cone, skid legs
 ## The landing ghost / altitude ring live in LandingOverlay (deck level).
 
@@ -97,11 +98,12 @@ func _process(delta: float) -> void:
 	var target := ship.engine_out if ship.powered and ship.alive else Vector2.ZERO
 	_plume.x = move_toward(_plume.x, target.x, delta * (9.0 if target.x > _plume.x else 4.0))
 	_plume.y = move_toward(_plume.y, target.y, delta * (9.0 if target.y > _plume.y else 4.0))
-	# RCS puffs: gas leaves the quads facing away from the push.
-	var f_local := ship.rcs_force.rotated(-ship.global_rotation) / maxf(ship.hover_cap_n, 1.0)
+	# RCS puffs. + lateral output = push to starboard = gas out of the PORT
+	# quad; fore/aft quads fire for retro and hover station-keeping.
+	var g := ship.rcs_levels()
+	var wants := [g[0], g[1], g[2], g[3], g[4], g[4], g[5], g[5]]
 	for i in QUADS.size():
-		var out_dir: Vector2 = QUADS[i][1]
-		var want := clampf(-out_dir.dot(f_local) * 3.0, 0.0, 1.0) if ship.powered else 0.0
+		var want := clampf(float(wants[i]) * 1.5, 0.0, 1.0) if ship.powered and ship.alive else 0.0
 		_puff[i] = move_toward(_puff[i], want, delta * 10.0)
 	_flood.modulate.a = move_toward(_flood.modulate.a, 0.35 if ship.floodlights and ship.powered else 0.0, delta * 4.0)
 	_fx.queue_redraw()
@@ -115,17 +117,22 @@ func _draw_fx() -> void:
 		if amt <= 0.01:
 			continue
 		var y := -14.0 if i == 0 else 14.0
-		var L := 14.0 + 46.0 * amt + sin(_t * 41.0 + i) * 2.0
-		var w := 5.0 + 2.0 * minf(amt, 1.5)
+		var lvl := clampf(amt * 2.0, 0.0, 1.0)            # cruise flame
+		var hot := clampf(amt * 2.0 - 1.0, 0.0, 1.0)      # top half of the throttle
+		var L := 14.0 + 46.0 * lvl + 40.0 * hot + sin(_t * 41.0 + i) * 2.0
+		var w := 5.0 + 2.0 * lvl + 1.6 * hot
 		var base := Vector2(-73, y)   # bell exit lip
-		var core := Color(0.8, 0.97, 1.0, 0.9)
-		var glow := Color(0.35, 0.8, 1.0, 0.55) if amt <= 1.05 else Color(0.6, 0.65, 1.0, 0.7)
+		var core := Color(0.8, 0.97, 1.0, 0.9).lerp(Color(1, 1, 1, 0.95), hot)
+		var glow := Color(0.35, 0.8, 1.0, 0.55).lerp(Color(0.6, 0.65, 1.0, 0.7), hot)
+		var vis := smoothstep(0.0, 0.08, amt)
+		glow.a *= vis
+		core.a *= vis
 		pen.fill(PackedVector2Array([base + Vector2(0, -w), base + Vector2(-L, 0), base + Vector2(0, w)]), glow, false)
 		pen.fill(PackedVector2Array([base + Vector2(0, -w * 0.45), base + Vector2(-L * 0.55, 0), base + Vector2(0, w * 0.45)]), core, false)
-		if amt > 1.05:
-			for d in 3:   # afterburner shock diamonds
-				var c := base + Vector2(-12.0 - d * 12.0, 0)
-				pen.fill(PackedVector2Array([c + Vector2(4, 0), c + Vector2(0, -2.6), c + Vector2(-4, 0), c + Vector2(0, 2.6)]), Color(1, 1, 1, 0.6 - d * 0.15), false)
+		if hot > 0.01:
+			for d in 3:   # shock diamonds fade in towards full throttle
+				var c := base + Vector2(-12.0 - d * 12.0 * (0.8 + 0.2 * hot), 0)
+				pen.fill(PackedVector2Array([c + Vector2(4, 0), c + Vector2(0, -2.6), c + Vector2(-4, 0), c + Vector2(0, 2.6)]), Color(1, 1, 1, (0.6 - d * 0.15) * hot), false)
 	# --- RCS puffs
 	for i in QUADS.size():
 		if _puff[i] <= 0.02:
@@ -134,12 +141,6 @@ func _draw_fx() -> void:
 		var d: Vector2 = QUADS[i][1]
 		var a := _puff[i]
 		pen.fill(PackedVector2Array([p + d.orthogonal() * 2.0, p + d * (8.0 + 10.0 * a), p - d.orthogonal() * 2.0]), Color(0.9, 0.95, 1.0, 0.55 * a), false)
-	# --- gyro shimmer
-	if ship.powered and ship.gyro_frac > 0.05:
-		var col := Color(1.0, 0.35, 0.3, 0.55) if ship.gyro_saturated else Color(0.5, 0.9, 1.0, 0.35)
-		var a0 := _t * 9.0
-		pen.arc(Vector2.ZERO, 22.0, a0, a0 + PI * 0.7 * ship.gyro_frac + 0.2, Color(col, col.a * ship.gyro_frac + 0.1), 1.6, 16)
-		pen.arc(Vector2.ZERO, 22.0, a0 + PI, a0 + PI + PI * 0.7 * ship.gyro_frac + 0.2, Color(col, col.a * ship.gyro_frac + 0.1), 1.6, 16)
 	# --- nav lights + strobe
 	var nav := 0.8 + 0.2 * sin(_t * 2.0)
 	pen.circle(Vector2(-37, -34), 2.4, Color(1.0, 0.25, 0.25, nav))

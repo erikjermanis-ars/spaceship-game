@@ -7,14 +7,12 @@ const PX := Game.PX_PER_M
 
 var hull: float = 100.0
 var max_hull: float = 100.0
-var boost_energy: float = 1.0
 var flight_assist: bool = false
 var alive: bool = true
 var controls_enabled: bool = true
 var throttle_input: float = 0.0
 var turn_input: float = 0.0
 var strafe_input: float = 0.0
-var boosting: bool = false
 
 var _prev_v := Vector2.ZERO
 var _contacts := {}
@@ -61,15 +59,10 @@ func _physics_process(_delta: float) -> void:
 	var thr := 0.0
 	var trn := 0.0
 	var stf := 0.0
-	var b := false
 	if controls_enabled and alive:
 		thr = Input.get_action_strength(&"thrust_forward") - Input.get_action_strength(&"thrust_reverse")
 		trn = Input.get_axis(&"turn_left", &"turn_right")
 		stf = Input.get_axis(&"strafe_left", &"strafe_right")
-		b = Input.is_action_pressed(&"boost") and boost_energy > 0.0
-	boosting = b
-	if b and is_zero_approx(thr) and is_zero_approx(trn):
-		thr = 1.0
 	throttle_input = thr
 	turn_input = trn
 	strafe_input = stf
@@ -85,10 +78,9 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		return
 	var fwd := state.transform.x.normalized()
 	var right := state.transform.y.normalized()
-	var bm := 2.0 if boosting else 1.0
-	var main := throttle_input * 5000.0 * bm * (0.6 if throttle_input < 0.0 else 1.0)
+	var main := throttle_input * 5000.0 * (0.6 if throttle_input < 0.0 else 1.0)
 	state.apply_force(fwd * main * PX, fwd * 4.0 * PX)
-	state.apply_force(right * turn_input * 2600.0 * bm * PX, fwd * 4.0 * PX)
+	state.apply_force(right * turn_input * 2600.0 * PX, fwd * 4.0 * PX)
 	state.apply_central_force(right * strafe_input * 1200.0 * PX)
 	state.apply_central_force(-state.linear_velocity * 1000.0 * 0.12)
 	state.apply_torque(-inertia * 0.35 * state.angular_velocity)
@@ -130,9 +122,6 @@ func repair(amount: float) -> void:
 	hull = minf(max_hull, hull + amount)
 	Game.hull_changed.emit(hull, max_hull)
 
-func refill_boost() -> void:
-	boost_energy = 1.0
-
 func destroy() -> void:
 	if not alive:
 		return
@@ -148,7 +137,6 @@ func respawn_at(xform: Transform2D) -> void:
 	controls_enabled = true
 	visible = true
 	hull = max_hull
-	boost_energy = 1.0
 	freeze = false
 	_shape.set_deferred(&"disabled", false)
 	global_transform = xform

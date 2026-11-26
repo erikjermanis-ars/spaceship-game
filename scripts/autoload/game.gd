@@ -155,7 +155,10 @@ func _register_inputs() -> void:
 	_action(&"turn_right", [KEY_D, KEY_RIGHT], [JOY_BUTTON_DPAD_RIGHT], [[JOY_AXIS_LEFT_X, 1.0]])
 	_action(&"strafe_left", [KEY_Q], [JOY_BUTTON_LEFT_SHOULDER])
 	_action(&"strafe_right", [KEY_E], [JOY_BUTTON_RIGHT_SHOULDER])
-	_action(&"boost", [KEY_SPACE, KEY_SHIFT], [JOY_BUTTON_A])
+	# Throttle setting (held = ramp). R/F were taken (race restart, flight
+	# assist); Z doubles Ctrl because Ctrl+arrows switches Spaces on macOS.
+	_action(&"throttle_up", [KEY_SHIFT], [JOY_BUTTON_DPAD_UP])
+	_action(&"throttle_down", [KEY_CTRL, KEY_Z], [JOY_BUTTON_DPAD_DOWN])
 	_action(&"flight_assist", [KEY_F], [JOY_BUTTON_Y])
 	_action(&"camera_mode", [KEY_C], [JOY_BUTTON_BACK])
 	_action(&"zoom_in", [KEY_EQUAL, KEY_KP_ADD])
@@ -181,13 +184,14 @@ func _register_inputs() -> void:
 	# Docked: leave the cockpit. X is free in flight (E strafes, which would
 	# release the docking clamps).
 	_action(&"disembark", [KEY_X], [JOY_BUTTON_X])
-	# PETREL shuttle (Space/Q/E/LMB/RMB mean something else in the WREN; each
-	# ship reads only its own actions, so shared keys never clash).
-	_action(&"ship_hover", [KEY_SPACE], [], [[JOY_AXIS_TRIGGER_LEFT, 1.0]])
-	_action(&"ship_line", [KEY_Q], [], [[JOY_AXIS_TRIGGER_RIGHT, 1.0]])
+	# PETREL extras. It flies on the WREN's controls (W/S/A/D/Q/E, throttle,
+	# F assist), so its own tools sit on keys the WREN leaves free.
+	_action(&"ship_hover", [KEY_SPACE], [JOY_BUTTON_A])
+	_action(&"ship_line", [KEY_V], [JOY_BUTTON_B])
 	_mouse_action(&"ship_line", MOUSE_BUTTON_LEFT)
-	_action(&"ship_reel", [KEY_E], [JOY_BUTTON_RIGHT_SHOULDER])
+	_action(&"ship_reel", [KEY_B], [JOY_BUTTON_X])
 	_mouse_action(&"ship_reel", MOUSE_BUTTON_RIGHT)
+	_action(&"ship_lights", [KEY_L], [JOY_BUTTON_LEFT_STICK])
 	_action(&"aim_left", [], [], [[JOY_AXIS_RIGHT_X, -1.0]])
 	_action(&"aim_right", [], [], [[JOY_AXIS_RIGHT_X, 1.0]])
 	_action(&"aim_up", [], [], [[JOY_AXIS_RIGHT_Y, -1.0]])

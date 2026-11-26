@@ -49,11 +49,11 @@ func _run() -> void:
 	_check(petrel.collision_layer == Game.LAYER_PLAYER and petrel.freeze, "PETREL aboard: player layer, still clamped")
 	_check(not petrel.has_landed_model(), "PETREL flight art back")
 
-	# ---- lift off
-	Input.action_press(&"move_left")
-	await _wait(func() -> bool: return petrel.land_state != ShuttleShip.Land.LANDED and not petrel.freeze, 3.0, "move input lifts off")
+	# ---- lift off (turning in place: the PETREL's turn is a pure couple)
+	Input.action_press(&"turn_left")
+	await _wait(func() -> bool: return petrel.land_state != ShuttleShip.Land.LANDED and not petrel.freeze, 3.0, "flight input lifts off")
 	await _secs(1.2)
-	Input.action_release(&"move_left")
+	Input.action_release(&"turn_left")
 	_check(petrel.altitude_m > 1.0, "climbing (alt %.1f m)" % petrel.altitude_m)
 
 	# ---- land anywhere: hover over the hangar deck until the skids lock

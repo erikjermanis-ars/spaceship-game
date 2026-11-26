@@ -1,7 +1,9 @@
 extends Node
 ## The player ship's own sounds (non-positional: you're sitting in it).
-## Engine rumble and boost roar follow the throttle through attack/release
-## smoothing; RCS hiss follows thruster activity, with a valve "puff" on every
+## Engine rumble and the high-power roar follow the main engine output
+## through attack/release smoothing (0-50 % throttle swells the rumble,
+## 50-100 % blends in the roar and its kick, so 100 % sounds like the old
+## boost); RCS hiss follows thruster activity, with a valve "puff" on every
 ## nozzle onset; ignition thump when the engine lights; low-hull alarm.
 ## Every stream is optional (AUDIO produces them in parallel) — missing files
 ## are skipped silently.
@@ -30,7 +32,7 @@ var _eng_amp := 0.0
 var _boost_amp := 0.0
 var _hiss_amp := 0.0
 var _was_thrusting := false
-var _was_boosting := false
+var _was_roaring := false
 var _since_ignite := 10.0
 var _since_kick := 10.0
 var _since_puff := 10.0
@@ -131,9 +133,14 @@ func _process(delta: float) -> void:
 	_since_ignite += delta
 	_since_kick += delta
 	_since_puff += delta
-	var thr := absf(ship.throttle_input) if alive else 0.0
+	# Main engine output, fraction of full thrust (retro counts as its own
+	# fixed burn). Lower half of the throttle = rumble, upper half = roar.
+	var out := ship.main_output if alive else 0.0
+	var fwd := maxf(out, 0.0)
+	var retro := maxf(-out, 0.0) / maxf(ship.reverse_scale, 0.05)
+	var thr := maxf(clampf(fwd * 2.0, 0.0, 1.0), clampf(retro, 0.0, 1.0))
+	var roar := clampf(fwd * 2.0 - 1.0, 0.0, 1.0)
 	var speed_k := clampf(ship.speed_mps() / 83.0, 0.0, 1.4)
-	var boosting := ship.boosting and alive
 
 	# ---- main engine: idle murmur -> full roar ----
 	# Attack matches the plume (ship_visuals ~0.17 s to 95 %), slightly longer tail.
@@ -141,8 +148,8 @@ func _process(delta: float) -> void:
 	if _engine:
 		_engine.volume_db = -80.0 if not alive else lerpf(engine_db_idle, engine_db_full, sqrt(_eng_amp))
 		_engine.pitch_scale = 0.75 + 0.42 * _eng_amp + 0.08 * speed_k + 0.1 * _boost_amp
-	# ---- boost roar ----
-	_boost_amp = _smooth(_boost_amp, 1.0 if boosting else 0.0, 18.0, 6.0, delta)
+	# ---- high-power roar (the old boost layer) ----
+	_boost_amp = _smooth(_boost_amp, roar, 18.0, 6.0, delta)
 	if _boost:
 		_boost.volume_db = _amp_to_db(_boost_amp, -40.0, boost_db)
 		_boost.pitch_scale = 0.95 + 0.15 * minf(speed_k, 1.0)
@@ -162,12 +169,13 @@ func _process(delta: float) -> void:
 		_ignite.play()
 		_since_ignite = 0.0
 	_was_thrusting = thrusting
-	# ---- boost kick ----
-	if boosting and not _was_boosting and _since_kick > 0.45 and _kick:
-		_kick.volume_db = -3.0
+	# ---- kick: the engine comes up into its top range ----
+	var roaring := roar > 0.6
+	if roaring and not _was_roaring and _since_kick > 0.45 and _kick:
+		_kick.volume_db = lerpf(-9.0, -3.0, clampf((roar - 0.6) / 0.4, 0.0, 1.0))
 		_kick.play()
 		_since_kick = 0.0
-	_was_boosting = boosting
+	_was_roaring = roaring
 	# ---- low hull alarm ----
 	if _alarm:
 		var want := alive and _hull_frac < 0.25

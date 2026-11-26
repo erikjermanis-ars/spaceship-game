@@ -37,8 +37,9 @@ var ship: PlayerShip
 var rcs_activity := 0.0
 
 var _t := 0.0
-var _eng := 0.0          # smoothed main engine level, 0..~2 (boost)
-var _boost_vis := 0.0
+var _eng := 0.0          # smoothed main engine output, 0..1 of full thrust
+var _lvl := 0.0          # cruise flame, full by 50 % throttle
+var _boost_vis := 0.0    # hot "boost" look (shock diamonds), 50 -> 100 % throttle
 var _retro := 0.0
 var _flash := 0.0
 var _flash_color := Color.WHITE
@@ -245,8 +246,12 @@ func _approach(cur: float, target: float, up: float, down: float, delta: float) 
 func _update_engines(delta: float) -> void:
 	var target := maxf(ship.main_output, 0.0) if ship.alive else 0.0
 	_eng = _approach(_eng, target, 16.0, 7.0, delta)
-	_boost_vis = _approach(_boost_vis, 1.0 if (ship.boosting and target > 0.0) else 0.0, 10.0, 4.0, delta)
-	var lvl := minf(_eng, 1.0)
+	# Throttle maps onto the old two-stage look: 0-50 % grows the cruise
+	# flame, 50-100 % blends into what boost used to be (longer, bluer plume,
+	# shock diamonds, brighter glow). 100 % throttle == the old boost.
+	_lvl = clampf(_eng * 2.0, 0.0, 1.0)
+	_boost_vis = smoothstep(0.0, 1.0, clampf(_eng * 2.0 - 1.0, 0.0, 1.0))
+	var lvl := _lvl
 	for p in _plumes:
 		var fl := _noise.get_noise_2d(_t * 40.0, p.seed) * 0.5 + 0.5      # 0..1 flicker
 		var fl2 := _noise.get_noise_2d(p.seed, _t * 55.0) * 0.5 + 0.5
@@ -262,7 +267,7 @@ func _update_engines(delta: float) -> void:
 		var nozzle: Sprite2D = p.nozzle
 		nozzle.scale = Vector2.ONE * ((10.0 + 10.0 * lvl + 10.0 * _boost_vis) / 128.0)
 		nozzle.modulate = Color(C_CORE, (0.5 + 0.4 * fl) * vis)
-		# Shock diamonds only on boost.
+		# Shock diamonds fade in over the upper half of the throttle.
 		var diamonds: Array = p.diamonds
 		for k in diamonds.size():
 			var d: Sprite2D = diamonds[k]
@@ -356,7 +361,7 @@ func _update_trails(delta: float) -> void:
 	if add_point:
 		_trail_sample = 0.0
 	var gt := ship.render_transform()
-	var active := _eng > 0.12 and ship.alive
+	var active := _lvl > 0.12 and ship.alive
 	for i in 2:
 		var pts: Array = _trail_pts[i]
 		var nozzle := gt * (ENGINE_NOZZLES[i] + Vector2(-10, 0))
@@ -376,7 +381,7 @@ func _update_trails(delta: float) -> void:
 		if active:
 			packed[pts.size()] = nozzle   # head glued to the nozzle every frame
 		line.points = packed
-		line.width = 1.6 + 1.4 * minf(_eng, 1.0) + 1.6 * _boost_vis
+		line.width = 1.6 + 1.4 * _lvl + 1.6 * _boost_vis
 		line.modulate.a = 0.55 + 0.3 * _boost_vis
 		if not active and pts.is_empty():
 			line.clear_points()
@@ -437,6 +442,7 @@ func _on_hull_changed(h: float, max_h: float) -> void:
 
 func _reset_fx() -> void:
 	_eng = 0.0
+	_lvl = 0.0
 	_boost_vis = 0.0
 	_flash = 0.0
 	_trail_pts = [[], []]

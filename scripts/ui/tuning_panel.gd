@@ -1,6 +1,8 @@
 extends CanvasLayer
-## Live flight-model tuning panel (Tab / F1). Edits the PlayerShip's exported
-## SI tunables and the CameraRig's juice settings while you fly. Never pauses.
+## Live flight-model tuning panel (Tab / F1). Edits the flown ship's exported
+## SI tunables (WREN or PETREL: both fly the same PlayerShip model) and the
+## CameraRig's juice settings while you fly. Never pauses. The two presets
+## load either ship's stock numbers into whichever ship you are flying.
 ## All controls use FOCUS_NONE so A/D/arrows keep flying the ship instead of
 ## nudging a slider; the mouse operates the panel.
 
@@ -13,12 +15,14 @@ const C_DIM := Color(0.55, 0.64, 0.74)
 ## [label, target ("ship"|"cam"), property, min, max, step, unit]
 const SLIDERS := [
 	["THRUSTERS"],
-	["Main thrust", "ship", "main_thrust_n", 0.0, 15000.0, 100.0, "N"],
-	["Side thrust (bow RCS)", "ship", "side_thrust_n", 0.0, 10000.0, 50.0, "N"],
-	["Thrust point ahead of CoM", "ship", "thrust_point_m", 0.0, 7.0, 0.1, "m"],
-	["Strafe thrust", "ship", "strafe_thrust_n", 0.0, 5000.0, 50.0, "N"],
-	["Boost multiplier", "ship", "boost_multiplier", 1.0, 4.0, 0.05, "×"],
-	["Reverse scale", "ship", "reverse_scale", 0.0, 1.5, 0.05, "×"],
+	["Main thrust (100 % throttle)", "ship", "main_thrust_n", 0.0, 40000.0, 100.0, "N"],
+	["Retro (fraction of main)", "ship", "reverse_scale", 0.0, 1.0, 0.005, "×"],
+	["Turn thrust (bow RCS)", "ship", "side_thrust_n", 0.0, 10000.0, 50.0, "N"],
+	["Bow thrust point ahead of CoM", "ship", "thrust_point_m", 0.0, 7.0, 0.1, "m"],
+	["Turn couple (stern pushes back)", "ship", "turn_couple", 0.0, 1.0, 0.05, "×"],
+	["Stern thrusters behind CoM", "ship", "stern_point_m", 0.0, 7.0, 0.1, "m"],
+	["Strafe thrust", "ship", "strafe_thrust_n", 0.0, 8000.0, 10.0, "N"],
+	["Throttle ramp (Shift / Ctrl)", "ship", "throttle_rate", 0.05, 2.0, 0.05, "/s"],
 	["MASS & DRAG"],
 	["Mass", "ship", "mass_kg", 200.0, 8000.0, 50.0, "kg"],
 	["Inertia / mass", "ship", "inertia_per_mass_m2", 1.0, 30.0, 0.01, "m²"],
@@ -32,27 +36,16 @@ const SLIDERS := [
 	["Screen shake amount", "cam", "shake_amount", 0.0, 3.0, 0.01, ""],
 ]
 
+## Each ship's stock flight model (the ship scripts own the numbers).
 const PRESETS := {
-	"Pat Kerr classic": {
-		"main_thrust_n": 5000.0, "side_thrust_n": 2600.0, "thrust_point_m": 4.0, "strafe_thrust_n": 1200.0,
-		"boost_multiplier": 2.0, "reverse_scale": 0.6, "mass_kg": 1000.0, "inertia_per_mass_m2": 8.37,
-		"linear_drag": 0.12, "angular_drag": 0.35, "bounce": 0.05, "friction": 0.2,
-	},
-	"Nimble racer": {
-		"main_thrust_n": 6200.0, "side_thrust_n": 2600.0, "thrust_point_m": 3.4, "strafe_thrust_n": 1800.0,
-		"boost_multiplier": 1.8, "reverse_scale": 0.8, "mass_kg": 700.0, "inertia_per_mass_m2": 4.8,
-		"linear_drag": 0.16, "angular_drag": 1.1, "bounce": 0.05, "friction": 0.15,
-	},
-	"Heavy freighter": {
-		"main_thrust_n": 13000.0, "side_thrust_n": 5200.0, "thrust_point_m": 5.0, "strafe_thrust_n": 2600.0,
-		"boost_multiplier": 1.5, "reverse_scale": 0.4, "mass_kg": 4000.0, "inertia_per_mass_m2": 14.0,
-		"linear_drag": 0.07, "angular_drag": 0.22, "bounce": 0.1, "friction": 0.35,
-	},
+	"WREN default": PlayerShip.WREN_DEFAULTS,
+	"PETREL default": ShuttleShip.PETREL_DEFAULTS,
 }
 
 var _rows := {}            # property -> {slider, value_label, target, unit}
 var _assist: CheckButton
 var _derived: Label
+var _sub: Label
 var _panel: PanelContainer
 var _syncing := false
 
@@ -72,7 +65,6 @@ func _ready() -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"tuning_panel"):
 		if not visible and _ship() == null:
-			Game.toast("Flight-model tuning: WREN only", 1.8)
 			get_viewport().set_input_as_handled()
 			return
 		visible = not visible
@@ -85,7 +77,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 	if _ship() == null:
-		visible = false   # e.g. reopened by the HUD restore while flying the PETREL
+		visible = false   # no ship to tune (on foot, destroyed)
 		return
 	# Keep the assist toggle honest if F was pressed while the panel is open.
 	var ship := _ship()
@@ -93,14 +85,11 @@ func _process(_delta: float) -> void:
 		_syncing = true
 		_assist.button_pressed = ship.flight_assist
 		_syncing = false
+	_update_derived()   # "terminal at N %" follows the throttle setting
 
 
 func _ship() -> PlayerShip:
-	var s := Game.player as PlayerShip if is_instance_valid(Game.player) else null
-	# The sliders describe the courier's barbell model only.
-	if s and s.ship_id() != &"wren":
-		return null
-	return s
+	return Game.player as PlayerShip if is_instance_valid(Game.player) else null
 
 
 func _target(kind: String) -> Object:
@@ -154,14 +143,11 @@ func _build() -> void:
 
 	var title := _label("FLIGHT MODEL  ·  LIVE TUNING", 20, C_CYAN)
 	vb.add_child(title)
-	var sub := _label("Pat Kerr barbell ship · side thrusters at the bow · Tab/F1 closes", 13, C_DIM)
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.custom_minimum_size = Vector2(360, 0)
-	vb.add_child(sub)
-	var reset := _button("Reset to Pat Kerr defaults")
-	reset.pressed.connect(_apply_preset.bind("Pat Kerr classic"))
-	vb.add_child(reset)
-	# Presets.
+	_sub = _label("", 13, C_DIM)
+	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sub.custom_minimum_size = Vector2(360, 0)
+	vb.add_child(_sub)
+	# Presets: either ship's stock numbers, into the ship you are flying.
 	var presets := HBoxContainer.new()
 	presets.add_theme_constant_override(&"separation", 6)
 	for pname in PRESETS.keys():
@@ -326,6 +312,9 @@ func _sync_from_targets() -> void:
 	var ship := _ship()
 	if ship:
 		_assist.button_pressed = ship.flight_assist
+		_sub.text = "%s  ·  %s  ·  Tab/F1 closes" % [ship.vehicle_name, (
+			"barbell, turn thrusters at the bow" if ship.turn_couple < 0.5
+			else "turn couple: bow and stern push opposite ways")]
 	_syncing = false
 	_update_derived()
 
@@ -336,11 +325,10 @@ func _apply_preset(pname: String) -> void:
 	if ship:
 		for k in p:
 			ship.set(k, p[k])
-	if pname == "Pat Kerr classic":
-		var cam := _target("cam")
-		if cam:
-			cam.set("speed_zoom_amount", 1.0)
-			cam.set("shake_amount", 1.0)
+	var cam := _target("cam")
+	if cam:
+		cam.set("speed_zoom_amount", 1.0)
+		cam.set("shake_amount", 1.0)
 	_sync_from_targets()
 	Game.toast("Flight model: %s" % pname, 1.8)
 
@@ -352,9 +340,13 @@ func _update_derived() -> void:
 		return
 	var m := s.mass_kg
 	var inertia_si := m * s.inertia_per_mass_m2
-	var term := s.main_thrust_n / maxf(m * s.linear_drag, 0.0001)
-	var omega := s.side_thrust_n * s.thrust_point_m / maxf(inertia_si * s.angular_drag, 0.0001)
-	var lat := s.side_thrust_n / m
-	_derived.text = ("Terminal speed  %.1f m/s   (boost %.1f)\nMax spin rate  %.2f rad/s  (%.0f°/s)\nForward accel  %.1f m/s²   sideways kick %.1f m/s²\nSpin-up time const  %.1f s" % [
-		term, term * s.boost_multiplier, omega, rad_to_deg(omega),
-		s.main_thrust_n / m, lat, 1.0 / maxf(s.angular_drag, 0.0001)])
+	var drag := maxf(m * s.linear_drag, 0.0001)
+	var term := s.main_thrust_n / drag
+	var torque := s.max_turn_torque_nm()
+	var omega := torque / maxf(inertia_si * s.angular_drag, 0.0001)
+	var lat := s.side_thrust_n * (1.0 - s.turn_couple) / m
+	_derived.text = ("Terminal speed  %.1f m/s at 100 %%   (%.1f at %d %%)\nMax spin rate  %.2f rad/s  (%.0f°/s)   spin accel %.2f rad/s²\nForward accel  %.1f m/s² at 100 %%   retro %.1f m/s²\nTurn sideways kick %.1f m/s²   strafe %.1f m/s²\nSpin-up time const  %.1f s" % [
+		term, term * s.throttle_setting, int(round(s.throttle_setting * 100.0)),
+		omega, rad_to_deg(omega), torque / maxf(inertia_si, 0.0001),
+		s.main_thrust_n / m, s.main_thrust_n * s.reverse_scale / m,
+		lat, s.strafe_thrust_n / m, 1.0 / maxf(s.angular_drag, 0.0001)])

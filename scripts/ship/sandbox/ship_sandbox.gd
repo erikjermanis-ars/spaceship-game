@@ -60,7 +60,7 @@ func _ready() -> void:
 	Game.world_bounds = Rect2(-2000, -1500, 4000, 3000)
 	Game.impact.connect(_on_impact)
 	Game.scrape.connect(_on_scrape)
-	Game.toast("Ship sandbox — WASD/arrows fly, Q/E strafe, Space boost, F assist, F3 debug, Tab tuning, T respawn", 6.0)
+	Game.toast("Ship sandbox — WASD/arrows fly, Q/E strafe, Shift/Ctrl throttle, F assist, F3 debug, Tab tuning, T respawn", 6.0)
 
 
 func _spawn_xform() -> Transform2D:

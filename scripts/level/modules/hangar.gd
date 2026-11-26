@@ -1,6 +1,7 @@
 @tool
 extends StationModule
 ## Hangar 2: an open-roofed service bay at the north end of the pier. The
+## floor is a deck (walkable on foot; the shuttle parks on it). The
 ## west opening is closed by two sliding blast-door leaves (separate
 ## blast_door.gd modules) that tuck into the door housings north and south.
 ## Local origin = bay centre, metres.
@@ -72,9 +73,8 @@ func _build() -> void:
 		truss(m(xx, -hy + 2), m(xx, hy - 2), 5.0)
 	overhead(A.rect_m(-18.0, -24, 26.0, -19.0), Color(0.85, 0.88, 0.92, 0.5), Color(1, 0.85, 0.4, 0.8))
 	lamp(m(4, -21.5), A.WARM, 80.0, 2)
-	# Static clutter inside: parked shuttle and maintenance crates.
-	var ShipPainter := preload("res://scripts/level/ship_painter.gd")
-	ShipPainter.shuttle(self, Transform2D(-PI * 0.5, m(hx - w - 14, -hy + w + 12)), A.TEAL, 3, false)
+	# Static clutter inside: maintenance crates. (The parked shuttle in the
+	# north-east bay is a real, pilotable ship now: scenes/ship/shuttle.tscn.)
 	for i in 3:
 		var c := m(hx - w - 6, 14.0 + i * 6.5)
 		hull(A.rect_poly(Rect2(c - Vector2(22, 22), Vector2(44, 44))), &"amber", [], {"bevel": 0.4})

@@ -67,6 +67,13 @@ func _predict() -> void:
 	var turn := float(GameplayUtil.pget(ship, &"turn_input", 0.0))
 	var strafe := float(GameplayUtil.pget(ship, &"strafe_input", 0.0))
 	var assist := bool(GameplayUtil.pget(ship, &"flight_assist", false))
+	# Fly-by-wire ships (the PETREL) steer themselves: show a coast path
+	# (drag only) rather than modelling their controller.
+	if ship.has_method(&"ship_id") and ship.call(&"ship_id") != &"wren":
+		throttle = 0.0
+		turn = 0.0
+		strafe = 0.0
+		assist = false
 	var boost := _param(ship, "boost_multiplier") if bool(GameplayUtil.pget(ship, &"boosting", false)) else 1.0
 	var main := throttle * _param(ship, "main_thrust_n") * boost
 	if throttle < 0.0:

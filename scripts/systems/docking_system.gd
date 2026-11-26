@@ -29,6 +29,7 @@ var _outside_time := 0.0         # s spent off every pad since (re)spawn
 ## after spawning always look "outside"; require a real excursion.
 const MIN_OUTSIDE_TIME := 0.4
 var _scan_timer := 0.0
+var _redock_check := false       # just switched ships: dock in place if settled on a pad
 var _clamped := false            # clamp spring currently holding the ship
 var _snd_clamp: AudioStream
 var _snd_chime: AudioStream
@@ -45,6 +46,11 @@ func _ready() -> void:
 	Game.ship_respawned.connect(func(_p: Vector2) -> void:
 		_leave()
 		_outside_time = 0.0)
+	Game.player_changed.connect(func(_s: RigidBody2D, _o: RigidBody2D) -> void:
+		_leave()
+		_outside_time = 0.0
+		# Boarding a ship that is parked on a pad: its clamps re-engage.
+		_redock_check = true)
 
 func pads() -> Array[Area2D]:
 	return _pads
@@ -59,6 +65,18 @@ func is_settled() -> bool:
 	return is_docked() and _clamped and GameplayUtil.player_valid() \
 		and Game.player.linear_velocity.length() < 0.6 * Game.PX_PER_M \
 		and absf(Game.player.angular_velocity) < MAX_SPIN
+
+
+## Quietly docked again (you climbed back into a ship parked on this pad).
+func _resume_dock(pad: Area2D) -> void:
+	current_pad = pad
+	pad_name = String(pad.get_meta(&"pad_name", pad.name))
+	_armed = true
+	phase = Phase.DOCKED
+	_clamped = true
+	progress = 1.0
+	hint = ""
+	Game.docked.emit(pad_name)
 
 
 ## Test/debug hook: dock at `pad` immediately (the ship must already sit on it).
@@ -81,7 +99,20 @@ func _physics_process(delta: float) -> void:
 	if not GameplayUtil.player_alive():
 		return
 	var ship := Game.player
+	# Ships with their own landing gear (the PETREL's mag-skids) don't use
+	# pad clamps: its spring would fight their fly-by-wire.
+	if ship.has_method(&"uses_pad_clamps") and not bool(ship.call(&"uses_pad_clamps")):
+		if phase != Phase.NONE:
+			_leave()
+		return
 	var pad := _pad_under(ship)
+	if _redock_check and pad != null:
+		_redock_check = false
+		if ship.linear_velocity.length() / Game.PX_PER_M < MAX_SPEED:
+			_resume_dock(pad)
+			return
+	elif _redock_check and _outside_time > 0.5:
+		_redock_check = false
 	if pad != current_pad:
 		_leave()
 		current_pad = pad

@@ -87,6 +87,9 @@ var solids: Array[PackedVector2Array] = []
 var pieces: Array[PackedVector2Array] = []
 ## Optional simplified radar outlines; falls back to `solids`.
 var radar_polys: Array[PackedVector2Array] = []
+## Deck floors (local px). Static modules publish them (global) in
+## LevelArt.walk_decks: the surfaces you can land on and walk around on foot.
+var decks: Array[PackedVector2Array] = []
 
 var _ops: Array = []
 var _open: Array = []
@@ -101,6 +104,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_unregister_depth()
+	_unregister_decks()
 
 
 ## Re-runs _build() and recreates generated children. Cheap enough to call
@@ -147,6 +151,8 @@ func get_radar_polygons() -> Array[PackedVector2Array]:
 
 func _clear() -> void:
 	_unregister_depth()
+	_unregister_decks()
+	decks.clear()
 	for n in _generated:
 		if is_instance_valid(n):
 			n.get_parent().remove_child(n)
@@ -237,6 +243,7 @@ func _realize() -> void:
 		if b == Band.DEBUG:
 			ci.visible = false
 	_register_depth()
+	_register_decks()
 	if not Engine.is_editor_hint():
 		var game := _game()
 		if game and _band_nodes[Band.DEBUG] != null:
@@ -284,6 +291,26 @@ func _register_depth() -> void:
 		if s == 1.0 and off == Vector2.ZERO:
 			continue
 		A.depth_layers.append([ci, s, off])
+
+
+## Publish deck floors as walkable/landable surfaces (static modules only:
+## you can't stand on the spinning ring).
+func _register_decks() -> void:
+	if Engine.is_editor_hint() or moving:
+		return
+	for d in decks:
+		A.walk_decks.append({"module": self, "poly": global_transform * d})
+
+
+func _unregister_decks() -> void:
+	if A.walk_decks.is_empty():
+		return
+	var keep: Array = []
+	for e in A.walk_decks:
+		if e.module != self and is_instance_valid(e.module):
+			keep.append(e)
+	A.walk_decks.clear()
+	A.walk_decks.append_array(keep)
 
 
 func _unregister_depth() -> void:
@@ -549,6 +576,7 @@ func collider(poly: PackedVector2Array, visible_on_radar := true) -> void:
 
 ## Non-colliding below-deck floor (the ship flies over it).
 func deck(poly: PackedVector2Array, grid_m := 6.0, base := Color("1E2836"), plate := Color("273345"), grid := Color("324257"), edge := Color("53667F")) -> void:
+	decks.append(poly)
 	fill(Band.DECK, poly, base)
 	var inner_polys := Geometry2D.offset_polygon(poly, -0.7 * PX)
 	for inner in inner_polys:

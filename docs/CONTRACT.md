@@ -73,6 +73,14 @@ viewport 1920×1080 with `canvas_items` stretch/expand, window 1600×900.
 | GAMEPLAY (impact FX, damage, race, docking, boundary, HUD, main scene) | `scripts/systems/**`, `scripts/ui/**` (except tuning_panel.gd), `scenes/ui/**` (except tuning_panel.tscn), `assets/art/fx/**`, `scenes/main.tscn`, `scripts/main.gd`, `scenes/test/gameplay_*` |
 | ON-FOOT (walking, landed ship model, pad sites, interiors) | `scripts/onfoot/**`, `scenes/onfoot/**`, `assets/art/onfoot/**`, `scenes/test/onfoot_*`, `tests/onfoot_*` |
 
+The PETREL stage added a second pilotable ship. SHIP owns `scripts/ship/shuttle_*.gd`, `mag_line.gd`,
+`landing_probe.gd`, `landing_overlay.gd` and `scenes/ship/shuttle.tscn`. `Game.player` can change at runtime:
+use `Game.set_player()` and listen to `Game.player_changed(new, old)`; never cache the ship. `PlayerShip` has
+the vehicle API (`park`, `take_control`, `on_boarded`, `can_disembark`, `disembark_hint`, `landed_model`,
+`ship_id`, `uses_pad_clamps`, `home_transform`, `damage_scale`) and a virtual `_apply_flight_forces()`. Parked
+ships sit on `LAYER_WORLD`, frozen. Static station modules publish deck floors in `LevelArt.walk_decks` (landing
+and walking surfaces). New input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`.
+
 The on-foot stage added small hooks outside its own paths. `game.gd` got the layers, mode, signals and actions
 above. `CameraRig` got `set_focus()`, `clear_focus()` and `snap_focus()`. `LevelArt.depth_amount` flattens the
 2.5D parallax. `DockingSystem` got `is_docked()`, `is_settled()` and `force_dock()`. `AmbientAudio` got

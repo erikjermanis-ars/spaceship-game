@@ -63,3 +63,20 @@ in **D major**, so chimes always fit the ambient bed (Dmaj9, Gmaj9, Bm9, Asus2, 
 | vending_dispense | SFX | -6 | |
 | console_beep | SFX | -8 | terminals, hologram off |
 | holo_on | SFX | -8 | hologram projector |
+| petrel_engine_loop | Engine | -16 idle → -4 full | PETREL twin engines (smoother, higher than the WREN; slow beating between the two). `pitch_scale` 0.8 idle → 1.25 full, smooth ~0.15 s |
+| petrel_afterburner_loop | Engine | -40 → -6 | brighter afterburner roar layered on the engine loop; fade in ~0.12 s, out ~0.3 s; pitch 0.95–1.1 |
+| gyro_whine_loop | Engine | -40 → -16 | reaction-wheel whine centred ~600 Hz; `pitch_scale` 0.5–2.3 from wheel speed / turn rate |
+| hover_hum_loop | Engine | -18 | calm station-keeping hiss + low hum while hovering; fade ~0.3 s |
+| skids_deploy | SFX | -8 | landing skids out (servo + two lock clacks); at pitch 0.9 it can double as retract |
+| touchdown_clunk_1..4 | SFX | -8 … -2 | mag-clamp engaging on touchdown, level from vertical speed; `Game.get_variations()` |
+| landing_chime_silk | UI | -10 | soft D-major "landed" chime (D6 → A5 over F#5) |
+| landing_abort_warble | UI | -12 | gentle descending warble when a landing is aborted / not allowed |
+| liftoff_whoosh | SFX | -6 | skid release clacks + rising downwash on liftoff |
+| magline_fire | SFX | -6 | line head launched (EM zip); pitch 0.95–1.1 |
+| magline_latch | SFX | -5 | line head latches on (clank + short hum), positional at the anchor |
+| magline_tension_loop | SFX | -40 → -8 | cable creak/strain; volume and `pitch_scale` 0.8–1.4 from tension |
+| clutch_scream_loop | SFX | -40 → -8 | slip clutch ratcheting when the line pays out under overload; pitch 0.9–1.3 from slip speed |
+| winch_loop | SFX | -12 | winch reeling in; `pitch_scale` 0.85–1.2 from reel speed |
+| magline_snap | SFX | -2 | line parts (twang, crack, ring) |
+| magline_release | SFX | -10 | line head released |
+| ramp_servo | SFX | -6 | PETREL door + fold-down ramp, positional (pitch 0.9 to suggest closing) |

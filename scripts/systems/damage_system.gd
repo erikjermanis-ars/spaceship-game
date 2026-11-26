@@ -30,6 +30,11 @@ func _ready() -> void:
 	Game.scrape.connect(_on_scrape)
 	Game.ship_destroyed.connect(_on_destroyed)
 	Game.ship_respawned.connect(_on_respawned)
+	# Boarding another ship: fresh velocity memory and a moment of grace.
+	Game.player_changed.connect(func(ship: RigidBody2D, _old: RigidBody2D) -> void:
+		_invuln = maxf(_invuln, 1.0)
+		_scrape_accum = 0.0
+		_last_velocity = ship.linear_velocity if ship else Vector2.ZERO)
 
 func _physics_process(delta: float) -> void:
 	_invuln = maxf(0.0, _invuln - delta)
@@ -62,6 +67,9 @@ func _on_impact(pos: Vector2, _normal: Vector2, speed_mps: float, source: Node, 
 	if hit is AnimatableBody2D and is_instance_valid(hit) and hit.get_parent() != null \
 			and hit.get_parent().has_method(&"open_amount"):
 		speed_mps = minf(speed_mps, 12.0)
+	# Ships can soften some hits (the PETREL's own towed load).
+	if ship.has_method(&"damage_scale"):
+		mult *= float(ship.call(&"damage_scale", hit, speed_mps))
 	var dmg := damage_for_speed(speed_mps) * mult
 	if dmg > 0.05:
 		_apply(dmg, pos)
@@ -120,9 +128,16 @@ func _respawn_after_delay() -> void:
 func respawn_player() -> void:
 	if not GameplayUtil.player_valid():
 		return
+	# Racing: the last gate. Otherwise the ship's own home (the WREN's spawn
+	# pad, the PETREL's hangar berth).
 	var xf := GameplayUtil.spawn_transform(get_tree())
+	if Game.player.has_method(&"home_transform"):
+		xf = Game.player.call(&"home_transform")
 	var race := get_tree().get_first_node_in_group(&"race_system")
-	if race and race.has_method(&"get_respawn_transform"):
+	var gate_habit := int(race.get(&"last_gate_index")) >= 0 if race else false
+	if Game.player.has_method(&"uses_pad_clamps") and not bool(Game.player.call(&"uses_pad_clamps")):
+		gate_habit = false   # the PETREL goes home to its berth unless racing
+	if race and race.has_method(&"get_respawn_transform") and (race.call(&"is_running") or gate_habit):
 		xf = race.call(&"get_respawn_transform")
 	teleport_player(xf)
 

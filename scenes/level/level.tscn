@@ -156,6 +156,10 @@ tail_m = 0.0
 posts = false
 accent = Color(1, 0.69, 0, 1)
 
+[node name="ShuttleBerth" type="Marker2D" parent="Spaceport" groups=["shuttle_berth"]]
+position = Vector2(6160.0, -4480.0)
+rotation = -1.570796
+
 [node name="Drydock" type="Node2D" parent="."]
 script = ExtResource("9")
 position = Vector2(0.0, -6000.0)

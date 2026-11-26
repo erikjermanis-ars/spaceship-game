@@ -91,6 +91,13 @@ var boost_energy: float = 1.0
 var flight_assist: bool = false
 var alive: bool = true
 var controls_enabled: bool = true
+## False while parked with nobody aboard: engines and alarms are silent.
+var powered: bool = true
+## The ship the session starts in sets Game.player; other pilotable ships
+## (the hangar shuttle) start parked and take over Game.player when boarded.
+@export var start_as_player := true
+## Shown on location cards and toasts.
+@export var vehicle_name := "WREN"
 ## Live input readouts for the HUD (after assist/boost logic).
 var throttle_input: float = 0.0   # -1..1
 var turn_input: float = 0.0       # -1..1, negative = left / counter-clockwise
@@ -143,7 +150,8 @@ var _tick_xf := Transform2D.IDENTITY
 
 func _ready() -> void:
 	add_to_group(&"player_ship")
-	Game.player = self
+	if start_as_player:
+		Game.player = self
 	# Godot's own damping off: drag is applied as explicit forces.
 	linear_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
 	angular_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
@@ -163,7 +171,8 @@ func _ready() -> void:
 	_apply_mass()
 	_apply_material()
 	_build_sensor()
-	Game.hull_changed.emit(hull, max_hull)
+	if start_as_player:
+		Game.hull_changed.emit(hull, max_hull)
 
 
 func _apply_mass() -> void:
@@ -250,12 +259,23 @@ func _read_input(delta: float) -> void:
 	var stf := 0.0
 	var want_boost := false
 	if controls_enabled and alive:
-		thr = Input.get_action_strength(&"thrust_forward") - Input.get_action_strength(&"thrust_reverse")
-		trn = Input.get_axis(&"turn_left", &"turn_right")
-		stf = Input.get_axis(&"strafe_left", &"strafe_right")
-		want_boost = Input.is_action_pressed(&"boost")
+		thr = _act(&"thrust_forward") - _act(&"thrust_reverse")
+		trn = _act(&"turn_right") - _act(&"turn_left")
+		stf = _act(&"strafe_right") - _act(&"strafe_left")
+		want_boost = _act(&"boost") > 0.5
 
-	# Boost energy with a lockout once empty, so it can't be feathered at 0%.
+	_update_boost(want_boost, delta)
+
+	# Boost on its own (no throttle, no turn) means "punch it forward".
+	if boosting and is_zero_approx(thr) and is_zero_approx(trn):
+		thr = 1.0
+	throttle_input = clampf(thr, -1.0, 1.0)
+	turn_input = clampf(trn, -1.0, 1.0)
+	strafe_input = clampf(stf, -1.0, 1.0)
+
+
+## Boost energy with a lockout once empty, so it can't be feathered at 0%.
+func _update_boost(want_boost: bool, delta: float) -> void:
 	if _boost_locked and boost_energy >= boost_rearm_level:
 		_boost_locked = false
 	boosting = want_boost and not _boost_locked and boost_energy > 0.0
@@ -269,12 +289,25 @@ func _read_input(delta: float) -> void:
 		if _boost_cooldown <= 0.0:
 			boost_energy = minf(boost_energy + boost_recharge_per_s * delta, 1.0)
 
-	# Boost on its own (no throttle, no turn) means "punch it forward".
-	if boosting and is_zero_approx(thr) and is_zero_approx(trn):
-		thr = 1.0
-	throttle_input = clampf(thr, -1.0, 1.0)
-	turn_input = clampf(trn, -1.0, 1.0)
-	strafe_input = clampf(stf, -1.0, 1.0)
+
+## Input latch: actions held at the moment you take control (the E, Shift or
+## W you were pressing on foot) read as 0 until released once.
+var _latched := {}
+
+
+func _act(action: StringName) -> float:
+	if _latched.has(action):
+		if Input.is_action_pressed(action):
+			return 0.0
+		_latched.erase(action)
+	return Input.get_action_strength(action)
+
+
+func _latch_held_actions() -> void:
+	_latched.clear()
+	for a in InputMap.get_actions():
+		if not String(a).begins_with("ui_") and Input.is_action_pressed(a):
+			_latched[a] = true
 
 
 func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
@@ -288,11 +321,17 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 		_contacts_prev.clear()
 		return
 
-	var xf := state.transform
+	_apply_flight_forces(state, state.transform, state.linear_velocity, state.angular_velocity)
+	_process_contacts(state)
+	_prev_lin_vel = state.linear_velocity
+	_prev_ang_vel = state.angular_velocity
+
+
+## Override: this ship's flight model (forces, torques, HUD/FX outputs).
+## The courier: barbell, all thrust at the bow point.
+func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: Vector2, w: float) -> void:
 	var fwd := xf.x.normalized()
 	var right := xf.y.normalized()     # starboard
-	var v := state.linear_velocity     # px/s
-	var w := state.angular_velocity    # rad/s
 	var boost_mul := boost_multiplier if boosting else 1.0
 	var bow := fwd * thrust_point_m * PX   # global-oriented offset from the CoM
 
@@ -338,10 +377,6 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	dbg_side_force = f_side
 	dbg_strafe_force = f_strafe
 	dbg_assist_torque = assist_torque
-
-	_process_contacts(state)
-	_prev_lin_vel = state.linear_velocity
-	_prev_ang_vel = state.angular_velocity
 
 
 # ------------------------------------------------------------- contacts --
@@ -477,6 +512,107 @@ func destroy() -> void:
 	_collision.set_deferred(&"disabled", true)
 	set_deferred(&"freeze", true)
 	Game.ship_destroyed.emit(pos)
+
+
+# ----------------------------------------------------------- vehicle API --
+# Used by the on-foot layer (OnFootDirector) to treat every pilotable ship the
+# same way: get out of the one you fly, board any parked one.
+
+var _landed: Node2D
+
+
+## Override: the detailed close-up model shown while parked.
+func make_landed_model() -> Node2D:
+	return LandedShip.new()
+
+
+## The parked model (created on first use, kept while parked).
+func landed_model() -> Node2D:
+	if _landed == null or not is_instance_valid(_landed):
+		_landed = make_landed_model()
+		_landed.name = "Landed"
+		add_child(_landed)
+		_landed.call(&"set_board_action", func(_by: Node2D) -> void:
+			var d := get_tree().get_first_node_in_group(&"on_foot_director")
+			if d:
+				d.call(&"board", self))
+	return _landed
+
+
+func has_landed_model() -> bool:
+	return _landed != null and is_instance_valid(_landed)
+
+
+func drop_landed_model() -> void:
+	if has_landed_model():
+		_landed.queue_free()
+	_landed = null
+
+
+## Override: can the pilot get out right now? (The courier: docked and
+## clamped on a pad.)
+func can_disembark() -> bool:
+	if Game.player != self or not alive:
+		return false
+	var dock := get_tree().get_first_node_in_group(&"docking_system")
+	return dock != null and bool(dock.call(&"is_settled"))
+
+
+## Shown (as a toast) when you press X but can't get out yet.
+func disembark_hint() -> String:
+	return ""
+
+
+## Nobody aboard: a frozen, silent obstacle (static world layer, so the ship
+## you fly can bump into it and the walker can't walk through it).
+func park() -> void:
+	controls_enabled = false
+	powered = false
+	throttle_input = 0.0
+	turn_input = 0.0
+	strafe_input = 0.0
+	boosting = false
+	linear_velocity = Vector2.ZERO
+	angular_velocity = 0.0
+	set_deferred(&"freeze", true)
+	collision_layer = Game.LAYER_WORLD
+
+
+## Becomes the player's ship (still frozen: the director calls on_boarded()
+## once the camera is back in flight view).
+func take_control() -> void:
+	powered = true
+	collision_layer = Game.LAYER_PLAYER
+	_latch_held_actions()
+	Game.set_player(self)
+	Game.hull_changed.emit(hull, max_hull)
+
+
+## Override: the director hands over control (the courier just unfreezes;
+## its pad clamps hold it until you touch the controls).
+func on_boarded() -> void:
+	freeze = false
+	controls_enabled = true
+
+
+## Override: stable id for per-ship records (race best laps).
+func ship_id() -> StringName:
+	return &"wren"
+
+
+## Override: does DockingSystem's clamp spring apply to this ship?
+func uses_pad_clamps() -> bool:
+	return true
+
+
+## Override: where a destroyed ship is brought back when not racing.
+func home_transform() -> Transform2D:
+	return GameplayUtil.spawn_transform(get_tree())
+
+
+## Override: damage multiplier for a hit on `other` at `speed_mps`.
+func damage_scale(_other: Node, _speed_mps: float) -> float:
+	return 1.0
 
 
 func respawn_at(xform: Transform2D) -> void:

@@ -76,6 +76,7 @@ func _draw() -> void:
 		HudStyle.text(self, r2.position + Vector2(0, 68), "Turn back  ·  %d m outside the traffic perimeter" % int(_bound.distance_out_m), 17, HudStyle.WHITE, HORIZONTAL_ALIGNMENT_CENTER, r2.size.x)
 
 	# --- docking ---
+	var exit_at := c + Vector2(-70.0, 250.0)
 	if _dock and _dock.phase != DockingSystem.Phase.NONE:
 		var visible_prompt := _dock.phase != DockingSystem.Phase.APPROACH or _dock.hint != ""
 		if visible_prompt:
@@ -96,10 +97,20 @@ func _draw() -> void:
 			var bar := Rect2(r3.position + Vector2(40, 46), Vector2(r3.size.x - 80, 6))
 			draw_rect(bar, Color(col2, 0.15))
 			draw_rect(Rect2(bar.position, Vector2(bar.size.x * _dock.progress, bar.size.y)), col2)
-			# Docked and settled: you can get out and walk (OnFootDirector).
-			if _dock.is_settled() and Game.mode == Game.Mode.FLIGHT:
-				var pulse := 0.75 + 0.25 * sin(_t * 3.0)
-				HudStyle.key_hint(self, r3.position + Vector2(r3.size.x * 0.5 - 70.0, r3.size.y + 40.0), "X", "Exit ship", pulse)
+			exit_at = r3.position + Vector2(r3.size.x * 0.5 - 70.0, r3.size.y + 40.0)
+	_draw_exit_prompt(exit_at)
+
+
+func _draw_exit_prompt(at: Vector2) -> void:
+	# Landed (docked on a pad, or the shuttle anchored): you can get out and
+	# walk. Otherwise the ship may explain what it still needs.
+	var dir := get_tree().get_first_node_in_group(&"on_foot_director")
+	if dir == null or Game.mode != Game.Mode.FLIGHT or not GameplayUtil.player_alive():
+		return
+	if bool(dir.call(&"can_exit")):
+		var pulse := 0.75 + 0.25 * sin(_t * 3.0)
+		HudStyle.key_hint(self, at, "X", "Exit ship", pulse)
+
 
 func _stripes(r: Rect2) -> void:
 	# Amber hazard stripes: thin parallelograms rising to the right.

@@ -55,6 +55,7 @@ func _ready() -> void:
 	_snd_finish = GameplayUtil.load_audio("race_finish.wav")
 	_load_records()
 	Game.ship_respawned.connect(func(_p: Vector2) -> void: _have_prev = false)
+	Game.player_changed.connect(_on_player_changed)
 
 func _setup() -> void:
 	_setup_done = true
@@ -279,20 +280,48 @@ func _refresh_visuals() -> void:
 func _play(stream: AudioStream, vol: float, pitch: float) -> void:
 	GameplayUtil.play_oneshot(self, stream, vol, pitch, &"UI")
 
+## Changing ships mid-race abandons the lap; records are kept per ship.
+func _on_player_changed(_ship: RigidBody2D, _old: RigidBody2D) -> void:
+	if state != State.IDLE:
+		state = State.IDLE
+		GameplayUtil.set_controls(true)
+		Game.toast("Race abandoned  ·  changed ship", 2.0)
+	next_index = 0
+	last_gate_index = -1
+	race_time = 0.0
+	current_splits.clear()
+	has_last_delta = false
+	_have_prev = false
+	_load_records()
+	if _setup_done and best_splits.size() != gates.size():
+		best_splits.clear()
+	_refresh_visuals()
+
 # ============================================================= records ===
+## ConfigFile section: "race" for the WREN (unchanged, old saves still load),
+## "race_<id>" for other ships.
+func _section() -> String:
+	if GameplayUtil.player_valid() and Game.player.has_method(&"ship_id"):
+		var id := String(Game.player.call(&"ship_id"))
+		if id != "wren":
+			return "race_" + id
+	return "race"
+
 func _load_records() -> void:
+	best_time = INF
+	best_splits.clear()
 	var cf := ConfigFile.new()
 	if cf.load(SAVE_PATH) != OK:
 		return
-	best_time = float(cf.get_value("race", "best", INF))
-	best_splits.clear()
-	for v in cf.get_value("race", "splits", []):
+	best_time = float(cf.get_value(_section(), "best", INF))
+	for v in cf.get_value(_section(), "splits", []):
 		best_splits.append(float(v))
 
 func _save_records() -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("race", "best", best_time)
-	cf.set_value("race", "splits", best_splits)
+	cf.load(SAVE_PATH)   # keep the other ships' records
+	cf.set_value(_section(), "best", best_time)
+	cf.set_value(_section(), "splits", best_splits)
 	cf.save(SAVE_PATH)
 
 ## Forget the stored best lap (not bound to a key; handy from the debugger).

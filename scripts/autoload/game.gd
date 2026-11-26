@@ -64,6 +64,8 @@ signal undocked(pad_name: String)
 ## HUD toast message.
 signal message(text: String, duration: float)
 signal mode_changed(new_mode: Mode)
+## The ship you control changed (you boarded a different one).
+signal player_changed(new_ship: RigidBody2D, old_ship: RigidBody2D)
 ## On-foot milestones (pad name / interior name), for HUD, audio and tests.
 signal disembarked(pad_name: String)
 signal boarded(pad_name: String)
@@ -88,6 +90,15 @@ var debug_draw := false:
 var cmd := {}
 
 # ---------------------------------------------------------- helpers ------
+## Switch the controlled ship (systems listen to player_changed to reset
+## per-ship state: camera look-ahead, damage, race, docking ...).
+func set_player(ship: RigidBody2D) -> void:
+	if ship == player:
+		return
+	var old := player
+	player = ship
+	player_changed.emit(ship, old)
+
 static func to_m(px: float) -> float:
 	return px / PX_PER_M
 
@@ -170,6 +181,17 @@ func _register_inputs() -> void:
 	# Docked: leave the cockpit. X is free in flight (E strafes, which would
 	# release the docking clamps).
 	_action(&"disembark", [KEY_X], [JOY_BUTTON_X])
+	# PETREL shuttle (Space/Q/E/LMB/RMB mean something else in the WREN; each
+	# ship reads only its own actions, so shared keys never clash).
+	_action(&"ship_hover", [KEY_SPACE], [], [[JOY_AXIS_TRIGGER_LEFT, 1.0]])
+	_action(&"ship_line", [KEY_Q], [], [[JOY_AXIS_TRIGGER_RIGHT, 1.0]])
+	_mouse_action(&"ship_line", MOUSE_BUTTON_LEFT)
+	_action(&"ship_reel", [KEY_E], [JOY_BUTTON_RIGHT_SHOULDER])
+	_mouse_action(&"ship_reel", MOUSE_BUTTON_RIGHT)
+	_action(&"aim_left", [], [], [[JOY_AXIS_RIGHT_X, -1.0]])
+	_action(&"aim_right", [], [], [[JOY_AXIS_RIGHT_X, 1.0]])
+	_action(&"aim_up", [], [], [[JOY_AXIS_RIGHT_Y, -1.0]])
+	_action(&"aim_down", [], [], [[JOY_AXIS_RIGHT_Y, 1.0]])
 
 func _action(action: StringName, keys: Array, joy_buttons := [], joy_axes := []) -> void:
 	if not InputMap.has_action(action):

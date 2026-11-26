@@ -126,7 +126,8 @@ func _process(delta: float) -> void:
 	for p in [_engine, _boost, _hiss]:
 		if p and not p.playing:
 			p.play()
-	var alive := ship.alive
+	# A parked, unpowered ship is silent (treated like "not alive" here).
+	var alive := ship.alive and ship.powered
 	_since_ignite += delta
 	_since_kick += delta
 	_since_puff += delta

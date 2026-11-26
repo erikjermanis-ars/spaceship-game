@@ -37,6 +37,12 @@ EXPECTED = (
     + ["step_suit_%d" % i for i in (1, 2, 3, 4)] + ["step_deck_%d" % i for i in (1, 2, 3, 4)]
     + ["hatch_open", "hatch_close", "airlock_cycle", "door_slide", "switch_click", "light_on",
        "light_buzz_loop", "room_tone_loop", "vending_dispense", "console_beep", "holo_on"]
+    # PETREL shuttle
+    + ["petrel_engine_loop", "petrel_afterburner_loop", "gyro_whine_loop", "hover_hum_loop",
+       "skids_deploy"] + ["touchdown_clunk_%d" % i for i in (1, 2, 3, 4)]
+    + ["landing_chime_silk", "landing_abort_warble", "liftoff_whoosh", "magline_fire",
+       "magline_latch", "magline_tension_loop", "clutch_scream_loop", "winch_loop",
+       "magline_snap", "magline_release", "ramp_servo"]
 )
 STEREO = {"ambient_space_drone"}
 

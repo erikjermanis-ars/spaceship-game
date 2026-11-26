@@ -58,7 +58,7 @@ var _step_player: AudioStreamPlayer2D
 func _ready() -> void:
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	collision_layer = Game.LAYER_WALKER
-	collision_mask = Game.LAYER_WORLD | Game.LAYER_PLAYER | Game.LAYER_WALK
+	collision_mask = Game.LAYER_WORLD | Game.LAYER_PLAYER | Game.LAYER_WALK | Game.LAYER_PROPS
 	# Small body in px units: keep the safety margin tiny so it can get close
 	# to walls without visible gaps.
 	safe_margin = 0.05

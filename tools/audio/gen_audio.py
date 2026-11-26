@@ -1156,6 +1156,411 @@ def holo_on(rng):
     x = wet_mix(x, 1.0, 0.8, 0.3)
     return [finish_oneshot(x, fade_in_s=0.002, fade_out_s=0.15, hp=120)], False
 
+
+# ========================================================== PETREL shuttle ===
+# The PETREL is a light twin-engine shuttle: still "in the cockpit", but a
+# smaller, better-damped airframe than the WREN, so everything is smoother,
+# higher and less saturated. Mechanisms (skids, mag-clamps, the magline winch)
+# are small and close, heard as the frame's own clicks and hums.
+
+def petrel_engine_loop(rng):
+    """Twin engines: two soft saw cores half a hertz apart (82 / 82.5 Hz ->
+    one slow beat per loop, faster at the upper harmonics), a pair of clean
+    turbine whines beating 1 Hz apart, a light jet breath and only a little
+    low body. Smoother and higher than engine_main_loop."""
+    P = ns(2.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    tbl = saw_table(10, 1.9)
+    core = zeros(N)
+    for f, a in [(82.0, 1.0), (82.5, 0.6)]:
+        add_into(core, wt_osc(N, q(f), tbl, rng.uniform(0, TAU)), a)
+    add_into(core, sine(N, q(41.0), rng.uniform(0, TAU)), 0.25)
+    add_into(core, sine(N, q(123.5), rng.uniform(0, TAU)), 0.12)
+    core = at_rms(saturate(norm(biquad(core, "lp", 1300, 0.7)), 1.15), -13)
+
+    whine = fm_sine(N, q(1640.0), q(2.5), 1.2, rng.uniform(0, TAU))
+    add_into(whine, sine(N, q(1641.0), rng.uniform(0, TAU)), 0.7)
+    add_into(whine, sine(N, q(3281.5), rng.uniform(0, TAU)), 0.15)
+    whine = at_rms(mul(whine, smooth_random(N, 1.5, rng, P, 0.7, 1.0)), -29)
+
+    breath = biquad(biquad(pnoise(P, 2, rng), "bp", 720, 0.6), "lp", 2600, 0.7)
+    breath = at_rms(mul(breath, smooth_random(N, 2.5, rng, P, 0.8, 1.0)), -21)
+
+    body = at_rms(biquad(onepole_lp(pnoise(P, 2, rng), 60.0), "lp", 220, 0.7), -23)
+
+    mix = [a + b + c + d for a, b, c, d in zip(core, whine, breath, body)]
+    mix = saturate(biquad(mix, "lp", 8000, 0.7), 1.1)
+    return [finish_loop(mix, P)], True
+
+
+def petrel_afterburner_loop(rng):
+    """Afterburner layer: a bright wide roar with a 2.2 kHz presence lift,
+    a mid body, the twin cores pushed into saturation, sparse crackle and a
+    fizzing top. Brighter and thinner than engine_boost_loop."""
+    P = ns(2.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    roar = biquad(biquad(pnoise(P, 2, rng), "lp", 7000, 0.6), "hp", 160, 0.7)
+    roar = biquad(roar, "peak", 2200, 0.8, 6.0)
+    roar = at_rms(mul(roar, smooth_random(N, 45.0, rng, P, 0.55, 1.0)), -13)
+
+    body = at_rms(biquad(pnoise(P, 2, rng), "bp", 380, 0.7), -18)
+
+    core = zeros(N)
+    for f, a in [(82.0, 1.0), (82.5, 0.7), (164.5, 0.5), (123.0, 0.3)]:
+        add_into(core, sine(N, q(f), rng.uniform(0, TAU)), a)
+    core = at_rms(saturate(norm(core), 2.2), -19)
+
+    count = 2 * 90
+    times = [rng.random() * 2.0 for _ in range(count)]
+    crack = burst_events(P + ns(0.01), rng, times, [rng.uniform(0.0004, 0.003) for _ in times],
+                         [rng.random() ** 2 for _ in times])
+    crack = at_rms(biquad(fold(crack, P) * 2, "hp", 2500, 0.7), -23)
+
+    top = biquad(pnoise(P, 2, rng), "bp", 8500, 0.8)
+    top = at_rms(mul(top, smooth_random(N, 70.0, rng, P, 0.35, 1.0)), -24)
+
+    mix = [a + b + c + d + e for a, b, c, d, e in zip(roar, body, core, crack, top)]
+    mix = saturate(norm(mix), 1.8)
+    return [finish_loop(mix, P)], True
+
+
+def gyro_whine_loop(rng):
+    """Reaction-wheel whine centred on 600 Hz: a smooth near-sine with a
+    gentle 5 Hz vibrato, a partner 0.5 Hz away for a slow shimmer, soft
+    harmonics, and a faint bearing hum/ripple underneath. Code pitch-shifts
+    it 0.5..2.3, so the top stays clean."""
+    P = ns(2.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    tone = fm_sine(N, q(600.0), q(5.0), 0.5, rng.uniform(0, TAU))
+    add_into(tone, sine(N, q(600.5), rng.uniform(0, TAU)), 0.35)
+    add_into(tone, sine(N, q(1200.0), rng.uniform(0, TAU)), 0.16)
+    add_into(tone, sine(N, q(1800.5), rng.uniform(0, TAU)), 0.045)
+    add_into(tone, sine(N, q(300.0), rng.uniform(0, TAU)), 0.1)
+    tone = at_rms(mul(tone, smooth_random(N, 1.0, rng, P, 0.88, 1.0)), -12)
+
+    hum = sine(N, q(100.0), rng.uniform(0, TAU))
+    add_into(hum, sine(N, q(200.0), rng.uniform(0, TAU)), 0.4)
+    hum = at_rms(hum, -31)
+    # bearing ripple: narrow noise band modulated at the wheel's rotation rate
+    ripple = biquad(pnoise(P, 2, rng), "bp", 2400, 2.0)
+    ripple = at_rms(mul(ripple, [0.55 + 0.45 * v for v in lfo(N, 40, P)]), -40)
+
+    mix = [a + b + c for a, b, c in zip(tone, hum, ripple)]
+    return [finish_loop(mix, P)], True
+
+
+def hover_hum_loop(rng):
+    """Station-keeping: soft RCS hiss that breathes in slow, uneven swells
+    over a low, calm 55/110 Hz hum and a little air (3 s loop)."""
+    P = ns(3.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    swell = [0.35 + 0.65 * (v * v) for v in smooth_random(N, 1.3, rng, P, 0.0, 1.0)]
+    hiss = biquad(biquad(pnoise(P, 2, rng), "hp", 1500, 0.7), "lp", 6000, 0.7)
+    hiss = biquad(hiss, "peak", 3200, 1.0, 4.0)
+    hiss = at_rms(mul(hiss, swell), -19)
+
+    hum = zeros(N)
+    for f, a in [(55.0, 1.0), (110.0, 0.5), (110.333, 0.3), (165.0, 0.1)]:
+        add_into(hum, sine(N, q(f), rng.uniform(0, TAU)), a)
+    hum = at_rms(mul(hum, [0.9 + 0.1 * v for v in lfo(N, 1, P)]), -15)
+
+    air = at_rms(biquad(pnoise(P, 2, rng), "lp", 400, 0.7), -25)
+    mix = [a + b + c for a, b, c in zip(hiss, hum, air)]
+    return [finish_loop(mix, P)], True
+
+
+def _clack(n, rng, f0, low=150.0, t60=0.06):
+    """Small mechanical clack: tiny body thump, short plate ring, contact tick."""
+    y = norm(thump(n, low, low * 0.6, 0.02, 0.06, rng, attack=0.0008, drive=1.3))
+    add_into(y, norm(decaying_sines(n, metal_modes(rng, f0, PLATE[:10], t60,
+                                                   hardness_hz=5000, split=0.3))), 0.8)
+    add_into(y, norm(noise_burst(n, rng, 0.003, kind="bp", f=3000, q=0.8)), 0.5)
+    return norm(y)
+
+
+def skids_deploy(rng):
+    """Landing skids: a small servo swings the legs out, then two clacks as
+    each leg locks."""
+    n = ns(0.5)
+    x = zeros(n)
+    add_into(x, _servo(n, rng, 180, 220, 0.26), 0.4)
+    add_into(x, _clack(n - ns(0.24), rng, 620, 150), 1.0, ns(0.24))
+    add_into(x, _clack(n - ns(0.31), rng, 700, 165), 0.85, ns(0.31))
+    x = saturate(norm(x), 1.2)
+    return [finish_oneshot(x, fade_in_s=0.003, fade_out_s=0.05, hp=40)], False
+
+
+def touchdown_clunk(rng, v):
+    """Magnetic clamp engaging on touchdown: heavy metallic clunk plus the
+    magnet's low 'thrum' (a sine burst with a slow flutter). v2 is a double
+    clamp (both skids), v3 adds a short magnetic buzz."""
+    n = ns(0.4)
+    x = zeros(n)
+    f_low, f_modes, thrum_f, flutter = [(88, 150, 62, 28.0), (80, 135, 55, 24.0),
+                                        (95, 170, 68, 31.0), (74, 125, 50, 22.0)][v]
+
+    def clunk(m, k=1.0):
+        y = norm(thump(m, f_low * 1.1 * k, f_low * 0.55 * k, 0.06, 0.18, rng, drive=1.8))
+        add_into(y, norm(decaying_sines(m, metal_modes(rng, f_modes * k, PLATE, 0.22,
+                                                       hardness_hz=2500, split=0.4))), 0.7)
+        add_into(y, norm(noise_burst(m, rng, 0.01, kind="lp", f=2000)), 0.6)
+        return norm(y)
+
+    add_into(x, clunk(n), 1.0)
+    add_into(x, norm(tinkle(rng, rng.uniform(2200, 2800), 0.04, BAR[:3], 9000)), 0.12, ns(0.004))
+    if v == 2:
+        add_into(x, clunk(n - ns(0.07), 1.06), 0.5, ns(0.07))
+    m = n - ns(0.008)
+    th = sine(m, thrum_f)
+    add_into(th, sine(m, thrum_f * 2.0), 0.3)
+    th = mul(th, [0.75 + 0.25 * s for s in sine(m, flutter)])
+    th = mul(th, env_perc(m, 0.012, 0.3))
+    add_into(x, norm(th), 0.6, ns(0.008))
+    if v == 3:
+        mb = ns(0.09)
+        bz = biquad(saturate(sine(mb, 120.0), 4.0), "bp", 650, 0.7)
+        add_into(x, norm(mul(bz, env_perc(mb, 0.004, 0.08))), 0.18, ns(0.01))
+    x = saturate(norm(x), 1.3)
+    return [finish_oneshot(x, fade_in_s=0.0003, fade_out_s=0.06, hp=30)], False
+
+
+def landing_chime_silk(rng):
+    """Soft 'landed' confirmation: D6 settling down to A5 over a quiet F#5
+    (a D-major triad), mellow mallets with a breath of bell."""
+    n = ns(1.2)
+    x = zeros(n)
+    add_into(x, soft_mallet(n, D6, 0.9, rng, attack=0.006), 0.7)
+    add_into(x, bell(n, D6, 0.6, rng, bright=0.3), 0.1)
+    t = 0.16
+    add_into(x, soft_mallet(n - ns(t), A5, 1.0, rng, attack=0.006), 1.0, ns(t))
+    add_into(x, soft_mallet(n - ns(t), Fs5, 0.9, rng, attack=0.006), 0.35, ns(t))
+    x = biquad(x, "lp", 5500, 0.7)
+    x = wet_mix(x, 1.2, 1.0, 0.28)
+    return [finish_oneshot(x, fade_in_s=0.0, fade_out_s=0.15)], False
+
+
+def landing_abort_warble(rng):
+    """Gentle 'not now' cue: a soft sine falling A5 -> D5 with a light warble,
+    rounded attack and a short room tail. Informative, not an alarm."""
+    n = ns(0.6)
+    base = sweep(n, A5, D5, "exp", 0.8)
+    fr = [f * (1.0 + 0.022 * math.sin(TAU * 11.0 * i / SR)) for i, f in enumerate(base)]
+    x = osc_var(fr)
+    add_into(x, osc_var([2.0 * f for f in fr]), 0.1)
+    x = mul(x, env_points(n, [(0, 0), (0.03, 1.0), (0.38, 0.7), (0.56, 0.0)]))
+    x = biquad(x, "lp", 3500, 0.7)
+    x = wet_mix(x, 0.6, 0.6, 0.15)
+    return [finish_oneshot(x, fade_in_s=0.0, fade_out_s=0.04, hp=120)], False
+
+
+def liftoff_whoosh(rng):
+    """Liftoff: two light skid-release clacks, then a rising downwash whoosh
+    (band-pass sweeping 280 -> 2600 Hz) over a low swell of rumble."""
+    n = ns(1.0)
+    x = zeros(n)
+    add_into(x, _clack(n, rng, 760, 170, 0.045), 0.4)
+    add_into(x, _clack(n - ns(0.06), rng, 820, 180, 0.04), 0.32, ns(0.06))
+    m = n - ns(0.04)
+    src = white(m, rng)
+    wh = biquad_tv(src, "bp", sweep(m, 280, 2600, "exp", 1.2), 0.9)
+    add_into(wh, biquad_tv(src, "lp", sweep(m, 400, 3500, "exp", 1.0), 0.7), 0.4)
+    wh = mul(wh, env_points(m, [(0, 0), (0.55, 1.0), (0.8, 0.6), (0.95, 0.0)]))
+    add_into(x, norm(wh), 0.8, ns(0.04))
+    rum = mul(onepole_lp(white(m, rng), 90.0), env_points(m, [(0, 0), (0.3, 1.0), (0.9, 0.0)]))
+    add_into(x, norm(rum), 0.4, ns(0.04))
+    tone = mul(osc_var(sweep(m, 70, 140, "exp", 1.0)), env_points(m, [(0, 0), (0.4, 1.0), (0.9, 0.0)]))
+    add_into(x, norm(tone), 0.15, ns(0.04))
+    return [finish_oneshot(x, fade_in_s=0.0005, fade_out_s=0.08, hp=30)], False
+
+
+def magline_fire(rng):
+    """Magline launch: coil-discharge click, then a buzzy electromagnetic
+    'zip' sweeping 220 -> 3200 Hz with a thin fizz as the head leaves."""
+    n = ns(0.35)
+    x = zeros(n)
+    click = decaying_sines(n, [(1800, 1.0, 0.008, 0.0), (4200, 0.5, 0.005, 0.4)])
+    add_into(click, norm(noise_burst(n, rng, 0.0015, kind="hp", f=3000)), 0.6)
+    add_into(x, norm(click), 0.5)
+    m = ns(0.28)
+    fr = sweep(m, 220, 3200, "exp", 0.55)
+    buzz = osc_var(fr, table=square_table(9))
+    buzz = biquad_tv(buzz, "lp", [f * 3.0 for f in fr], 0.7)
+    add_into(buzz, osc_var([f * 1.5 for f in fr]), 0.3)
+    buzz = mul(buzz, env_points(m, [(0, 0), (0.005, 1.0), (0.12, 0.7), (0.28, 0.0)]))
+    add_into(x, norm(buzz), 0.7, ns(0.003))
+    fizz = biquad(mul(white(m, rng), env_points(m, [(0, 0), (0.02, 1.0), (0.25, 0.0)])), "hp", 5000, 0.7)
+    add_into(x, norm(fizz), 0.15, ns(0.003))
+    x = biquad(x, "lp", 9000, 0.7)
+    return [finish_oneshot(x, fade_in_s=0.0003, fade_out_s=0.04, hp=80)], False
+
+
+def magline_latch(rng):
+    """Line head latching on: magnetic clank and a short electric hum."""
+    n = ns(0.6)
+    x = zeros(n)
+    clank = norm(thump(n, 120, 65, 0.04, 0.15, rng))
+    add_into(clank, norm(decaying_sines(n, metal_modes(rng, 260, PLATE[:12], 0.3,
+                                                       hardness_hz=4000, split=0.4))), 0.8)
+    add_into(clank, norm(noise_burst(n, rng, 0.01, kind="lp", f=3000)), 0.6)
+    add_into(clank, norm(tinkle(rng, 3000, 0.04, BAR[:3], 9000)), 0.15)
+    add_into(x, clank, 1.0)
+    m = n - ns(0.01)
+    hum = biquad(saturate(sine(m, 120.0), 3.0), "bp", 700, 0.7)
+    add_into(hum, sine(m, 240.0), 0.3)
+    hum = mul(hum, env_points(m, [(0, 0), (0.02, 1.0), (0.25, 0.7), (0.45, 0.0)]))
+    add_into(x, norm(hum), 0.3, ns(0.01))
+    x = saturate(norm(x), 1.25)
+    return [finish_oneshot(x, fade_in_s=0.0003, fade_out_s=0.06, hp=40)], False
+
+
+def magline_tension_loop(rng):
+    """Cable under load: stick-slip creak (a jittered 22-55 Hz impulse train
+    exciting cable/mount resonances, as in scrape_loop but slower and lower),
+    a slowly bending strain tone and a little friction noise. Code drives
+    pitch and volume from tension."""
+    P = ns(1.5)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    exc = zeros(P)
+    rate = smooth_random(P, 3.0, rng, P, 22.0, 55.0)
+    t = ns(0.004)  # keep slip onsets off the loop seam
+    while t < P:
+        exc[t] += rng.uniform(0.3, 1.0) ** 1.3 * (1 if rng.random() < 0.5 else -1)
+        t += max(1, int(SR / rate[t] * rng.uniform(0.8, 1.2)))
+    exc = exc * 2
+    jit = smooth_random(N, 9.0, rng, P, 0.4, 1.0)
+    src = mul(exc, jit)
+    cr = resonator_bank(src, [(190, 14, 1.0), (430, 16, 0.8), (760, 18, 0.6),
+                              (1180, 20, 0.45), (1730, 20, 0.3), (2450, 18, 0.2)])
+    cr = at_rms(cr, -16)
+    strain = fm_sine(N, q(96.0), q(0.6667), 1.5, rng.uniform(0, TAU))
+    add_into(strain, sine(N, q(192.0), rng.uniform(0, TAU)), 0.25)
+    strain = at_rms(biquad(strain, "lp", 600, 0.7), -25)
+    fric = at_rms(mul(biquad(pnoise(P, 2, rng), "bp", 1500, 0.8), jit), -29)
+    mix = saturate(norm([a + b + c for a, b, c in zip(cr, strain, fric)]), 1.3)
+    return [finish_loop(mix, P)], True
+
+
+def clutch_scream_loop(rng):
+    """Slip clutch ratcheting under overload: 28 pawl clicks per second (a
+    little uneven) ringing small metal modes, a friction squeal and screechy
+    comb-filtered grind on top, plus a low knock per pawl."""
+    P = ns(1.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    count = 28
+    exc = zeros(P)
+    for k in range(count):
+        t = int((k + 0.5 + rng.uniform(-0.12, 0.12)) * P / count) % P  # onsets off the seam
+        exc[t] += rng.uniform(0.6, 1.0)
+    exc = exc * 2
+    clicks = resonator_bank(exc, [(1650, 25, 1.0), (2900, 28, 0.7), (4300, 30, 0.5),
+                                  (6100, 25, 0.3), (820, 12, 0.5)])
+    clicks = at_rms(clicks, -15)
+    knock = at_rms(biquad(exc, "bp", 180, 2.0), -22)
+    jit = smooth_random(N, 10.0, rng, P, 0.3, 1.0)
+    squeal = fm_sine(N, q(1480.0), q(7.0), 2.0, rng.uniform(0, TAU))
+    add_into(squeal, sine(N, q(2960.0), rng.uniform(0, TAU)), 0.3)
+    squeal = at_rms(mul(squeal, jit), -22)
+    grind = biquad(pnoise(P, 2, rng), "bp", 2200, 1.2)
+    grind = comb_fb(grind, 1.0 / 740.0, 0.45, damp_hz=6000)
+    grind = at_rms(mul(grind, smooth_random(N, 16.0, rng, P, 0.4, 1.0)), -21)
+    mix = saturate(norm([a + b + c + d for a, b, c, d in zip(clicks, knock, squeal, grind)]), 1.5)
+    return [finish_loop(mix, P)], True
+
+
+def winch_loop(rng):
+    """Winch reeling in: geared motor (96 Hz saw, 32 Hz torque ripple, gear
+    whine), small cable-lay ticks as the line spools onto the drum, brush
+    noise and a low drum rumble."""
+    P = ns(1.5)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    raw = wt_osc(N, q(96.0), saw_table(30, 1.0), rng.uniform(0, TAU))
+    motor = scale(biquad(raw, "bp", 700, 1.0), 0.6)
+    add_into(motor, biquad(raw, "lp", 1500, 0.7), 0.5)
+    motor = saturate(norm(motor), 1.4)
+    add_into(motor, sine(N, q(864.0), rng.uniform(0, TAU)), 0.12)
+    add_into(motor, sine(N, q(1728.0), rng.uniform(0, TAU)), 0.04)
+    motor = at_rms(mul(motor, [0.85 + 0.15 * v for v in lfo(N, 48, P)]), -14)
+    ticks = zeros(P)
+    for k in range(9):
+        ticks[int((k + rng.uniform(-0.1, 0.1)) * P / 9) % P] += rng.uniform(0.5, 1.0)
+    ticks = resonator_bank(ticks * 2, [(2400, 18, 1.0), (3600, 20, 0.6), (1300, 10, 0.4)])
+    ticks = at_rms(ticks, -27)
+    brush = at_rms(mul(biquad(pnoise(P, 2, rng), "lp", 2000, 0.7),
+                       smooth_random(N, 12.0, rng, P, 0.6, 1.0)), -26)
+    drum = at_rms(biquad(onepole_lp(pnoise(P, 2, rng), 80.0), "lp", 150, 0.7), -24)
+    mix = [a + b + c + d for a, b, c, d in zip(motor, ticks, brush, drum)]
+    mix = biquad(mix, "lp", 8000, 0.7)
+    return [finish_loop(mix, P)], True
+
+
+def magline_snap(rng):
+    """Line parting under load: whip crack, a falling twang as the cable
+    recoils, a swish, a second slap as the end whips round, a metallic ring
+    from the mount and a low thump, glued with a short reverb."""
+    n = ns(1.2)
+    x = zeros(n)
+    add_into(x, norm(noise_burst(n, rng, 0.003, kind="hp", f=2500)), 1.0)
+    add_into(x, norm(noise_burst(n, rng, 0.0015)), 0.6)
+    fr = sweep(n, 520, 170, "exp", 0.35)
+    tw = osc_var(fr, table=saw_table(16, 1.2))
+    tw = biquad_tv(tw, "lp", sweep(n, 4000, 600, "exp", 0.5), 0.9)
+    add_into(x, norm(mul(tw, env_perc(n, 0.001, 0.55))), 0.8)
+    m = ns(0.18)
+    sw = biquad_tv(white(m, rng), "bp", sweep(m, 4000, 900, "exp", 0.6), 0.9)
+    add_into(x, norm(mul(sw, env_perc(m, 0.004, 0.15))), 0.35, ns(0.005))
+    add_into(x, norm(noise_burst(n, rng, 0.002, kind="hp", f=2000)), 0.4, ns(0.06))
+    ring = metal_modes(rng, 780, TUBE + [1.6, 3.3], 1.0, amp_tilt=0.6, decay_tilt=0.5,
+                       hardness_hz=8000, split=0.5)
+    add_into(x, norm(decaying_sines(n, ring)), 0.55, ns(0.01))
+    add_into(x, norm(thump(n, 110, 55, 0.08, 0.2, rng)), 0.5)
+    x = saturate(norm(x), 1.4)
+    x = wet_mix(x, 1.0, 0.8, 0.15)
+    return [finish_oneshot(x, fade_in_s=0.0002, fade_out_s=0.2, hp=35)], False
+
+
+def magline_release(rng):
+    """Soft magnetic release: a small click, a low pop and a short falling zap."""
+    n = ns(0.3)
+    x = zeros(n)
+    click = decaying_sines(n, [(2100, 1.0, 0.012, 0.0), (3400, 0.4, 0.007, 0.5), (1300, 0.3, 0.02, 0.0)])
+    add_into(x, norm(click), 0.5)
+    add_into(x, norm(thump(n, 180, 90, 0.03, 0.06, rng, attack=0.0008, drive=1.1)), 0.8)
+    m = ns(0.12)
+    zap = mul(osc_var(sweep(m, 900, 240, "exp", 0.6)), env_perc(m, 0.003, 0.1))
+    add_into(x, norm(zap), 0.3, ns(0.004))
+    puff = biquad(mul(white(m, rng), env_perc(m, 0.003, 0.04)), "bp", 2500, 0.8)
+    add_into(x, norm(puff), 0.1)
+    x = biquad(x, "lp", 7000, 0.7)
+    return [finish_oneshot(x, fade_in_s=0.0003, fade_out_s=0.04, hp=60)], False
+
+
+def ramp_servo(rng):
+    """PETREL door + fold-down ramp: latch tick, a quick small door servo with
+    a soft stop, the ramp servo, then a light thunk as the ramp foot lands.
+    Lighter and quicker than hatch_open."""
+    n = ns(1.2)
+    x = zeros(n)
+    add_into(x, norm(tinkle(rng, 2600, 0.04, BAR[:3], 9000)), 0.25)
+    add_into(x, _servo(n - ns(0.03), rng, 210, 235, 0.32), 0.35, ns(0.03))
+    m = n - ns(0.35)
+    add_into(x, norm(thump(m, 160, 100, 0.02, 0.05, rng, attack=0.001, drive=1.1)), 0.3, ns(0.35))
+    add_into(x, _servo(n - ns(0.38), rng, 140, 165, 0.62), 0.4, ns(0.38))
+    m = n - ns(1.0)
+    foot = norm(thump(m, 100, 60, 0.04, 0.14, rng))
+    add_into(foot, norm(decaying_sines(m, metal_modes(rng, 230, PLATE[:10], 0.2, hardness_hz=2600))), 0.5)
+    add_into(foot, norm(noise_burst(m, rng, 0.006, kind="lp", f=2200)), 0.5)
+    add_into(x, norm(foot), 0.65, ns(1.0))
+    x = saturate(norm(x), 1.15)
+    return [finish_oneshot(x, fade_in_s=0.002, fade_out_s=0.06, hp=35)], False
+
+
 # ================================================================== jobs ===
 JOBS = [
     # (output name, recipe, extra args, seed)
@@ -1217,6 +1622,27 @@ JOBS = [
     ("vending_dispense", vending_dispense, (), 129),
     ("console_beep", console_beep, (), 130),
     ("holo_on", holo_on, (), 131),
+    # PETREL shuttle
+    ("petrel_engine_loop", petrel_engine_loop, (), 141),
+    ("petrel_afterburner_loop", petrel_afterburner_loop, (), 142),
+    ("gyro_whine_loop", gyro_whine_loop, (), 143),
+    ("hover_hum_loop", hover_hum_loop, (), 144),
+    ("skids_deploy", skids_deploy, (), 145),
+    ("touchdown_clunk_1", touchdown_clunk, (0,), 146),
+    ("touchdown_clunk_2", touchdown_clunk, (1,), 147),
+    ("touchdown_clunk_3", touchdown_clunk, (2,), 148),
+    ("touchdown_clunk_4", touchdown_clunk, (3,), 149),
+    ("landing_chime_silk", landing_chime_silk, (), 150),
+    ("landing_abort_warble", landing_abort_warble, (), 151),
+    ("liftoff_whoosh", liftoff_whoosh, (), 152),
+    ("magline_fire", magline_fire, (), 153),
+    ("magline_latch", magline_latch, (), 154),
+    ("magline_tension_loop", magline_tension_loop, (), 155),
+    ("clutch_scream_loop", clutch_scream_loop, (), 156),
+    ("winch_loop", winch_loop, (), 157),
+    ("magline_snap", magline_snap, (), 158),
+    ("magline_release", magline_release, (), 159),
+    ("ramp_servo", ramp_servo, (), 160),
 ]
 
 

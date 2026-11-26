@@ -76,6 +76,10 @@ static var depth_layers: Array = []
 ## ON the below-deck pad, so the deck must stay locked to the colliding layer;
 ## the on-foot director tweens this to 0 while zooming in.
 static var depth_amount := 1.0
+## Walkable deck floors of static modules: [{module, poly (global px)}].
+## Filled by StationModule.deck(); read by the on-foot layer (landing
+## anywhere, walk areas).
+static var walk_decks: Array = []
 
 
 ## Drops shared static resources (avoids "leaked ObjectDB" noise at exit).
@@ -87,6 +91,7 @@ static func cleanup() -> void:
 	_font_regular = null
 	depth_layers.clear()
 	depth_amount = 1.0
+	walk_decks.clear()
 
 
 static func glow_texture() -> Texture2D:

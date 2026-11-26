@@ -102,6 +102,12 @@ func _ready() -> void:
 	Game.impact.connect(_on_impact)
 	Game.scrape.connect(_on_scrape)
 	Game.ship_respawned.connect(func(_p: Vector2) -> void: _snap = true)
+	# A different ship: forget the old one's look-ahead and kicks.
+	Game.player_changed.connect(func(_s: RigidBody2D, _o: RigidBody2D) -> void:
+		_look = Vector2.ZERO
+		_look_vel = Vector2.ZERO
+		_punch = Vector2.ZERO
+		_punch_vel = Vector2.ZERO)
 
 
 func add_trauma(amount: float) -> void:
@@ -114,6 +120,11 @@ func punch(direction: Vector2, strength_px: float) -> void:
 		return
 	# Clamp so stacked hits can't throw the view off the ship.
 	_punch_vel += direction.normalized() * minf(strength_px, 48.0) * 24.0
+
+
+## Jump straight to the ship view (after a teleport).
+func snap() -> void:
+	_snap = true
 
 
 ## Blend the view to follow `target` at `zoom_level` over `blend_s` seconds.

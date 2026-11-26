@@ -37,6 +37,8 @@ const KEEP_INSIDE := [&"SpaceBackground", &"CameraRig", &"HUD", &"OnFoot"]
 
 var state := State.FLIGHT
 var walker: Walker
+## The ship you're flying, or the one you just got out of.
+var _vehicle: RigidBody2D
 var hud: OnFootHUD
 var landed: LandedShip
 var pad: Area2D
@@ -57,6 +59,7 @@ var _engine_db := 0.0
 var _engine_tween: Tween
 var _hatch_mark: Node2D
 var _shown_hint := false
+var _petrel_tip_shown := false
 var _dark_hint_shown := false
 
 
@@ -76,6 +79,8 @@ func _ready() -> void:
 		_harness_dock.call_deferred(String(Game.cmd["dock-at"]))
 	if Game.cmd.has("perf"):
 		_perf_log()
+	if Game.cmd.has("fly"):
+		_harness_fly.call_deferred(String(Game.cmd["fly"]))
 
 
 func _exit_tree() -> void:
@@ -95,8 +100,13 @@ func _process(_delta: float) -> void:
 	match state:
 		State.FLIGHT:
 			hud.target = null
-			if _dock and _dock.is_settled() and Input.is_action_just_pressed(&"disembark"):
-				disembark()
+			if Input.is_action_just_pressed(&"disembark"):
+				if can_exit():
+					disembark()
+				elif GameplayUtil.player_alive() and Game.player.has_method(&"disembark_hint"):
+					var hint := String(Game.player.call(&"disembark_hint"))
+					if hint != "":
+						Game.toast(hint, 2.0)
 		State.EXTERIOR, State.INTERIOR:
 			var t := _pick_target() if walker and walker.controls_enabled else null
 			hud.target = t
@@ -150,38 +160,39 @@ func _dark_room_hint() -> void:
 
 # ============================================================== disembark
 
+## Can the pilot get out right now (docked on a pad, or the shuttle anchored)?
+func can_exit() -> bool:
+	return state == State.FLIGHT and GameplayUtil.player_alive() \
+		and Game.player.has_method(&"can_disembark") and bool(Game.player.call(&"can_disembark"))
+
+
 func disembark() -> void:
-	if state != State.FLIGHT or _dock == null or not _dock.is_docked():
+	if not can_exit():
+		return
+	var ship := Game.player as RigidBody2D
+	var loc := WalkSite.locate(get_tree(), ship.global_position)
+	if loc.is_empty():
+		Game.toast("Nothing to stand on here  ·  land on a pad or a station deck", 2.5)
 		return
 	state = State.BUSY
-	pad = _dock.current_pad
-	pad_name = _dock.pad_name
-	var ship := Game.player as RigidBody2D
-	ship.set(&"controls_enabled", false)
-	ship.linear_velocity = Vector2.ZERO
-	ship.angular_velocity = 0.0
-	ship.set_deferred(&"freeze", true)     # a parked ship is static: walk into it, it won't move
+	_vehicle = ship
+	ship.call(&"park")
 	Game.mode = Game.Mode.ON_FOOT
 	_set_flight_layer(false)
 	_fade_engine(true)
 	GameplayUtil.play_oneshot(self, GameplayUtil.load_audio("ui_click.wav"), -10.0, 0.8, &"UI")
 
 	# Level-of-detail swap: detailed landed model in, flight sprite out.
-	landed = LandedShip.new()
-	landed.name = "LandedShip"
+	landed = ship.call(&"landed_model") as LandedShip
 	landed.modulate.a = 0.0
-	ship.add_child(landed)
-	_hatch_mark = Node2D.new()
-	_hatch_mark.position = LandedShip.DOOR_POINT + Vector2(0, -8)
-	landed.add_child(_hatch_mark)
-	landed.set_board_action(func(_by: Node2D) -> void: board())
+	_hatch_mark = _mark_on(landed)
 	var vis := ship.get_node_or_null(^"Visuals") as CanvasItem
 	var tw := create_tween().set_parallel()
 	tw.tween_property(landed, ^"modulate:a", 1.0, 0.8).set_delay(0.35)
 	if vis:
 		tw.tween_property(vis, ^"modulate:a", 0.0, 0.6).set_delay(0.55)
 
-	_build_site()
+	_build_site(loc)
 	_site_root.modulate.a = 0.0
 	create_tween().tween_property(_site_root, ^"modulate:a", 1.0, 1.0).set_delay(0.6)
 	var cam := Game.camera as CameraRig
@@ -207,7 +218,7 @@ func disembark() -> void:
 	await _walk(landed.foot_global(), 1.3)
 	walker.controls_enabled = true
 	state = State.EXTERIOR
-	hud.show_location("%s  ·  MERIDIAN SPACEPORT" % pad_name.to_upper(), "Vacuum outside  ·  mag-boots on  ·  suit sealed")
+	_show_site_card("Vacuum outside  ·  mag-boots on  ·  suit sealed")
 	if not _shown_hint:
 		_shown_hint = true
 		hud.show_hint("WASD:Walk|Shift:Run|E:Use|F:Flashlight|H:Help", 10.0)
@@ -216,26 +227,50 @@ func disembark() -> void:
 		_preload(_extras.call(&"get_interior_path"))
 
 
+func _mark_on(model: Node2D) -> Node2D:
+	var m := model.get_node_or_null(^"HatchMark") as Node2D
+	if m == null:
+		m = Node2D.new()
+		m.name = "HatchMark"
+		model.add_child(m)
+	m.global_position = model.call(&"door_global")
+	m.position += Vector2(0, -8)
+	return m
+
+
+func _show_site_card(sub: String) -> void:
+	hud.show_location("%s  ·  MERIDIAN STATION" % pad_name.to_upper(), sub)
+
+
 # ================================================================== board
 
-func board() -> void:
-	if state != State.EXTERIOR or landed == null:
+## Board any parked ship in reach (called by its landed model's interactable).
+func board(ship: RigidBody2D = null) -> void:
+	if ship == null:
+		ship = _vehicle
+	if state != State.EXTERIOR or ship == null or not ship.has_method(&"landed_model"):
 		return
 	state = State.BUSY
+	var model := ship.call(&"landed_model") as LandedShip
 	walker.controls_enabled = false
-	await _walk(landed.foot_global(), 1.6)
-	await _walk(landed.door_global(), 1.1)
+	if model.hatch_t < 0.95:
+		model.open_hatch(0.9)
+		await model.hatch_finished
+	await _walk(model.foot_global(), 1.6)
+	await _walk(model.door_global(), 1.1)
 	create_tween().tween_property(walker, ^"modulate:a", 0.0, 0.2)
 	var cam0 := Game.camera as CameraRig
 	if cam0:
-		cam0.set_focus(_hatch_mark, ZOOM, BLEND)   # look at the ship, not the departing walker
+		cam0.set_focus(_mark_on(model), ZOOM, BLEND)   # look at the ship, not the departing walker
 	await get_tree().create_timer(0.2, false).timeout
 	walker.queue_free()
 	walker = null
-	landed.close_hatch(1.0)
-	await landed.hatch_finished
+	model.close_hatch(1.0)
+	await model.hatch_finished
 
-	var ship := Game.player as RigidBody2D
+	# This ship is now yours; the one you came in (if different) stays parked.
+	_vehicle = ship
+	ship.call(&"take_control")
 	var vis := ship.get_node_or_null(^"Visuals") as CanvasItem
 	var cam := Game.camera as CameraRig
 	if cam:
@@ -243,22 +278,26 @@ func board() -> void:
 	_tween_depth(1.0, BLEND)
 	if vis:
 		vis.visible = true
+		vis.modulate.a = 0.0
 	var tw := create_tween().set_parallel()
 	if vis:
 		tw.tween_property(vis, ^"modulate:a", 1.0, 0.6).set_delay(0.3)
-	tw.tween_property(landed, ^"modulate:a", 0.0, 0.7).set_delay(0.5)
+	tw.tween_property(model, ^"modulate:a", 0.0, 0.7).set_delay(0.5)
 	tw.tween_property(_site_root, ^"modulate:a", 0.0, 0.8)
 	_fade_engine(false)
 	await get_tree().create_timer(BLEND, false).timeout
-	landed.queue_free()
+	ship.call(&"drop_landed_model")
 	landed = null
 	_free_site()
 	_set_flight_layer(true)
-	ship.freeze = false
-	ship.set(&"controls_enabled", true)
 	Game.mode = Game.Mode.FLIGHT
+	ship.call(&"on_boarded")
 	state = State.FLIGHT
-	Game.toast("Welcome aboard  ·  clamps holding  ·  any input to launch", 3.0)
+	if ship is ShuttleShip and not _petrel_tip_shown:
+		_petrel_tip_shown = true
+		Game.toast("PETREL  ·  WASD go · Shift afterburner · Space hover / land · Q hook · E reel · let go to fling · X out when landed · H help", 8.0)
+	else:
+		Game.toast("%s  ·  welcome aboard" % String(ship.get(&"vehicle_name")).to_upper(), 3.0)
 	Game.boarded.emit(pad_name)
 
 
@@ -350,7 +389,7 @@ func _leave_interior() -> void:
 	await hud.fade_to(0.0, 0.5).finished
 	walker.controls_enabled = true
 	state = State.EXTERIOR
-	hud.show_location("%s  ·  MERIDIAN SPACEPORT" % pad_name.to_upper(), "Back outside  ·  suit sealed")
+	_show_site_card("Back outside  ·  suit sealed")
 	Game.exited_interior.emit(iname)
 
 
@@ -368,20 +407,25 @@ func _walk(to: Vector2, speed: float) -> void:
 		guard += get_process_delta_time()
 
 
-func _build_site() -> void:
+func _build_site(loc: Dictionary) -> void:
 	_free_site()
-	if pad == null:
-		return
-	var site := PadSite.new()
-	site.name = "PadSite"
+	var site := WalkSite.new()
+	site.name = "WalkSite"
 	_site_root.add_child(site)
-	site.setup(pad)
-	var extra := PadSite.extras_for(pad_name)
-	if extra != "":
-		_extras = (load(extra) as PackedScene).instantiate() as Node2D
-		_site_root.add_child(_extras)
-		if _extras.has_signal(&"enter_requested"):
-			_extras.connect(&"enter_requested", _enter_interior)
+	if loc.kind == "pad":
+		pad = loc.pad
+		var extra: String = loc.extras
+		if extra != "":
+			_extras = (load(extra) as PackedScene).instantiate() as Node2D
+			_site_root.add_child(_extras)
+			if _extras.has_signal(&"enter_requested"):
+				_extras.connect(&"enter_requested", _enter_interior)
+		site.setup_pad(pad, _extras)
+		pad_name = String(_extras.call(&"get_title")) if _extras and _extras.has_method(&"get_title") else site.title
+	else:
+		pad = null
+		site.setup_deck(loc.polys, String(loc.get("title", "Station deck")))
+		pad_name = site.title
 
 
 func _free_site() -> void:
@@ -519,15 +563,49 @@ func _perf_log() -> void:
 			Performance.get_monitor(Performance.OBJECT_NODE_COUNT)])
 
 
+## --fly=petrel: start aboard that ship (where it is parked), the WREN parked.
+## --fly=petrel@x_px,y_px,deg also moves it there (flying) first.
+func _harness_fly(arg: String) -> void:
+	var id := arg.get_slice("@", 0)
+	var at := arg.get_slice("@", 1) if arg.contains("@") else ""
+	await get_tree().create_timer(0.3, false).timeout
+	for n in get_tree().get_nodes_in_group(&"player_ship"):
+		if n.has_method(&"ship_id") and String(n.call(&"ship_id")) == id and n != Game.player:
+			var old := Game.player
+			old.call(&"park")
+			var ov := old.get_node_or_null(^"Visuals") as CanvasItem
+			if ov:
+				ov.visible = false
+			old.call(&"landed_model")
+			n.call(&"take_control")
+			n.call(&"drop_landed_model")
+			var vis := n.get_node_or_null(^"Visuals") as CanvasItem
+			if vis:
+				vis.visible = true
+				vis.modulate.a = 1.0
+			n.call(&"on_boarded")
+			_vehicle = n
+			if at != "":
+				var p := at.split(",")
+				n.call(&"respawn_at", Transform2D(deg_to_rad(float(p[2]) if p.size() > 2 else 0.0), Vector2(float(p[0]), float(p[1]))))
+			if Game.camera and Game.camera.has_method(&"snap"):
+				Game.camera.call(&"snap")
+			return
+	push_warning("--fly: no ship with id %s" % id)
+
+
 ## --dock-at=Pad 2 (or 2): put the ship on that pad and dock immediately.
 ## With --on-foot it also gets out. For tests and screenshots.
 func _harness_dock(which: String) -> void:
-	var want := which if which.to_lower().begins_with("pad") else "Pad " + which
-	want = want.replace("Pad", "Pad ").replace("  ", " ").strip_edges()
+	# "2", "Pad2", "Pad 2" or a full name like "Hangar Bay" / "HangarBay".
+	var key := which.to_lower().replace(" ", "").replace("_", "")
+	if key.is_valid_int():
+		key = "pad" + key
 	await get_tree().create_timer(0.3, false).timeout
 	var target: Area2D
+	var want := which
 	for n in get_tree().get_nodes_in_group(&"docking_pad"):
-		if String(n.get_meta(&"pad_name", "")).to_lower() == want.to_lower():
+		if String(n.get_meta(&"pad_name", "")).to_lower().replace(" ", "") == key:
 			target = n
 	if target == null or not GameplayUtil.player_valid():
 		push_warning("--dock-at: no pad named %s" % want)

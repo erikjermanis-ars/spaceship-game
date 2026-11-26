@@ -4,7 +4,9 @@ A small Godot 4.7 proof of concept: fly a light courier ship around **Meridian S
 station in a hopeful near-future setting (rotating habitat ring, commerce pier, drydock, cargo yard, solar
 field, traffic lanes). It is a single sandbox level meant to show off **ship handling**, **level design**,
 **art direction** and **sound design**. Dock on a pad and you can **get out and walk**: around the pad, and on
-Pad 2 through an airlock into the pier's crew concourse (see [On foot](#on-foot)). Everything (graphics, sound, shaders) is made from scratch in
+Pad 2 through an airlock into the pier's crew concourse (see [On foot](#on-foot)). In Hangar 2 a second ship
+waits: the **PETREL**, a fly-by-wire hover shuttle with a magnetic towline that can land on any station deck
+(see [The PETREL](#the-petrel)). Everything (graphics, sound, shaders) is made from scratch in
 GDScript, SVG, shader code and a small Python synthesiser. There are no add-ons and no imported asset packs.
 
 Renderer: **Compatibility** (OpenGL), so the project can also be exported to the web.
@@ -54,6 +56,18 @@ On foot:
 | **Mouse wheel / = / -** | Zoom |
 | **H** | Controls help (shows the on-foot controls while walking) |
 
+Flying the PETREL (the hangar shuttle):
+
+| Key | Action |
+|---|---|
+| **W A S D / arrows** | Go that way: a gyro swings the nose to the direction, the engines open as it lines up |
+| **Shift** | Afterburner |
+| **Space (hold)** | Hover: brake to a stop with the heading locked; WASD slides. Keep holding over any station deck to land |
+| **Q / left mouse (hold)** | Mag-line: hook the highlighted cargo, structure or traffic; let go to release (fling) |
+| **E / right mouse (hold)** | Reel the line in |
+| **F** | Floodlights |
+| **X** | Get out (when landed). Any move input lifts off |
+
 Gamepads work too: left stick steers, the triggers are throttle and retro, A is boost, Y is flight assist and
 the shoulder buttons strafe.
 
@@ -85,6 +99,12 @@ the shoulder buttons strafe.
   turn on the desk lamp, get a drink from the vending machine, open and close the lounge window shutters,
   switch the ops hologram, and read the crew and traffic logs. Leave through the airlock, walk back to the ship
   and press **E** at the stairs to board. Any other pad lets you walk around the pad itself.
+* **Take the shuttle.** Dock the WREN on the Hangar Bay pad (inside Hangar 2 at the north end of the pier,
+  behind the cycling blast doors) and press **X**. Take the stairs on the pad's east edge down to the hangar
+  floor, walk to the teal PETREL in its painted bay and press **E** at its ramp. Lift off with any direction,
+  fly out through the blast doors, then hold **Space** over any deck to land: the cargo yard apron, the drydock
+  floor, the fuel depot, a pad, back in the hangar. Get out, walk around, and board whichever ship is parked
+  nearby. Hook a container with **Q** and fling it, or hook a pier corner at speed and swing round it.
 * **Watch the traffic.** Eleven AI shuttles, tugs and freighters follow lanes and do not avoid you.
 * **Tune the physics live** (Tab). Use presets such as "Nimble racer" and "Heavy freighter", or move any slider
   (thrust, thrust point, inertia, drag, bounce and so on). "Reset to Pat Kerr defaults" restores the reference
@@ -222,6 +242,47 @@ starts as a low rumble and opens up as the pressure rises, and then steps are cr
 with room tone, door whooshes, switch clicks, flickering lights and console blips. The ship's engine bus fades out
 while you're away and back when you board, and the music bed sits a little lower indoors.
 
+## The PETREL
+
+A second pilotable ship with deliberately different controls (designed by a small panel of competing concepts
+and judged for fun, distinctness, learnability and buildability). The WREN makes you master its drift. The
+PETREL is fly-by-wire: "it moves the way you walk".
+
+* **Point, then go** (`scripts/ship/shuttle_ship.gd`, a `PlayerShip` subclass). WASD is a direction, not an
+  engine. A reaction-wheel gyro (pure torque at the centre of mass) turns the nose there with a stopping
+  controller (a 180° flip settles in about 1.4 s), and the twin stern engines only open up as the nose lines up
+  (fully within 15°, shut beyond 60°). Pilot RCS pushes along the input at once, so it responds instantly.
+  Sustained full torque overheats the gyro: it saturates, loses authority, and the engines trim differentially
+  to help.
+* **Hover and land anywhere.** Holding Space brakes to a stop with the heading locked. Over a station deck the
+  shuttle then descends (fake altitude 3 m → 0) onto magnetic skids and freezes in place. `LandingProbe`
+  checks a deck is under every skid, nothing is in the way, and you are slow and not spinning. A footprint ghost
+  on the deck shows the result before you try (green, amber for an edge, red if obstructed), and the touchdown
+  is graded SILK / FIRM / SKID, or BULLSEYE on a pad centre (pads also repair you). "Decks" are the station's
+  floor polygons, which every station module registers (`StationModule.deck()` → `LevelArt.walk_decks`; the
+  spinning ring is excluded). When you get out, the walk area is built from those same decks.
+* **Mag-line** (`scripts/ship/mag_line.gd`). A tension-only rope: tension = stiffness × stretch +
+  damping × stretch rate. A free container is pulled toward you with an equal and opposite force (towing, and
+  flinging when you let go). Fixed or moving structure only pulls you: hook a corner at speed and you swing
+  round it. A slip clutch pays out line above 45 kN (up to 40 m), and the line snaps if overloaded at full
+  length. The winch reels in at 4 m/s and stalls under load.
+* **Two ships, one game.** Systems follow `Game.player`; boarding emits `Game.player_changed`. Damage, docking,
+  race (best laps are stored per ship), camera, flight guide and tuning panel react to it. A ship nobody is in is
+  *parked*: frozen on the static world layer (so the other ship and the walker bump into it), silent, and shown
+  with its detailed landed model. `PlayerShip` has a small vehicle API the on-foot director uses for any ship:
+  `park()`, `take_control()`, `on_boarded()`, `can_disembark()`, `landed_model()`, `ship_id()`,
+  `uses_pad_clamps()`, `home_transform()`, `damage_scale()`. The PETREL overrides the flight model through
+  `_apply_flight_forces()`. Keys pressed when you board are latched until released, so the E or Shift you were
+  holding on foot doesn't fire the ship's controls.
+* **Hangar 2 on foot** (`scenes/onfoot/sites/hangar_site.tscn`). The Hangar Bay pad is a raised platform. A gap
+  in its railing leads to stairs down to the hangar floor, which is walkable up to a safety barrier at the blast
+  doors. The site applies wherever you get out inside the hangar (`WalkSite.PAD_EXTRAS` `covers`), so the stairs
+  connect whichever ships are parked there.
+* **Art and sound.** The flight sprite (`assets/art/ship/shuttle_hull.svg`) and the landed close-up with skids,
+  door and ramp (`assets/art/onfoot/shuttle_landed.svg`) are new SVGs. There are 20 new synthesized sounds: twin
+  engines, afterburner, gyro whine, hover hum, skid deploy, mag clamps, the landing chime and abort warble,
+  lift-off, and the line's fire, latch, creak, clutch scream, winch, snap and release.
+
 ## How the assets were made
 
 * **Sound:** all 38 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
@@ -264,6 +325,8 @@ Any scene accepts these user arguments after `--` (they are parsed by `Game`):
 | `--cam-zoom=0.3`, `--cam-rotate`, `--tuning` | Set the camera zoom factor, use rotate mode, or open the tuning panel |
 | `--dock-at=2` | Put the ship on that pad and dock it straight away (add `--on-foot` to also get out) |
 | `--perf` | Print fps, frame time and draw calls every 2 s |
+| `--dock-at=HangarBay` | Any pad by name (spaces optional) |
+| `--fly=petrel` or `--fly=petrel@x_px,y_px,deg` | Start aboard the PETREL (on its berth, or flying at that spot); the WREN is parked |
 
 Example: dock at Pad 2, get out, run to the airlock and go inside (on-foot actions are `move_up/down/left/right`,
 `run`, `interact`, `flashlight`):
@@ -288,6 +351,8 @@ $G --headless --path . --fixed-fps 120 res://scenes/test/level_validate.tscn    
 $G --headless --path . --fixed-fps 120 res://scenes/test/gate_clearance_check.tscn  # every race gate clear of structure
 $G --headless --path . --fixed-fps 120 res://scenes/test/gameplay_race_test.tscn    # race logic, splits, best lap saved
 $G --headless --path . --fixed-fps 120 res://scenes/test/onfoot_flow_test.tscn      # disembark, airlock, interior, state, board
+$G --headless --path . --fixed-fps 120 res://scenes/test/vehicles_flow_test.tscn    # hangar stairs, board PETREL, land anywhere, swap ships
+$G --headless --path . --fixed-fps 120 res://scenes/test/shuttle_flight_test.tscn   # PETREL gyro, engines, terminal speed, hover, mag-line tow
 $G --headless --path . --quit-after 600 res://scenes/main.tscn                     # whole game: should print nothing
 ```
 

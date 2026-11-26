@@ -25,6 +25,21 @@ const CONTROLS := [
 	["X", "Exit the ship (when docked)"],
 	["H", "This help"],
 ]
+const CONTROLS_PETREL := [
+	["PETREL shuttle", ""],
+	["W A S D / ↑ ← ↓ →", "Go that way: the gyro swings the nose, engines open as it lines up"],
+	["Shift", "Afterburner"],
+	["Space (hold)", "Hover: brake to a stop, heading locked, WASD slides"],
+	["Space over a deck", "Keep holding: descend onto mag-skids (land anywhere)"],
+	["Q / LMB (hold)", "Mag-line: hook cargo, structure or traffic; let go to fling"],
+	["E / RMB (hold)", "Reel the line in (stalls under heavy load)"],
+	["F", "Floodlights"],
+	["X", "Get out (when landed)  ·  any move input lifts off"],
+	["View", ""],
+	["C · Wheel · M · G", "Camera · zoom · map · flight guide"],
+	["R / T", "Race / reset (best lap kept per ship)"],
+	["P / Esc · H", "Pause · this help"],
+]
 const CONTROLS_ON_FOOT := [
 	["On foot", ""],
 	["W A S D / ↑ ← ↓ →", "Walk"],
@@ -68,8 +83,12 @@ func _draw() -> void:
 		_draw_intro(clampf(minf(_intro_t * 2.0, (INTRO_TIME - _intro_t) * 1.2), 0.0, 1.0))
 	if _a <= 0.01:
 		return
-	var rows: Array = CONTROLS_ON_FOOT if Game.mode == Game.Mode.ON_FOOT else CONTROLS
-	var w := 720.0
+	var rows: Array = CONTROLS
+	if Game.mode == Game.Mode.ON_FOOT:
+		rows = CONTROLS_ON_FOOT
+	elif Game.player is ShuttleShip:
+		rows = CONTROLS_PETREL
+	var w := 940.0 if rows == CONTROLS_PETREL else 720.0
 	var h := 64.0 + rows.size() * 30.0
 	var r := Rect2((size - Vector2(w, h)) * 0.5, Vector2(w, h))
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.01, 0.03, 0.45 * _a))

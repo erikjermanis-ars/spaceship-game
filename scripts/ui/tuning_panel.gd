@@ -71,6 +71,10 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"tuning_panel"):
+		if not visible and _ship() == null:
+			Game.toast("Flight-model tuning: WREN only", 1.8)
+			get_viewport().set_input_as_handled()
+			return
 		visible = not visible
 		if visible:
 			_sync_from_targets()
@@ -79,6 +83,9 @@ func _input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if not visible:
+		return
+	if _ship() == null:
+		visible = false   # e.g. reopened by the HUD restore while flying the PETREL
 		return
 	# Keep the assist toggle honest if F was pressed while the panel is open.
 	var ship := _ship()
@@ -89,7 +96,11 @@ func _process(_delta: float) -> void:
 
 
 func _ship() -> PlayerShip:
-	return Game.player as PlayerShip if is_instance_valid(Game.player) else null
+	var s := Game.player as PlayerShip if is_instance_valid(Game.player) else null
+	# The sliders describe the courier's barbell model only.
+	if s and s.ship_id() != &"wren":
+		return null
+	return s
 
 
 func _target(kind: String) -> Object:

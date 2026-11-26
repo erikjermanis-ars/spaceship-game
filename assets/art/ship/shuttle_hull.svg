@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PETREL light civilian shuttle, top-down, nose toward +X. Same style as ship_hull.svg (WREN).
+     1 SVG unit = 1 world pixel = 0.1 m. Origin (0,0) = centre of mass. Starboard = +Y.
+     Hull fits the collision polygon (7,0)(5.2,-2.2)(-3.8,-3.6)(-6.6,-2.9) m, mirrored.
+     Engines (-66,+-14), tow eye (-10,0), gyro housing (3,0), nav lights (-37,+-34), strobe (-64,0).
+     Imported at svg/scale 6. Registration text is drawn in code. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="90" viewBox="-75 -45 150 90">
+  <defs>
+    <linearGradient id="hullG" gradientUnits="userSpaceOnUse" x1="0" y1="-36" x2="0" y2="36">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#EEF2F6"/>
+      <stop offset="0.7" stop-color="#DCE3EA"/>
+      <stop offset="1" stop-color="#AEB9C6"/>
+    </linearGradient>
+    <linearGradient id="sternG" gradientUnits="userSpaceOnUse" x1="0" y1="-34" x2="0" y2="34">
+      <stop offset="0" stop-color="#2A4A72"/>
+      <stop offset="0.45" stop-color="#1D3557"/>
+      <stop offset="1" stop-color="#132540"/>
+    </linearGradient>
+    <linearGradient id="stripePG" gradientUnits="userSpaceOnUse" x1="0" y1="-31" x2="0" y2="-24">
+      <stop offset="0" stop-color="#35B3A3"/>
+      <stop offset="1" stop-color="#2A9D8F"/>
+    </linearGradient>
+    <linearGradient id="stripeSG" gradientUnits="userSpaceOnUse" x1="0" y1="24" x2="0" y2="31">
+      <stop offset="0" stop-color="#2A9D8F"/>
+      <stop offset="1" stop-color="#20857A"/>
+    </linearGradient>
+    <radialGradient id="gyroG" gradientUnits="userSpaceOnUse" cx="1.4" cy="-1.8" r="6.4">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.6" stop-color="#E4E9EF"/>
+      <stop offset="1" stop-color="#B4BFCB"/>
+    </radialGradient>
+    <linearGradient id="bellG" gradientUnits="userSpaceOnUse" x1="-72.6" y1="0" x2="-65" y2="0">
+      <stop offset="0" stop-color="#2A313B"/>
+      <stop offset="1" stop-color="#5B6674"/>
+    </linearGradient>
+    <radialGradient id="canopyG" gradientUnits="userSpaceOnUse" cx="47" cy="-4" r="16">
+      <stop offset="0" stop-color="#5D86AE"/>
+      <stop offset="0.55" stop-color="#21395A"/>
+      <stop offset="1" stop-color="#0B1526"/>
+    </radialGradient>
+    <radialGradient id="warmG" gradientUnits="userSpaceOnUse" cx="31.5" cy="0" r="7">
+      <stop offset="0" stop-color="#FFE2A0" stop-opacity="0.9"/>
+      <stop offset="0.6" stop-color="#FFC870" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#FFB060" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- ===== stern engines: collars + cool bells, nozzles toward -X ===== -->
+  <rect x="-67.4" y="-17.9" width="2.6" height="7.8" rx="0.7" fill="#8E9AA8" stroke="#4A5563" stroke-width="0.4"/>
+  <path d="M -66.6 -17.3 L -72.6 -18.6 L -72.6 -9.4 L -66.6 -10.7 Z" fill="url(#bellG)" stroke="#1E242C" stroke-width="0.4"/>
+  <rect x="-73.2" y="-18.6" width="0.9" height="9.2" rx="0.3" fill="#1A1F27"/>
+  <path d="M -69.6 -17.8 L -69.6 -10.2" stroke="#6E7987" stroke-width="0.35" opacity="0.7"/>
+  <rect x="-67.4" y="10.1" width="2.6" height="7.8" rx="0.7" fill="#8E9AA8" stroke="#4A5563" stroke-width="0.4"/>
+  <path d="M -66.6 10.7 L -72.6 9.4 L -72.6 18.6 L -66.6 17.3 Z" fill="url(#bellG)" stroke="#1E242C" stroke-width="0.4"/>
+  <rect x="-73.2" y="9.4" width="0.9" height="9.2" rx="0.3" fill="#1A1F27"/>
+  <path d="M -69.6 10.2 L -69.6 17.8" stroke="#6E7987" stroke-width="0.35" opacity="0.7"/>
+
+  <!-- ===== main hull ===== -->
+  <path d="M 70 0 C 70 -5.4 62.6 -15.4 52 -21.6 C 44 -26.25 22 -30.6 4.6 -31 L -15.4 -31 C -23 -31 -29 -35.6 -38 -35.8 C -48 -36 -58 -33.6 -63 -31.2 C -65.4 -30 -66 -29 -66 -27 L -66 0 L -66 27 C -66 29 -65.4 30 -63 31.2 C -58 33.6 -48 36 -38 35.8 C -29 35.6 -23 31 -15.4 31 L 4.6 31 C 22 30.6 44 26.25 52 21.6 C 62.6 15.4 70 5.4 70 0 Z" fill="url(#hullG)"/>
+  <!-- navy stern block -->
+  <path d="M -55 -33.89 L -55.33 -33.81 L -55.73 -33.71 L -56.13 -33.61 L -56.52 -33.5 L -56.9 -33.4 L -57.28 -33.29 L -57.66 -33.18 L -58.03 -33.07 L -58.39 -32.96 L -58.75 -32.85 L -59.1 -32.73 L -59.44 -32.62 L -59.78 -32.5 L -60.11 -32.39 L -60.43 -32.27 L -60.75 -32.15 L -61.05 -32.04 L -61.36 -31.92 L -61.65 -31.8 L -61.93 -31.68 L -62.21 -31.56 L -62.48 -31.44 L -62.75 -31.32 L -63 -31.2 L -63.12 -31.14 L -63.23 -31.08 L -63.35 -31.02 L -63.46 -30.96 L -63.56 -30.9 L -63.67 -30.84 L -63.77 -30.79 L -63.87 -30.73 L -63.96 -30.67 L -64.06 -30.61 L -64.15 -30.55 L -64.23 -30.49 L -64.32 -30.44 L -64.4 -30.38 L -64.48 -30.32 L -64.56 -30.26 L -64.63 -30.2 L -64.71 -30.14 L -64.78 -30.08 L -64.84 -30.02 L -64.91 -29.96 L -64.97 -29.9 L -65.03 -29.84 L -65.09 -29.78 L -65.15 -29.72 L -65.2 -29.66 L -65.26 -29.59 L -65.31 -29.53 L -65.35 -29.46 L -65.4 -29.4 L -65.44 -29.33 L -65.49 -29.27 L -65.53 -29.2 L -65.56 -29.13 L -65.6 -29.07 L -65.64 -29 L -65.67 -28.93 L -65.7 -28.86 L -65.73 -28.78 L -65.76 -28.71 L -65.78 -28.64 L -65.81 -28.56 L -65.83 -28.49 L -65.85 -28.41 L -65.87 -28.33 L -65.89 -28.25 L -65.9 -28.17 L -65.92 -28.09 L -65.93 -28.01 L -65.94 -27.92 L -65.96 -27.84 L -65.97 -27.75 L -65.97 -27.66 L -65.98 -27.57 L -65.99 -27.48 L -65.99 -27.39 L -66 -27.29 L -66 -27.2 L -66 -27.1 L -66 -27 L -66 -26.1 L -66 -25.2 L -66 -24.3 L -66 -23.4 L -66 -22.5 L -66 -21.6 L -66 -20.7 L -66 -19.8 L -66 -18.9 L -66 -18 L -66 -17.1 L -66 -16.2 L -66 -15.3 L -66 -14.4 L -66 -13.5 L -66 -12.6 L -66 -11.7 L -66 -10.8 L -66 -9.9 L -66 -9 L -66 -8.1 L -66 -7.2 L -66 -6.3 L -66 -5.4 L -66 -4.5 L -66 -3.6 L -66 -2.7 L -66 -1.8 L -66 -0.9 L -66 0 L -66 0.9 L -66 1.8 L -66 2.7 L -66 3.6 L -66 4.5 L -66 5.4 L -66 6.3 L -66 7.2 L -66 8.1 L -66 9 L -66 9.9 L -66 10.8 L -66 11.7 L -66 12.6 L -66 13.5 L -66 14.4 L -66 15.3 L -66 16.2 L -66 17.1 L -66 18 L -66 18.9 L -66 19.8 L -66 20.7 L -66 21.6 L -66 22.5 L -66 23.4 L -66 24.3 L -66 25.2 L -66 26.1 L -66 27 L -66 27.1 L -66 27.2 L -66 27.29 L -65.99 27.39 L -65.99 27.48 L -65.98 27.57 L -65.97 27.66 L -65.97 27.75 L -65.96 27.84 L -65.94 27.92 L -65.93 28.01 L -65.92 28.09 L -65.9 28.17 L -65.89 28.25 L -65.87 28.33 L -65.85 28.41 L -65.83 28.49 L -65.81 28.56 L -65.78 28.64 L -65.76 28.71 L -65.73 28.78 L -65.7 28.86 L -65.67 28.93 L -65.64 29 L -65.6 29.07 L -65.56 29.13 L -65.53 29.2 L -65.49 29.27 L -65.44 29.33 L -65.4 29.4 L -65.35 29.46 L -65.31 29.53 L -65.26 29.59 L -65.2 29.66 L -65.15 29.72 L -65.09 29.78 L -65.03 29.84 L -64.97 29.9 L -64.91 29.96 L -64.84 30.02 L -64.78 30.08 L -64.71 30.14 L -64.63 30.2 L -64.56 30.26 L -64.48 30.32 L -64.4 30.38 L -64.32 30.44 L -64.23 30.49 L -64.15 30.55 L -64.06 30.61 L -63.96 30.67 L -63.87 30.73 L -63.77 30.79 L -63.67 30.84 L -63.56 30.9 L -63.46 30.96 L -63.35 31.02 L -63.23 31.08 L -63.12 31.14 L -63 31.2 L -62.75 31.32 L -62.48 31.44 L -62.21 31.56 L -61.93 31.68 L -61.65 31.8 L -61.36 31.92 L -61.05 32.04 L -60.75 32.15 L -60.43 32.27 L -60.11 32.39 L -59.78 32.5 L -59.44 32.62 L -59.1 32.73 L -58.75 32.85 L -58.39 32.96 L -58.03 33.07 L -57.66 33.18 L -57.28 33.29 L -56.9 33.4 L -56.52 33.5 L -56.13 33.61 L -55.73 33.71 L -55.33 33.81 L -55 33.89 Q -49.5 0 -55 -33.89 Z" fill="url(#sternG)"/>
+  <path d="M -53.3 -33.28 Q -47.6 0 -53.3 33.28" stroke="#2A9D8F" stroke-width="0.7" fill="none"/>
+  <path d="M -56.5 -20 L -65.4 -20 M -56.5 20 L -65.4 20 M -53.6 -8 L -65.4 -8 M -53.6 8 L -65.4 8" stroke="#2E4A70" stroke-width="0.4"/>
+  <path d="M -62 -4 L -57 -4 M -62 -2.6 L -57 -2.6 M -62 2.6 L -57 2.6 M -62 4 L -57 4" stroke="#0E1C30" stroke-width="0.5"/>
+  <!-- teal livery stripes along both flanks -->
+  <path d="M 27.5 -28.24 L 26.5 -28.41 L 25.5 -28.57 L 24.5 -28.72 L 23.5 -28.87 L 22.5 -29.02 L 21.5 -29.15 L 20.5 -29.29 L 19.5 -29.41 L 18.5 -29.53 L 17.5 -29.65 L 16.5 -29.76 L 15.5 -29.86 L 14.5 -29.96 L 13.5 -30.05 L 12.5 -30.13 L 11.5 -30.21 L 10.5 -30.28 L 9.5 -30.34 L 8.5 -30.4 L 7.5 -30.45 L 6.5 -30.49 L 5.5 -30.53 L 4.5 -30.55 L 3.5 -30.55 L 2.5 -30.55 L 1.5 -30.55 L 0.5 -30.55 L -0.5 -30.55 L -1.5 -30.55 L -2.5 -30.55 L -3.5 -30.55 L -4.5 -30.55 L -5.5 -30.55 L -6.5 -30.55 L -7.5 -30.55 L -8.5 -30.55 L -9.5 -30.55 L -10.5 -30.55 L -11.5 -30.55 L -12.5 -30.55 L -13.5 -30.55 L -14.5 -30.55 L -15.5 -30.55 L -16.5 -30.58 L -17.5 -30.66 L -18.5 -30.79 L -19.5 -30.97 L -20.5 -31 L -21.5 -31 L -22.5 -31 L -23.5 -31 L -24.5 -31 L -25.5 -31 L -26.5 -31 L -27.5 -31 L -28.5 -31 L -29.5 -31 L -30.5 -31 L -31.5 -31 L -32.5 -31 L -33.5 -31 L -34.5 -31 L -35.5 -31 L -36.5 -31 L -37.5 -31 L -38.5 -31 L -39.5 -31 L -40.5 -31 L -41.5 -31 L -42.5 -31 L -43.5 -31 L -44.5 -31 L -45.5 -31 L -46.5 -31 L -47.5 -31 L -48.5 -31 L -49.5 -31 L -50.5 -31 L -51.5 -31 L -52.5 -31 L -52.6 -31 L -49 -24 L 10 -24 Q 20 -24.2 27.5 -28.24 Z" fill="url(#stripePG)"/>
+  <path d="M 27.5 28.24 L 26.5 28.41 L 25.5 28.57 L 24.5 28.72 L 23.5 28.87 L 22.5 29.02 L 21.5 29.15 L 20.5 29.29 L 19.5 29.41 L 18.5 29.53 L 17.5 29.65 L 16.5 29.76 L 15.5 29.86 L 14.5 29.96 L 13.5 30.05 L 12.5 30.13 L 11.5 30.21 L 10.5 30.28 L 9.5 30.34 L 8.5 30.4 L 7.5 30.45 L 6.5 30.49 L 5.5 30.53 L 4.5 30.55 L 3.5 30.55 L 2.5 30.55 L 1.5 30.55 L 0.5 30.55 L -0.5 30.55 L -1.5 30.55 L -2.5 30.55 L -3.5 30.55 L -4.5 30.55 L -5.5 30.55 L -6.5 30.55 L -7.5 30.55 L -8.5 30.55 L -9.5 30.55 L -10.5 30.55 L -11.5 30.55 L -12.5 30.55 L -13.5 30.55 L -14.5 30.55 L -15.5 30.55 L -16.5 30.58 L -17.5 30.66 L -18.5 30.79 L -19.5 30.97 L -20.5 31 L -21.5 31 L -22.5 31 L -23.5 31 L -24.5 31 L -25.5 31 L -26.5 31 L -27.5 31 L -28.5 31 L -29.5 31 L -30.5 31 L -31.5 31 L -32.5 31 L -33.5 31 L -34.5 31 L -35.5 31 L -36.5 31 L -37.5 31 L -38.5 31 L -39.5 31 L -40.5 31 L -41.5 31 L -42.5 31 L -43.5 31 L -44.5 31 L -45.5 31 L -46.5 31 L -47.5 31 L -48.5 31 L -49.5 31 L -50.5 31 L -51.5 31 L -52.5 31 L -52.6 31 L -49 24 L 10 24 Q 20 24.2 27.5 28.24 Z" fill="url(#stripeSG)"/>
+  <path d="M 63 -10.88 L 61 -12.91 L 59 -14.71 L 57 -16.33 L 55 -17.79 L 53 -19.1 L 51 -20.24 L 49 -21.17 L 47 -21.95 L 45 -23.05 L 43 -23.68 L 41 -24.25 L 39 -24.78 L 37 -25.27 L 35 -25.73 L 33 -26.16 L 31 -26.55 L 29 -26.93 L 27 -27.27 L 25 -27.6 L 23 -27.9 L 21 -28.17 L 19 -28.42 L 17 -28.65 L 15 -28.86 L 13 -29.04 L 11 -29.19 L 9 -29.32 L 7 -29.42 L 5 -29.49 L 3 -29.5 L 1 -29.5 L -1 -29.5 L -3 -29.5 L -5 -29.5 L -7 -29.5 L -9 -29.5 L -11 -29.5" stroke="#FFFFFF" stroke-width="1.1" fill="none" opacity="0.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M -47.8 -22.9 L 8.5 -22.9 Q 22 -23.4 31 -27.5" stroke="#1D3557" stroke-width="0.6" fill="none"/>
+  <path d="M -47.8 22.9 L 8.5 22.9 Q 22 23.4 31 27.5" stroke="#1D3557" stroke-width="0.6" fill="none"/>
+  <!-- spine stripe -->
+  <path d="M 24.5 -1.5 L -50.5 -2.1 L -50.5 2.1 L 24.5 1.5 Z" fill="#1D3557"/>
+  <path d="M 23 -0.35 L -49.5 -0.45 L -49.5 0.45 L 23 0.35 Z" fill="#2A9D8F"/>
+  <!-- hull panel seams -->
+  <g stroke="#8E9AA8" stroke-width="0.4" fill="none" opacity="0.9">
+    <path d="M 22 -29.04 C 23.2 -14.52 23.2 14.52 22 29.04 M -20 -31.02 C -18.8 -15.51 -18.8 15.51 -20 31.02 M -40 -35.31 C -38.8 -17.65 -38.8 17.65 -40 35.31 M 21.4 -12 L -39.4 -12 M 21.4 12 L -39.4 12 M 59.5 -16.84 C 61 -8.42 61 8.42 59.5 16.84"/>
+  </g>
+  <!-- passenger-cabin skylights -->
+  <rect x="14.8" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="15.4" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="8.8" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="9.4" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="2.8" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="3.4" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-3.2" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-2.6" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-9.2" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-8.6" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-15.2" y="-18.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-14.6" y="-17.85" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="14.8" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="15.4" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="8.8" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="9.4" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="2.8" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="3.4" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-3.2" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-2.6" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-9.2" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-8.6" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <rect x="-15.2" y="16.2" width="3.4" height="2" rx="0.7" fill="#21395A" stroke="#1D3557" stroke-width="0.3"/>
+  <rect x="-14.6" y="16.55" width="1.6" height="0.45" rx="0.2" fill="#7FE6FF" opacity="0.55"/>
+  <path d="M 12 -9.5 L 18 -9.5 L 18 -8 L 12 -8 Z M 12 8 L 18 8 L 18 9.5 L 12 9.5 Z" fill="#AAB5C1"/>
+  <path d="M -34 -7 L -26 -7 M -34 -5.8 L -26 -5.8 M -34 5.8 L -26 5.8 M -34 7 L -26 7" stroke="#8E9AA8" stroke-width="0.4"/>
+  <!-- port door outline (detail lives in the landed model) -->
+  <path d="M -14 -30.6 L -14 -27 L 4 -27 L 4 -30.6" stroke="#8E9AA8" stroke-width="0.4" fill="none"/>
+  <!-- hull outline on top of the livery -->
+  <path d="M 70 0 C 70 -5.4 62.6 -15.4 52 -21.6 C 44 -26.25 22 -30.6 4.6 -31 L -15.4 -31 C -23 -31 -29 -35.6 -38 -35.8 C -48 -36 -58 -33.6 -63 -31.2 C -65.4 -30 -66 -29 -66 -27 L -66 0 L -66 27 C -66 29 -65.4 30 -63 31.2 C -58 33.6 -48 36 -38 35.8 C -29 35.6 -23 31 -15.4 31 L 4.6 31 C 22 30.6 44 26.25 52 21.6 C 62.6 15.4 70 5.4 70 0 Z" fill="none" stroke="#4A5563" stroke-width="0.9" stroke-linejoin="round"/>
+  <!-- reaction-wheel (gyro) housing over the CoM -->
+  <circle cx="3" cy="0" r="5.4" fill="url(#gyroG)" stroke="#4A5563" stroke-width="0.45"/>
+  <circle cx="3" cy="0" r="4.0" fill="none" stroke="#8E9AA8" stroke-width="0.35"/>
+  <circle cx="3" cy="0" r="2.4" fill="#1D3557"/>
+  <circle cx="3" cy="0" r="1.5" fill="none" stroke="#2A9D8F" stroke-width="0.5"/>
+  <circle cx="3" cy="0" r="0.55" fill="#7FE6FF"/>
+  <g fill="#8E9AA8"><circle cx="7.39" cy="1.82" r="0.3"/><circle cx="3.62" cy="4.71" r="0.3"/><circle cx="-0.77" cy="2.89" r="0.3"/><circle cx="-1.39" cy="-1.82" r="0.3"/><circle cx="2.38" cy="-4.71" r="0.3"/><circle cx="6.77" cy="-2.89" r="0.3"/></g>
+  <!-- mag-line winch / tow eye -->
+  <rect x="-14.6" y="-2.2" width="9.2" height="4.4" rx="1.2" fill="#56616E" stroke="#2B3440" stroke-width="0.35"/>
+  <circle cx="-10" cy="0" r="3.7" fill="#4A5563" stroke="#2B3440" stroke-width="0.35"/>
+  <circle cx="-10" cy="0" r="3.0" fill="none" stroke="#FFB000" stroke-width="1.0"/>
+  <circle cx="-10" cy="0" r="3.0" fill="none" stroke="#1E242C" stroke-width="1.0" stroke-dasharray="1.18 1.18"/>
+  <circle cx="-10" cy="0" r="2.0" fill="#3A4452" stroke="#9AA6B4" stroke-width="0.3"/>
+  <circle cx="-10" cy="0" r="1.05" fill="none" stroke="#D3DBE3" stroke-width="0.6"/>
+  <circle cx="-10" cy="0" r="0.45" fill="#0E1218"/>
+  <!-- ===== cockpit canopy ===== -->
+  <path d="M 58 0 C 57 -7.8 49.5 -12 40 -12 C 30.5 -12 25 -9.4 25 0 C 25 9.4 30.5 12 40 12 C 49.5 12 57 7.8 58 0 Z" fill="#1D3557" stroke="#14263F" stroke-width="0.5"/>
+  <path d="M 56.2 0 C 55.2 -6.8 48.6 -10.7 40 -10.7 C 31.6 -10.7 26.6 -8.4 26.6 0 C 26.6 8.4 31.6 10.7 40 10.7 C 48.6 10.7 55.2 6.8 56.2 0 Z" fill="url(#canopyG)"/>
+  <ellipse cx="31.5" cy="0" rx="5" ry="7" fill="url(#warmG)"/>
+  <path d="M 44.5 -10.3 C 45.6 -5 45.6 5 44.5 10.3 M 33.5 -10.5 C 32.6 -5 32.6 5 33.5 10.5" stroke="#1D3557" stroke-width="0.8" fill="none"/>
+  <path d="M 53.6 -3.4 C 51.6 -7.4 47 -9.2 41 -9.4" stroke="#CFEFFF" stroke-width="0.8" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M 42.5 -9.3 C 38 -9.3 35.4 -9.1 35 -8.9" stroke="#CFEFFF" stroke-width="0.5" fill="none" opacity="0.45" stroke-linecap="round"/>
+  <circle cx="64.5" cy="0" r="1.0" fill="#1D3557"/>
+  <!-- RCS quads: two near the nose and two near the stern on each side -->
+  <rect x="48.6" y="-20.85" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="49.7" y="-21.6" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="52.35" y="-20.2" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="48" y="-20.2" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="41.1" y="-23.65" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="42.2" y="-24.4" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="44.85" y="-23" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="40.5" y="-23" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-47.9" y="-33.25" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="-46.8" y="-34" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="-44.15" y="-32.6" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-48.5" y="-32.6" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-59.4" y="-30.65" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="-58.3" y="-31.4" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="-55.65" y="-30" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-60" y="-30" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="48.6" y="18.35" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="49.7" y="20.8" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="52.35" y="19" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="48" y="19" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="41.1" y="21.15" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="42.2" y="23.6" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="44.85" y="21.8" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="40.5" y="21.8" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-47.9" y="30.75" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="-46.8" y="33.2" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="-44.15" y="31.4" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-48.5" y="31.4" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-59.4" y="28.15" width="3.8" height="2.5" rx="0.45" fill="#9AA6B4" stroke="#56616E" stroke-width="0.35"/>
+  <rect x="-58.3" y="30.6" width="1.6" height="0.8" fill="#2B3440"/>
+  <rect x="-55.65" y="28.8" width="0.65" height="1.2" fill="#2B3440"/>
+  <rect x="-60" y="28.8" width="0.65" height="1.2" fill="#2B3440"/>
+  <!-- nav lights (port red / starboard green) + stern strobe -->
+  <circle cx="-37" cy="-34" r="1.5" fill="#E9EEF3" stroke="#56616E" stroke-width="0.3"/>
+  <circle cx="-37" cy="-34" r="1.05" fill="#FF3B3B"/>
+  <circle cx="-37" cy="34" r="1.5" fill="#E9EEF3" stroke="#56616E" stroke-width="0.3"/>
+  <circle cx="-37" cy="34" r="1.05" fill="#3BFF7A"/>
+  <circle cx="-64" cy="0" r="1.1" fill="#F4F7FA" stroke="#56616E" stroke-width="0.3"/>
+</svg>

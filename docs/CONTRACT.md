@@ -1,5 +1,9 @@
 # Meridian Approach — build contract
 
+The conventions and APIs the code relies on. (This file began as the brief for a multi-workstream build. The
+ownership and freeze rules from that time are gone, so any file can be changed. Keep this file up to date when a
+contract below changes.) For a short orientation, read `AGENTS.md` first.
+
 A small Godot 4.7 proof of concept: pilot a light courier ship around a large,
 busy orbital station in a hopeful near-future setting (think clean, bright,
 developed civilisation — big rotating habitat ring, drydocks, cargo yards,
@@ -13,7 +17,7 @@ Renderer: **gl_compatibility** (so it can export to the web later). 2D MSAA is
 NOT supported here — use `antialiased = true` on lines/polylines instead.
 Everything is GDScript and Godot-native nodes. No add-ons, no C#.
 
-## 1. Shared foundation (already exists — do not rewrite)
+## 1. Shared foundation
 
 `res://scripts/autoload/game.gd`, autoloaded as **`Game`**. Read it first. It provides:
 
@@ -47,7 +51,8 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
 * **Test harness** via user args after `--`:
   `--spawn=x_px,y_px,heading_deg`, `--input=0.5-3:thrust_forward;1-1.6:turn_left+throttle_up`,
   `--shots=1,2.5` (PNG captures at physics-time seconds), `--shot-dir=/abs/dir`,
-  `--quit-at=6`, `--debug-draw`, `--log=0.5` (prints player state).
+  `--quit-at=6`, `--debug-draw`, `--log=0.5` (prints player state). Systems add their own flags (read with
+  `Game.cmd.has("name")` / `Game.cmd["name"]`); the full list is in the README.
   Example windowed capture run (works on this Mac; window pops up briefly):
   ```
   /Applications/Godot.app/Contents/MacOS/Godot --path /Users/erikjermanis/work/spaceship-game \
@@ -56,40 +61,27 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
   ```
   Headless parse/run check: `Godot --headless --path <root> --quit-after 120 res://scenes/x.tscn`.
   After adding NEW asset files (svg/png/wav), run `Godot --headless --path <root> --import`
-  once so `.godot/imported` is refreshed. If another agent's file errors, ignore it — only
-  fix your own files.
+  once so `.godot/imported` is refreshed. `tools/run_checks.sh` runs every headless check.
 
 Project settings (already set): physics 120 Hz, zero default gravity & damping,
 viewport 1920×1080 with `canvas_items` stretch/expand, window 1600×900.
 
-## 2. File ownership (each workstream ONLY writes inside its own paths)
+## 2. Two ships and on-foot hooks
 
-| Workstream | Owns |
-|---|---|
-| AUDIO | `tools/audio/**`, `assets/audio/**`, `res://default_bus_layout.tres` |
-| ENVIRONMENT (background) | `scripts/environment/**`, `scenes/environment/**`, `assets/art/environment/**` |
-| SHIP (flight model, ship art, ship FX & audio, camera, tuning panel) | `scripts/ship/**`, `scenes/ship/**`, `assets/art/ship/**`, `scenes/ui/tuning_panel.tscn`, `scripts/ui/tuning_panel.gd`, `scenes/test/ship_*`, `tests/ship_*` |
-| LEVEL (stations, props, traffic, layout) | `scripts/level/**`, `scenes/level/**`, `assets/art/level/**`, `scenes/test/level_*` |
-| GAMEPLAY (impact FX, damage, race, docking, boundary, HUD, main scene) | `scripts/systems/**`, `scripts/ui/**` (except tuning_panel.gd), `scenes/ui/**` (except tuning_panel.tscn), `assets/art/fx/**`, `scenes/main.tscn`, `scripts/main.gd`, `scenes/test/gameplay_*` |
-| ON-FOOT (walking, landed ship model, pad sites, interiors) | `scripts/onfoot/**`, `scenes/onfoot/**`, `assets/art/onfoot/**`, `scenes/test/onfoot_*`, `tests/onfoot_*` |
-
-The PETREL stage added a second pilotable ship. SHIP owns `scripts/ship/shuttle_*.gd`, `mag_line.gd`,
-`landing_probe.gd`, `landing_overlay.gd` and `scenes/ship/shuttle.tscn`. `Game.player` can change at runtime:
+The PETREL (`scripts/ship/shuttle_ship.gd`, `scenes/ship/shuttle.tscn`, plus `mag_line.gd`, `landing_probe.gd`
+and `landing_overlay.gd`) is a second pilotable ship. `Game.player` can change at runtime:
 use `Game.set_player()` and listen to `Game.player_changed(new, old)`; never cache the ship. `PlayerShip` has
 the vehicle API (`park`, `take_control`, `on_boarded`, `can_disembark`, `disembark_hint`, `landed_model`,
 `ship_id`, `uses_pad_clamps`, `home_transform`, `damage_scale`) and a virtual `_apply_flight_forces()`. Parked
 ships sit on `LAYER_WORLD`, frozen. Static station modules publish deck floors in `LevelArt.walk_decks` (landing
-and walking surfaces). New input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`.
+and walking surfaces). PETREL input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`.
 
-The on-foot stage added small hooks outside its own paths. `game.gd` got the layers, mode, signals and actions
-above. `CameraRig` got `set_focus()`, `clear_focus()` and `snap_focus()`. `LevelArt.depth_amount` flattens the
-2.5D parallax. `DockingSystem` got `is_docked()`, `is_settled()` and `force_dock()`. `AmbientAudio` got
-`set_level_offset()`. The HUD got the "X Exit ship" prompt, `HudStyle.key_hint()` and the on-foot help page.
+Hooks other systems provide for on foot: `CameraRig.set_focus()`, `clear_focus()` and `snap_focus()`;
+`LevelArt.depth_amount` (flattens the 2.5D parallax); `DockingSystem.is_docked()`, `is_settled()` and
+`force_dock()`; `AmbientAudio.set_level_offset()`; and on the HUD the "X Exit ship" prompt, `HudStyle.key_hint()`
+and the on-foot help page.
 
-`docs/CONTRACT.md` and `scripts/autoload/game.gd` are frozen: if you truly need a
-change, put a note in `docs/requests/<workstream>.md` instead.
-
-## 3. Scene contract (paths are fixed — other workstreams instance these)
+## 3. Scene contract (other scenes instance these paths, so moving them breaks things)
 
 * `res://scenes/environment/space_background.tscn` — root `CanvasLayer` (layer −10) or
   equivalent that always renders behind the world, follows `get_viewport().get_camera_2d()`
@@ -121,20 +113,22 @@ change, put a note in `docs/requests/<workstream>.md` instead.
   `Game.camera = self`, follows `Game.player`.
 * `res://scenes/ui/tuning_panel.tscn` — `CanvasLayer` with live sliders for the flight model.
 * `res://scenes/ui/hud.tscn` — `CanvasLayer` HUD.
-* `res://scenes/main.tscn` (+ `res://scripts/main.gd`) — assembled by GAMEPLAY:
+* `res://scenes/main.tscn` (+ `res://scripts/main.gd`):
   ```
   Main (Node2D, main.gd)
     SpaceBackground   (instance space_background.tscn)
     Level             (instance level.tscn)
     PlayerShip        (instance player_ship.tscn)  -> moved to PlayerSpawn (or --spawn) on start
+    Shuttle           (instance shuttle.tscn)      -> the PETREL, parked in Hangar 2 unless --fly=petrel
     CameraRig         (instance camera_rig.tscn)
-    Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio
+    Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio, FlightGuide
     HUD               (instance hud.tscn)
     TuningPanel       (instance tuning_panel.tscn)
     OnFoot (Node)     OnFootDirector: walker, landed ship, pad site, interiors, on-foot HUD
   ```
 * On foot: `res://scenes/onfoot/sites/<pad>_site.tscn` holds pad-specific extras in world coordinates
-  (registered in `PadSite.EXTRAS`). It may emit `enter_requested` and provide `get_interior_path()`,
+  (registered in `WalkSite.PAD_EXTRAS`, optionally with a `covers` area so the site also applies when you
+  land elsewhere in it). It may emit `enter_requested` and provide `get_interior_path()`,
   `outside_point()`, `inside_point()`, `door` and `set_cycling()`. `res://scenes/onfoot/interiors/*.tscn` has an
   `InteriorLevel` root whose origin is placed at the site's origin, plus an `Airlock` node.
 
@@ -175,12 +169,11 @@ separation 6 m → centre of mass sits 4 m behind the head. ALL thrust is applie
 * mass `m = 1000 kg`; moment of inertia per unit mass `≈ 8.37 m²` (head 1/3 at +4 m with a
   small triangle body, payload 2/3 at −2 m with radius 0.9 m) → `I = m·8.37` kg·m².
 * thrust point = **+4 m ahead of the CoM** on the ship's axis.
-* main thrust `5000 N` along ship +X (throttle ∈ [−1, 1]; reverse may be scaled, default 0.6).
+* main thrust along ship +X at the throttle setting: `main_thrust_n = 10900 N` at 100 %, so the default
+  50 % ≈ the reference's 5 kN. Retro (S) is a fixed `reverse_scale = 0.275` × full thrust.
 * side thrust `2600 N` along ship ±Y **at the thrust point** → it both turns the ship AND pushes
   the whole craft sideways (characteristic swinging, drifting feel; you must counter-steer to stop
   rotating). Turn left = bow pushed to the ship's left (−Y local in Godot's y-down space).
-* (Since reworked) the main engine runs at a throttle setting: 10.9 kN at 100 %, so 50 % ≈ the reference
-  5 kN cruise and 100 % ≈ the old ×2 boost. Retro is a fixed 0.275 × full thrust. Strafe is 2080 N.
 * linear drag force `−m·0.12·v` (gentle; terminal ≈ 45 m/s at 50 %, ≈ 91 m/s at 100 %),
   angular drag torque `−I·0.35·ω`. No speed caps.
 * semi-implicit Euler at fixed 120 Hz (Godot's RigidBody2D integrator does this). Disable
@@ -189,12 +182,16 @@ separation 6 m → centre of mass sits 4 m behind the head. ALL thrust is applie
 * In Godot units: forces ×PX_PER_M, inertia ×PX_PER_M², positions ×PX_PER_M.
   Use `center_of_mass_mode = CUSTOM`, CoM at the body origin, custom `inertia`.
   `apply_force(force, offset)` takes the offset in GLOBAL orientation relative to the origin.
-Additions beyond the reference (all tunable live in the tuning panel):
-* strafe thrusters (Q/E): small lateral force at the CoM (default 1200 N), no torque.
+Additions beyond the reference (all tunable live in the tuning panel; stock values are in
+`PlayerShip.WREN_DEFAULTS` and `ShuttleShip.PETREL_DEFAULTS`):
+* strafe thrusters (Q/E): small lateral force at the CoM (2080 N), no torque.
+* `turn_couple` (0 on the WREN, 1 on the PETREL): how much of the turn force is fired as a bow/stern couple
+  (turn in place) instead of at the bow only.
 * optional **flight assist** (F, OFF by default): counters rotation with a pure torque (capped by
   side thruster authority) when no turn input, and bleeds lateral slip with strafe thrusters.
 * collisions: `continuous_cd = CCD_MODE_CAST_SHAPE`, `contact_monitor = true`,
-  PhysicsMaterial bounce ≈ 0.45 / friction ≈ 0.2 (tunable).
+  PhysicsMaterial bounce 0.05 / friction 0.2 (tunable). Godot adds the two materials' bounce together,
+  so against structure (0.3) and containers (0.32) a crash still rebounds at about 0.35.
 
 ## 6. Art direction (everyone)
 
@@ -217,17 +214,19 @@ Hopeful, clean, high-tech civilisation. Top-down, slightly stylised "illustrated
 
 ## 7. Audio file contract (AUDIO produces, others play) — `res://assets/audio/`
 
+The original set is below. `assets/audio/README.md` is the current, complete list with buses and volumes.
+
 16-bit PCM WAV, 44.1 kHz, mono unless noted. Loops must be seamless (and contain a `smpl`
 loop chunk if possible); everyone should still load loops via `Game.get_loop(path)`.
 
 | File | Use | Owner of playback |
 |---|---|---|
 | `engine_main_loop.wav` | main engine rumble/roar, loop ~3 s | SHIP |
-| `engine_boost_loop.wav` | boost afterburner roar, loop ~3 s | SHIP |
+| `engine_boost_loop.wav` | high-power roar, fades in above 50 % throttle, loop ~3 s | SHIP |
 | `rcs_hiss_loop.wav` | RCS gas jet hiss, loop ~2 s | SHIP |
 | `rcs_puff_1..3.wav` | RCS valve pop/puff ~0.12 s | SHIP |
 | `engine_ignite.wav` | thump+whoosh when throttle starts ~0.5 s | SHIP |
-| `boost_kick.wav` | boost engage punch ~0.6 s | SHIP |
+| `boost_kick.wav` | punch when the throttle enters its top range ~0.6 s | SHIP |
 | `low_hull_alarm.wav` | warning beep loop ~1 s | SHIP |
 | `impact_light_1..4.wav` | light metal taps/clinks | GAMEPLAY |
 | `impact_medium_1..3.wav` | solid metal clangs | GAMEPLAY |
@@ -259,3 +258,4 @@ Audio buses (`res://default_bus_layout.tres`): `Master` (limiter), `SFX`, `Engin
   `_draw()` cached geometry (only `queue_redraw()` when something actually changes),
   `CPUParticles2D` for effects, shaders for backgrounds; avoid per-frame allocations.
 * Verify visually: take screenshots with the harness and LOOK at them (Read the PNG).
+* `tools/run_checks.sh` passes (every headless check, no errors or warnings).

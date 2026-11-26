@@ -1,4 +1,4 @@
-# LEVEL workstream: notes for the other workstreams
+# LEVEL subsystem: notes
 
 ## What `res://scenes/level/level.tscn` provides (contract §3)
 - Root `Level` (`scripts/level/level.gd`): sets `Game.level` and `Game.world_bounds`

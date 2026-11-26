@@ -117,8 +117,8 @@ left-stick click switches the floodlights.
 Everything talks through the **`Game` autoload** (`scripts/autoload/game.gd`). It holds the shared constants
 (1 m = 10 px, collision layers, the z-index plan), the event-bus signals (`impact`, `scrape`, `hull_changed`,
 `ship_destroyed`, race and docking events), shared references (`Game.player`, `Game.camera`, `Game.level`),
-the runtime input map and the test harness. The build contract is in `docs/CONTRACT.md`, and cross-team notes
-are in `docs/requests/*.md`.
+the runtime input map and the test harness. The build contract is in `docs/CONTRACT.md`, notes on how each
+subsystem behaves are in `docs/requests/*.md`, and `AGENTS.md` is a short guide for coding agents.
 
 **Main scene** (`scenes/main.tscn`, `scripts/main.gd`) instances the background, the level, the ship, the
 camera rig, the gameplay systems, the HUD and the tuning panel. It places the ship at `PlayerSpawn`, or at
@@ -194,9 +194,10 @@ pieces are added, and they are freed when you take off:
   imported at 12×) with an animated hatch, boarding stairs, nav lights and cooling engines. It is cross-faded
   with the flight sprite during the zoom. Swapping models by camera distance is the classic *level of detail*
   (LOD) technique;
-* the **pad site** (`pad_site.gd`): safety railings, invisible walls at the deck edge and close-up deck detail
-  for any pad, plus pad-specific extras listed in `PadSite.EXTRAS` (Pad 2: `scenes/onfoot/sites/pad2_site.tscn`
-  with the airlock vestibule, walkway, crates, fuel cart and a detailed pier facade).
+* the **walk site** (`walk_site.gd`): safety railings, invisible walls at the deck edge and close-up deck detail
+  for any pad or deck, plus pad-specific extras listed in `WalkSite.PAD_EXTRAS` (Pad 2:
+  `scenes/onfoot/sites/pad2_site.tscn` with the airlock vestibule, walkway, crates, fuel cart and a detailed
+  pier facade).
 
 The station's fake-3D parallax (decks drawn slightly smaller, overhead parts slightly larger around the camera)
 is flattened on foot (`LevelArt.depth_amount` → 0). You are standing *on* the deck, so it has to stay locked to
@@ -349,7 +350,8 @@ Example: take off from the pad with flight assist on and fly through the first t
   "--input=0.1-0.2:flight_assist;0.3-30:thrust_forward;2.0-3.15:turn_right;8.0-8.35:turn_right;6-7:throttle_up"
 ```
 
-Headless checks (each prints a PASS/OK result):
+Headless checks (each prints a PASS/OK result). `tools/run_checks.sh` runs all of them and prints one line per
+check (pass words to filter, e.g. `tools/run_checks.sh onfoot`, or `--audio` to add the windowed audio test):
 ```
 G=/Applications/Godot.app/Contents/MacOS/Godot
 $G --headless --path . --fixed-fps 120 res://scenes/test/ship_physics_test.tscn     # WREN flight model, throttle, turn and assist

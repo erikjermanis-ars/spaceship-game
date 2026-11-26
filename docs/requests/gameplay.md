@@ -1,7 +1,7 @@
-# GAMEPLAY workstream: notes and requests
+# GAMEPLAY subsystem: notes and requests
 
 ## What GAMEPLAY provides
-- `res://scenes/main.tscn` (+ `scripts/main.gd`): instances SpaceBackground, Level, PlayerShip, CameraRig,
+- `res://scenes/main.tscn` (+ `scripts/main.gd`): instances SpaceBackground, Level, PlayerShip, Shuttle, CameraRig,
   Systems, HUD and TuningPanel statically. `main.gd` also copes with any of them missing (it instances
   scenes at runtime, or falls back to a stand-in ship and a basic camera). It moves the ship to `PlayerSpawn`,
   or to `--spawn=x,y,deg`, by taking the ship out of the tree and adding it back. Don't set `global_transform`
@@ -16,7 +16,7 @@
 - Keyboard actions that GAMEPLAY handles are polled with `Input.is_action_just_pressed` in `_process`, so the
   `--input=` harness can drive them: restart_race R, respawn T, radar_toggle M, help H, pause P/Esc, G.
 
-## Behaviour other workstreams should know
+## Behaviour other code should know
 - Damage: `0.41 * max(0, v - 3)^1.5` on the closing speed. Props count ×0.55. Scraping costs about
   0.12 hp/s per m/s above 2 m/s. You get 1.2 s of invulnerability after a respawn.
 - `Game.checkpoint_passed(index, total, split)`: `index` is **1-based** (gate number). The first gate starts

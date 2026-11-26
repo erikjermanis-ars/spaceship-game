@@ -1,18 +1,18 @@
-# SHIP workstream: notes and requests for the other workstreams
+# SHIP subsystem: notes and requests
 
 ## Provided (contract §3/§4 and some extras)
 - `res://scenes/ship/player_ship.tscn` (`PlayerShip`), `res://scenes/ship/camera_rig.tscn` (`CameraRig`),
   `res://scenes/ui/tuning_panel.tscn`. The full §4 API is implemented.
 - Extra read-only PlayerShip fields (HUD/FX may use them):
-  `main_output` (signed fraction of nominal main thrust, boost goes up to 2),
+  `main_output` (signed fraction of full main thrust: 1 = 100 % throttle, retro goes down to −`reverse_scale`),
   `bow_lateral_output` / `stern_lateral_output` (signed: + = force toward starboard, so gas leaves the port side),
   `dbg_main_force`, `dbg_side_force`, `dbg_strafe_force` (N, world-oriented), `recent_contacts`,
   `thrust_point_local()`, and the local signal `contact_impact(pos, normal, speed_mps, other)`.
 - All flight tunables are exported SI vars, e.g. `main_thrust_n`, `side_thrust_n`, `thrust_point_m`, `mass_kg`,
-  `inertia_per_mass_m2`, `linear_drag`, `angular_drag`, `boost_multiplier`, `reverse_scale`, `strafe_thrust_n`,
+  `inertia_per_mass_m2`, `linear_drag`, `angular_drag`, `reverse_scale`, `turn_couple`, `strafe_thrust_n`,
   `bounce`, `friction`. Setting them at runtime works (mass, inertia and material update live).
 
-## Behaviour other workstreams should know
+## Behaviour other code should know
 - **Impact events** come out one physics tick (8 ms) after the contact. They are queued in `_integrate_forces` and
   emitted from `_physics_process`, so listeners never run inside the physics server callback.
   `speed_mps` is the closing speed along the normal, measured from the PRE-contact relative velocity at the contact
@@ -24,8 +24,8 @@
   between micro-bounces (up to 0.12 s, while the ship stays within 0.6 m of the surface) are bridged, so the scrape
   loop doesn't chatter.
 - **Camera shake**: `CameraRig.auto_impact_shake` is **false** by default, because GAMEPLAY's ImpactFX already calls
-  `add_trauma()` / `punch()`. `punch()` clamps `strength_px` to 48. The camera adds its own light rumble while
-  boosting (trauma floor 0.2, which works out to about 1 px).
+  `add_trauma()` / `punch()`. `punch()` clamps `strength_px` to 48. The camera adds its own light rumble when
+  the main engine runs in its top range (trauma floor up to 0.2 above 60 % output, about 1 px).
 - On impact the ship does only ship-local reactions: a hull flash and white paint flecks. Sparks, sounds and decals
   are left to ImpactFX.
 - The ship **does not** handle the `respawn` (T) key. DamageSystem / RaceSystem call `respawn_at()` as they do now.
@@ -40,9 +40,8 @@
   sandbox only: `--hull=20`, `--no-env`, `--no-fx`.
 
 ## Requests
-- PROJECT (frozen settings, nothing required): if anyone sees camera or ship judder on displays whose refresh rate
-  isn't a divisor of 120 Hz, turning on `physics/common/physics_interpolation` would fix it. The camera tracks the
-  ship's physics position in `_process`.
+- Resolved: judder on displays whose refresh rate isn't a divisor of 120 Hz. The hull art and the camera follow
+  `render_transform()`, which interpolates between the last two physics steps.
 - Headless runs print `N resources still in use at exit` for AudioStreamPlayers that were still playing at quit
   (dummy audio driver never releases playbacks; windowed runs exit clean). The ship's audio node skips creating
-  players when `DisplayServer.get_name() == "headless"`. Other workstreams can use the same guard to keep test logs clean.
+  players when `DisplayServer.get_name() == "headless"`. Other code can use the same guard to keep test logs clean.

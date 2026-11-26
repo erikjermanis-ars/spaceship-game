@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/test/gameplay_sandbox.tscn" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/sandbox/race_logic_test.gd" id="2"]
+
+[node name="RaceTest" type="Node"]
+
+[node name="Game" parent="." instance=ExtResource("1")]
+
+[node name="Check" type="Node" parent="."]
+script = ExtResource("2")

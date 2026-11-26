@@ -1,0 +1,46 @@
+# Godot 4: editor cache and imported-resource cache (regenerated on open)
+.godot/
+.import/
+
+# Godot: export output and per-machine export settings
+# (export_presets.cfg can hold signing keys and passwords; remove this line if you want to share presets)
+export_presets.cfg
+build/
+builds/
+export/
+exports/
+*.pck
+*.zip
+*.apk
+*.aab
+*.ipa
+*.exe
+*.dmg
+
+# Godot: Mono/C# artefacts (not used today, harmless to keep)
+.mono/
+data_*/
+mono_crash.*.json
+
+# Python (tools/audio synthesiser)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# OS
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs and temp files
+*.log
+*.tmp

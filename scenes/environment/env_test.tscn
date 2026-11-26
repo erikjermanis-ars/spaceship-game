@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/environment/env_test.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://scenes/environment/space_background.tscn" id="2_bg"]
+
+[node name="EnvTest" type="Node2D"]
+script = ExtResource("1_test")
+
+[node name="SpaceBackground" parent="." instance=ExtResource("2_bg")]
+
+[node name="Camera2D" type="Camera2D" parent="."]

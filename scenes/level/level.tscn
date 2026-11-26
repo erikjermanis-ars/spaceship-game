@@ -1,0 +1,418 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/level/level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/level/modules/ring.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/level/modules/hub.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/level/modules/spaceport.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/level/modules/docking_pad.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/level/modules/hangar.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/level/modules/blast_door.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/level/modules/freighter.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/level/modules/drydock.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/level/modules/cargo_yard.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/level/modules/crane.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/level/modules/solar_array.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/level/modules/traffic_lane.gd" id="13"]
+[ext_resource type="Script" path="res://scripts/level/modules/fuel_depot.gd" id="14"]
+[ext_resource type="Script" path="res://scripts/level/modules/comms_dish.gd" id="15"]
+[ext_resource type="Script" path="res://scripts/level/modules/greenhouse.gd" id="16"]
+[ext_resource type="Script" path="res://scripts/level/modules/service_dock.gd" id="17"]
+[ext_resource type="Script" path="res://scripts/level/ambient_emitter.gd" id="18"]
+[ext_resource type="Script" path="res://scripts/level/modules/transit_line.gd" id="19"]
+[ext_resource type="Script" path="res://scripts/level/modules/holo_sign.gd" id="20"]
+
+[node name="Level" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Lanes" type="Node2D" parent="."]
+
+[node name="RingOrbit" type="Node2D" parent="Lanes"]
+script = ExtResource("13")
+position = Vector2(0.0, 0.0)
+shape = 0
+size_m = Vector2(320, 320)
+clockwise = true
+ships = PackedStringArray("shuttle:30", "shuttle:26", "tug:20")
+buoy_spacing_m = 80.0
+buoy_offset_m = 26.0
+seed = 1
+
+[node name="Perimeter" type="Node2D" parent="Lanes"]
+script = ExtResource("13")
+position = Vector2(0.0, 0.0)
+shape = 2
+size_m = Vector2(1000, 810)
+corner_m = 100.0
+clockwise = false
+ships = PackedStringArray("freighter:13", "tug:18", "freighter:12", "shuttle:32")
+seed = 2
+
+[node name="YardsLoop" type="Node2D" parent="Lanes"]
+script = ExtResource("13")
+position = Vector2(0.0, -6000.0)
+shape = 1
+size_m = Vector2(205, 125)
+clockwise = false
+ships = PackedStringArray("shuttle:24", "tug:17")
+seed = 3
+
+[node name="ServiceLoop" type="Node2D" parent="Lanes"]
+script = ExtResource("13")
+position = Vector2(8000.0, 5600.0)
+shape = 1
+size_m = Vector2(170, 140)
+clockwise = true
+ships = PackedStringArray("tug:16", "tug:15")
+seed = 4
+
+[node name="Centre" type="Node2D" parent="."]
+
+[node name="MeridianRing" type="Node2D" parent="Centre"]
+script = ExtResource("2")
+position = Vector2(0.0, 0.0)
+
+[node name="Hub" type="Node2D" parent="Centre"]
+script = ExtResource("3")
+position = Vector2(0.0, 0.0)
+
+[node name="Spaceport" type="Node2D" parent="."]
+
+[node name="Pier" type="Node2D" parent="Spaceport"]
+script = ExtResource("4")
+position = Vector2(5700.0, 0.0)
+
+[node name="Pad1" type="Node2D" parent="Spaceport"]
+script = ExtResource("5")
+position = Vector2(5320.0, 2300.0)
+rotation = 3.141593
+pad_name = "Pad 1"
+label = "01"
+
+[node name="Pad2" type="Node2D" parent="Spaceport"]
+script = ExtResource("5")
+position = Vector2(5320.0, 1200.0)
+rotation = 3.141593
+pad_name = "Pad 2"
+label = "02"
+
+[node name="Pad3" type="Node2D" parent="Spaceport"]
+script = ExtResource("5")
+position = Vector2(5320.0, -1200.0)
+rotation = 3.141593
+pad_name = "Pad 3"
+label = "03"
+
+[node name="Pad4" type="Node2D" parent="Spaceport"]
+script = ExtResource("5")
+position = Vector2(5320.0, -2300.0)
+rotation = 3.141593
+pad_name = "Pad 4"
+label = "04"
+
+[node name="FreighterHalcyon" type="Node2D" parent="Spaceport"]
+script = ExtResource("8")
+position = Vector2(6550.0, -1500.0)
+rotation = -1.570796
+length_m = 190.0
+beam_m = 48.0
+livery = Color(0.906, 0.435, 0.318, 1)
+ship_name = "HALCYON DAWN"
+seed = 3
+
+[node name="FreighterKestrel" type="Node2D" parent="Spaceport"]
+script = ExtResource("8")
+position = Vector2(6520.0, 1700.0)
+rotation = 1.570796
+length_m = 160.0
+beam_m = 42.0
+livery = Color(0.165, 0.616, 0.561, 1)
+ship_name = "KESTREL STAR"
+seed = 8
+
+[node name="DoorNorth" type="Node2D" parent="Spaceport"]
+script = ExtResource("7")
+position = Vector2(5220.0, -4250.0)
+direction = -1.0
+play_sound = true
+
+[node name="DoorSouth" type="Node2D" parent="Spaceport"]
+script = ExtResource("7")
+position = Vector2(5220.0, -4250.0)
+direction = 1.0
+play_sound = false
+
+[node name="Hangar" type="Node2D" parent="Spaceport"]
+script = ExtResource("6")
+position = Vector2(5800.0, -4250.0)
+
+[node name="HangarPad" type="Node2D" parent="Spaceport"]
+script = ExtResource("5")
+position = Vector2(5850.0, -4250.0)
+rotation = 3.141593
+pad_name = "Hangar Bay"
+label = "H2"
+size_m = Vector2(40, 40)
+tail_m = 0.0
+posts = false
+accent = Color(1, 0.69, 0, 1)
+
+[node name="Drydock" type="Node2D" parent="."]
+script = ExtResource("9")
+position = Vector2(0.0, -6000.0)
+
+[node name="CargoYard" type="Node2D" parent="."]
+script = ExtResource("10")
+position = Vector2(0.0, 6000.0)
+
+[node name="Crane" type="Node2D" parent="CargoYard"]
+script = ExtResource("11")
+position = Vector2(700.0, 300.0)
+centre_deg = 180.0
+sweep_deg = 46.0
+period = 24.0
+
+[node name="SolarField" type="Node2D" parent="."]
+script = ExtResource("12")
+position = Vector2(-6800.0, 0.0)
+half_width_m = 90.0
+rows_m = PackedFloat32Array(-240, -120, 0, 120, 240)
+gap_m = 64.0
+
+[node name="Outskirts" type="Node2D" parent="."]
+
+[node name="FuelDepot" type="Node2D" parent="Outskirts"]
+script = ExtResource("14")
+position = Vector2(8200.0, -6400.0)
+
+[node name="DeepSpaceRelay" type="Node2D" parent="Outskirts"]
+script = ExtResource("15")
+position = Vector2(-7200.0, -5700.0)
+
+[node name="Arboretum" type="Node2D" parent="Outskirts"]
+script = ExtResource("16")
+position = Vector2(-6600.0, 6100.0)
+
+[node name="ServiceDock" type="Node2D" parent="Outskirts"]
+script = ExtResource("17")
+position = Vector2(8000.0, 5600.0)
+
+[node name="Pad5" type="Node2D" parent="Outskirts"]
+script = ExtResource("5")
+position = Vector2(7600.0, 5340.0)
+pad_name = "Pad 5"
+label = "05"
+size_m = Vector2(40, 44)
+tail_m = 0.0
+posts = false
+accent = Color(1, 0.69, 0, 1)
+
+[node name="Pad6" type="Node2D" parent="Outskirts"]
+script = ExtResource("5")
+position = Vector2(7600.0, 5860.0)
+pad_name = "Pad 6"
+label = "06"
+size_m = Vector2(40, 44)
+tail_m = 0.0
+posts = false
+accent = Color(1, 0.69, 0, 1)
+
+[node name="Transit" type="Node2D" parent="."]
+
+[node name="TubePierYards" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(572, -300, 430, -400, 200, -560, 122, -600)
+pods = 2
+
+[node name="TubePierCargo" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(572, 325, 430, 450, 232, 555)
+pods = 2
+
+[node name="TubeCargoArboretum" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(-218, 552, -400, 590, -594, 576)
+pods = 1
+
+[node name="TubeRelayYards" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(-630, -570, -400, -610, -122, -600)
+pods = 2
+
+[node name="TubeDepotHangar" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(760, -600, 690, -520, 630, -467)
+pods = 1
+
+[node name="TubeServicePier" type="Node2D" parent="Transit"]
+script = ExtResource("19")
+points_m = PackedVector2Array(705, 555, 600, 420, 575, 322)
+pods = 1
+
+[node name="HoloWelcome" type="Node2D" parent="Transit"]
+script = ExtResource("20")
+position = Vector2(4300.0, 100.0)
+
+[node name="HoloYards" type="Node2D" parent="Transit"]
+script = ExtResource("20")
+position = Vector2(0.0, -4700.0)
+title = "MERIDIAN YARDS"
+subtitle = "DRYDOCK 2  ·  HULL 117 PATHFINDER  ·  NO WAKE"
+size_m = Vector2(70, 18)
+
+[node name="HoloCargo" type="Node2D" parent="Transit"]
+script = ExtResource("20")
+position = Vector2(-200.0, 4550.0)
+title = "CARGO YARD C"
+subtitle = "CRANE IN OPERATION  ·  KEEP CLEAR OF SLEW ARC"
+size_m = Vector2(70, 18)
+tint = Color(1, 0.75, 0.3, 1)
+
+[node name="Ambience" type="Node2D" parent="."]
+
+[node name="HumHub" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(0.0, 0.0)
+pitch = 1.0
+
+[node name="HumRingN" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(0.0, -2250.0)
+pitch = 0.92
+
+[node name="HumRingS" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(0.0, 2250.0)
+pitch = 1.05
+
+[node name="HumRingE" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(2250.0, 0.0)
+pitch = 0.97
+
+[node name="HumRingW" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(-2250.0, 0.0)
+pitch = 1.08
+
+[node name="HumPier" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(5750.0, 0.0)
+pitch = 0.85
+
+[node name="HumHangar" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(5800.0, -4250.0)
+pitch = 0.8
+
+[node name="HumDrydock" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(0.0, -6000.0)
+pitch = 0.9
+
+[node name="HumYard" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(0.0, 6000.0)
+pitch = 1.1
+
+[node name="HumSolar" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(-6800.0, 0.0)
+pitch = 1.25
+
+[node name="HumDepot" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(8200.0, -6400.0)
+pitch = 0.75
+
+[node name="HumRelay" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(-7200.0, -5700.0)
+pitch = 1.15
+
+[node name="HumArboretum" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(-6600.0, 6100.0)
+pitch = 1.2
+
+[node name="HumService" type="Node2D" parent="Ambience"]
+script = ExtResource("18")
+position = Vector2(8000.0, 5600.0)
+pitch = 0.95
+
+[node name="PlayerSpawn" type="Marker2D" parent="." groups=["player_spawn"]]
+position = Vector2(5320.0, 2300.0)
+rotation = 3.141593
+
+[node name="RaceCourse" type="Node2D" parent="."]
+
+[node name="Gate01" type="Marker2D" parent="RaceCourse"]
+position = Vector2(4500.0, 1750.0)
+rotation = -1.570796
+metadata/width_m = 60.0
+
+[node name="Gate02" type="Marker2D" parent="RaceCourse"]
+position = Vector2(4600.0, -2400.0)
+rotation = -1.570796
+metadata/width_m = 50.0
+
+[node name="Gate03" type="Marker2D" parent="RaceCourse"]
+position = Vector2(2500.0, -6000.0)
+rotation = 3.141593
+metadata/width_m = 50.0
+
+[node name="Gate04" type="Marker2D" parent="RaceCourse"]
+position = Vector2(1350.0, -6350.0)
+rotation = 3.141593
+metadata/width_m = 28.0
+
+[node name="Gate05" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-1350.0, -6350.0)
+rotation = 3.141593
+metadata/width_m = 28.0
+
+[node name="Gate06" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-6250.0, -2400.0)
+rotation = 1.570796
+metadata/width_m = 52.0
+
+[node name="Gate07" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-6250.0, 0.0)
+rotation = 1.570796
+metadata/width_m = 52.0
+
+[node name="Gate08" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-6250.0, 2400.0)
+rotation = 1.570796
+metadata/width_m = 52.0
+
+[node name="Gate09" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-3800.0, 800.0)
+metadata/width_m = 60.0
+
+[node name="Gate10" type="Marker2D" parent="RaceCourse"]
+position = Vector2(0.0, -1250.0)
+metadata/width_m = 60.0
+
+[node name="Gate11" type="Marker2D" parent="RaceCourse"]
+position = Vector2(0.0, 1250.0)
+rotation = 3.141593
+metadata/width_m = 60.0
+
+[node name="Gate12" type="Marker2D" parent="RaceCourse"]
+position = Vector2(-400.0, 4000.0)
+rotation = 1.570796
+metadata/width_m = 60.0
+
+[node name="Gate13" type="Marker2D" parent="RaceCourse"]
+position = Vector2(0.0, 6400.0)
+rotation = 1.570796
+metadata/width_m = 40.0
+
+[node name="Gate14" type="Marker2D" parent="RaceCourse"]
+position = Vector2(3000.0, 7000.0)
+metadata/width_m = 50.0
+
+[node name="Gate15" type="Marker2D" parent="RaceCourse"]
+position = Vector2(4500.0, 3000.0)
+rotation = -1.570796
+metadata/width_m = 60.0

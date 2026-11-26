@@ -1,0 +1,54 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/impact_fx.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/systems/damage_system.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/systems/race_system.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/systems/docking_system.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/systems/boundary_system.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/systems/ambient_audio.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/systems/flight_guide.gd" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/environment/space_background.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/level/level.tscn" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/ship/player_ship.tscn" id="12"]
+[ext_resource type="PackedScene" path="res://scenes/ship/camera_rig.tscn" id="13"]
+[ext_resource type="PackedScene" path="res://scenes/ui/tuning_panel.tscn" id="14"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1")
+
+[node name="SpaceBackground" parent="." instance=ExtResource("10")]
+
+[node name="Level" parent="." instance=ExtResource("11")]
+
+[node name="PlayerShip" parent="." instance=ExtResource("12")]
+
+[node name="CameraRig" parent="." instance=ExtResource("13")]
+
+[node name="Systems" type="Node" parent="."]
+
+[node name="ImpactFX" type="Node2D" parent="Systems"]
+script = ExtResource("2")
+
+[node name="DamageSystem" type="Node" parent="Systems"]
+script = ExtResource("3")
+
+[node name="RaceSystem" type="Node" parent="Systems"]
+script = ExtResource("4")
+
+[node name="DockingSystem" type="Node" parent="Systems"]
+script = ExtResource("5")
+
+[node name="BoundarySystem" type="Node" parent="Systems"]
+script = ExtResource("6")
+
+[node name="AmbientAudio" type="Node" parent="Systems"]
+script = ExtResource("7")
+
+[node name="FlightGuide" type="Node2D" parent="Systems"]
+script = ExtResource("8")
+
+[node name="HUD" parent="." instance=ExtResource("9")]
+
+[node name="TuningPanel" parent="." instance=ExtResource("14")]

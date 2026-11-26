@@ -32,6 +32,13 @@ extends Node2D
 ## Music bed offset while inside (dB), so the room tone carries the space.
 @export var music_offset_db := -6.0
 @export var airlock: NodePath = ^"Airlock"
+## Where the director places this interior (its origin, world px). Interiors
+## are cut-aways of real places, so the stars outside line up with them.
+@export var use_world_origin := false
+@export var world_origin := Vector2.ZERO
+## Inside a ship that flies: placed wherever the frigate is (north-up, the
+## deck plan isn't rotated with the hull).
+@export var anchor_to_frigate := false
 
 const WALL_TOP := Color("2E3846")
 const WALL_EDGE := Color("6E829B")
@@ -106,19 +113,18 @@ func _build_walls() -> void:
 	var px := OnFootArt.PX
 	var hull := hull_thickness_m * px
 	var thin := wall_thickness_m * px
-	# 1. room edges grouped by line
-	var hlines := {}   # y -> [[x0, x1], ...]
-	var vlines := {}   # x -> [[y0, y1], ...]
-	var bbox := Rect2()
-	var first := true
+	# 1. room edges grouped by line, split by which side the room is on:
+	#    "a" = the room lies above / left of the line, "b" = below / right.
+	var hlines := {}   # y -> {a: [[x0, x1]...], b: [...]}
+	var vlines := {}   # x -> {a: ..., b: ...}
+	_rects.clear()
 	for room: InteriorRoom in rooms:
 		var r := Rect2(_local(room), room.size_m * px)
-		bbox = r if first else bbox.merge(r)
-		first = false
-		_add(hlines, r.position.y, r.position.x, r.end.x)
-		_add(hlines, r.end.y, r.position.x, r.end.x)
-		_add(vlines, r.position.x, r.position.y, r.end.y)
-		_add(vlines, r.end.x, r.position.y, r.end.y)
+		_rects.append(r)
+		_add_side(hlines, r.position.y, "b", r.position.x, r.end.x)
+		_add_side(hlines, r.end.y, "a", r.position.x, r.end.x)
+		_add_side(vlines, r.position.x, "b", r.position.y, r.end.y)
+		_add_side(vlines, r.end.x, "a", r.position.y, r.end.y)
 	# 2. gaps: doors cut everything, windows only cut the drawing/occluders
 	var door_cuts := {"h": {}, "v": {}}
 	var win_cuts := {"h": {}, "v": {}}
@@ -129,26 +135,72 @@ func _build_walls() -> void:
 		elif n is InteriorWindow:
 			var w: InteriorWindow = n
 			_cut_for(win_cuts, _local(w), w.global_rotation - global_rotation, w.length_m * px)
-	# 3. merge, extend into corners, subtract gaps -> wall rects
-	for y in hlines:
-		var is_hull := absf(y - bbox.position.y) < 0.5 or absf(y - bbox.end.y) < 0.5
-		var t := hull if is_hull else thin
-		var ext := hull if is_hull else thin * 0.5
-		for iv in _merge(hlines[y]):
-			var spans := _subtract([[iv[0] - ext, iv[1] + ext]], _cuts_at(door_cuts.h, y, t))
-			for sp in spans:
-				for piece in _split(sp, _cuts_at(win_cuts.h, y, t)):
-					var y0: float = y - (t if is_hull and absf(y - bbox.position.y) < 0.5 else (0.0 if is_hull else t * 0.5))
-					walls.append([Rect2(Vector2(piece[0], y0), Vector2(piece[1] - piece[0], t)), is_hull, piece[2]])
-	for x in vlines:
-		var is_hull := absf(x - bbox.position.x) < 0.5 or absf(x - bbox.end.x) < 0.5
-		var t := hull if is_hull else thin
-		for iv in _merge(vlines[x]):
-			var spans := _subtract([[iv[0], iv[1]]], _cuts_at(door_cuts.v, x, t))
-			for sp in spans:
-				for piece in _split(sp, _cuts_at(win_cuts.v, x, t)):
-					var x0: float = x - (t if is_hull and absf(x - bbox.position.x) < 0.5 else (0.0 if is_hull else t * 0.5))
-					walls.append([Rect2(Vector2(x0, piece[0]), Vector2(t, piece[1] - piece[0])), is_hull, piece[2]])
+	# 3. per line: where rooms meet on both sides it's a thin partition,
+	#    where only one side has a room it's the outer hull (thick, built
+	#    outward). Hull ends extend into a corner only where no room is.
+	for horiz in [true, false]:
+		var lines: Dictionary = hlines if horiz else vlines
+		var cuts_d: Dictionary = door_cuts.h if horiz else door_cuts.v
+		var cuts_w: Dictionary = win_cuts.h if horiz else win_cuts.v
+		for key in lines:
+			var k: float = key
+			var a := _merge(lines[key].a)
+			var b := _merge(lines[key].b)
+			var shared := _intersect(a, b)
+			for sp in shared:
+				_emit(horiz, k, [sp[0] - (thin * 0.5 if horiz else 0.0), sp[1] + (thin * 0.5 if horiz else 0.0)], thin, -thin * 0.5, false, cuts_d, cuts_w)
+			for side in ["a", "b"]:
+				var own := _subtract(a if side == "a" else b, shared)
+				# outward = away from the room: room above/left -> wall below/right
+				var off := 0.0 if side == "a" else -hull
+				var inward := -1.0 if side == "a" else 1.0
+				for sp in own:
+					var e0: float = sp[0]
+					var e1: float = sp[1]
+					if not _room_near(horiz, k + inward, e0 - 1.0):
+						e0 -= hull
+					if not _room_near(horiz, k + inward, e1 + 1.0):
+						e1 += hull
+					_emit(horiz, k, [e0, e1], hull, off, true, cuts_d, cuts_w)
+
+
+## Wall pieces for span `sp` on line `k`: cut doors, split windows.
+func _emit(horiz: bool, k: float, sp: Array, t: float, off: float, is_hull: bool, cuts_d: Dictionary, cuts_w: Dictionary) -> void:
+	for piece_sp in _subtract([sp], _cuts_at(cuts_d, k, t)):
+		for piece in _split(piece_sp, _cuts_at(cuts_w, k, t)):
+			var r := Rect2(Vector2(piece[0], k + off), Vector2(piece[1] - piece[0], t)) if horiz \
+				else Rect2(Vector2(k + off, piece[0]), Vector2(t, piece[1] - piece[0]))
+			walls.append([r, is_hull, piece[2]])
+
+
+var _rects: Array[Rect2] = []
+
+
+## Is there a room at (line coordinate `across`, position `along`)?
+func _room_near(horiz: bool, across: float, along: float) -> bool:
+	var p := Vector2(along, across) if horiz else Vector2(across, along)
+	for r in _rects:
+		if r.has_point(p):
+			return true
+	return false
+
+
+func _add_side(lines: Dictionary, key: float, side: String, a: float, b: float) -> void:
+	var k := snappedf(key, 0.01)
+	if not lines.has(k):
+		lines[k] = {"a": [], "b": []}
+	lines[k][side].append([minf(a, b), maxf(a, b)])
+
+
+func _intersect(a: Array, b: Array) -> Array:
+	var out: Array = []
+	for x in a:
+		for y in b:
+			var lo := maxf(x[0], y[0])
+			var hi := minf(x[1], y[1])
+			if hi > lo + 0.01:
+				out.append([lo, hi])
+	return out
 
 
 func _local(n: Node2D) -> Vector2:

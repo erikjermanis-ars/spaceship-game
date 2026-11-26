@@ -7,7 +7,7 @@
 [ext_resource type="Script" path="res://scripts/level/modules/docking_pad.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/level/modules/hangar.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/level/modules/blast_door.gd" id="7"]
-[ext_resource type="Script" path="res://scripts/level/modules/freighter.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/level/modules/frigate_berth.gd" id="8"]
 [ext_resource type="Script" path="res://scripts/level/modules/drydock.gd" id="9"]
 [ext_resource type="Script" path="res://scripts/level/modules/cargo_yard.gd" id="10"]
 [ext_resource type="Script" path="res://scripts/level/modules/crane.gd" id="11"]
@@ -80,6 +80,7 @@ position = Vector2(0.0, 0.0)
 [node name="Pier" type="Node2D" parent="Spaceport"]
 script = ExtResource("4")
 position = Vector2(5700.0, 0.0)
+mooring_rows_m = PackedFloat32Array()
 
 [node name="Pad1" type="Node2D" parent="Spaceport"]
 script = ExtResource("5")
@@ -109,25 +110,25 @@ rotation = 3.141593
 pad_name = "Pad 4"
 label = "04"
 
-[node name="FreighterHalcyon" type="Node2D" parent="Spaceport"]
+[node name="BerthE1" type="Node2D" parent="Spaceport"]
 script = ExtResource("8")
-position = Vector2(6550.0, -1500.0)
+position = Vector2(6560.0, -1380.0)
 rotation = -1.570796
-length_m = 190.0
-beam_m = 48.0
-livery = Color(0.906, 0.435, 0.318, 1)
-ship_name = "HALCYON DAWN"
-seed = 3
+berth_id = "E1"
+pier_side = -1.0
+pier_dist_m = 71.0
+occupied_static = true
+static_name = "HALCYON"
+static_registry = "MFF-04"
+static_livery = Color(0.906, 0.435, 0.318, 1)
 
-[node name="FreighterKestrel" type="Node2D" parent="Spaceport"]
+[node name="BerthE2" type="Node2D" parent="Spaceport"]
 script = ExtResource("8")
-position = Vector2(6520.0, 1700.0)
+position = Vector2(6560.0, 1380.0)
 rotation = 1.570796
-length_m = 160.0
-beam_m = 42.0
-livery = Color(0.165, 0.616, 0.561, 1)
-ship_name = "KESTREL STAR"
-seed = 8
+berth_id = "E2"
+pier_side = 1.0
+pier_dist_m = 71.0
 
 [node name="DoorNorth" type="Node2D" parent="Spaceport"]
 script = ExtResource("7")

@@ -80,3 +80,33 @@ in **D major**, so chimes always fit the ambient bed (Dmaj9, Gmaj9, Bm9, Asus2, 
 | magline_snap | SFX | -2 | line parts (twang, crack, ring) |
 | magline_release | SFX | -10 | line head released |
 | ramp_servo | SFX | -6 | PETREL door + fold-down ramp, positional (pitch 0.9 to suggest closing) |
+
+### KESTREL frigate (22 files)
+
+A 120 t frigate is felt more than heard: the drive throbs slowly, the reactor hums a low D (inside the music bed),
+and its machinery (berth clamps, the gangway) is big and hydraulic. The shield is the one place for bright, fizzy
+energy sounds. The alert tones are original two-note patterns. Playback lives in `scripts/ship/frigate_audio.gd`
+unless noted.
+
+| File | Bus | volume_db | Notes |
+|---|---|---|---|
+| frigate_drive_hum_loop | Engine / Ambient | -12 (+3 with throttle) | reactor/drive bed whenever the ship is powered; also the reactor's positional hum in Engineering (Ambient, -9, `reactor_core.gd`) |
+| frigate_impulse_loop | Engine | -26 → -4 | impulse throb (1.5 Hz) with the main engines; `pitch_scale` 0.85 → 1.1 |
+| frigate_rcs_burst | Engine | -16 … -8 | heavy valve thud each time an RCS quad group opens (with rcs_hiss_loop at pitch 0.5) |
+| frigate_clamp_engage | SFX | -2 | berth soft capture: rams run out, jaws clank shut (~1.55 s), bolts, hydraulic vent |
+| frigate_clamp_release | SFX | -3 | bolts withdraw, unlatch clunk, rams back, hull groan |
+| gangway_extend | SFX | -6 | four-stage telescoping gangway, collar seal thud at ~4.3 s, air hiss |
+| gangway_retract | SFX | -6 | unseal puff, drive, segment clunks, stow thud at ~2.95 s |
+| shield_hit_1..3 | SFX | -12 … -2 | deflector impact (crack, falling fizz, field ring, sub whump); `Game.get_variations()` |
+| shield_down | SFX | -2 | shield collapsing |
+| shield_up | SFX | -8 | shield back online (rising shimmer into a D-major chime) |
+| hull_breach | SFX | -4 | plating tears, decompression roar, debris tinkles |
+| venting_loop | SFX | -16 (+2 per open breach) | atmosphere venting while breached sections are badly hurt |
+| red_alert_loop | UI | -13 | three cycles when red alert starts (and again on new damage, at most every 12 s) |
+| core_breach_loop | UI | -11 | while the reactor is failing (core breach countdown) |
+| frigate_hull_groan | SFX | -6 | heavy hits that reach the hull without breaching it |
+| door_swish | SFX | -12 | the frigate's corridor doors (`SlidingDoor.sound`) |
+| bridge_ambience_loop | Ambient | -15 | the frigate deck's room tone (air, low D hum, soft console chirps) |
+| helm_engage | UI | -4 | sitting in the captain's chair: consoles power up, D-major arpeggio |
+| synth_materialize | SFX | -6 | the mess hall food synthesizer |
+| travelator_loop | SFX | -14 | the Berth E2 gangway's moving walkway, positional |

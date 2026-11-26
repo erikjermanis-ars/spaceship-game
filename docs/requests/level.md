@@ -12,6 +12,12 @@
   (pier, facing west), `Hangar Bay` (inside Hangar 2, facing west, behind the cycling blast door), and `Pad 5` and
   `Pad 6` (tug & service dock, facing east). Each pad's Area2D is a child named `DockTrigger` of the pad module.
   Its +X is the docked heading.
+- Frigate berths on the pier's east face (`FrigateBerth`, group `frigate_berth`): **Berth E1** at (656, −138) m,
+  bow north, port side to the pier, holding the static HALCYON; **Berth E2** at (656, 138) m, bow south, starboard to
+  the pier, the KESTREL's. They replace the old freighters and the pier's east mooring arms (`Pier.mooring_rows_m` is
+  empty now). Each has two colliding clamp pylons (forward 46 m, aft 37.5 m long, tips 3.5 m off the hull) and a gangway
+  housing; the clamp arms and the gangway are drawn by the module from the frigate's `FrigateDock` state, the gangway
+  in the overhead band (registered in `LevelArt.depth_layers` so it gets the parallax).
 - `radar_structure`: every station module with collision implements `get_radar_polygons()` (global coordinates,
   simplified, and the rotating ring is returned in its current rotation). `radar_traffic`: the AnimatableBody2D of
   each AI ship (11 ships). `radar_prop`: the 43 cargo containers.

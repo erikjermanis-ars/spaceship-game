@@ -22,6 +22,8 @@ signal closed
 @export var locked := false:
 	set(v): locked = v; queue_redraw()
 @export var heavy := false            ## airlock-style: slower, servo sound
+## Overrides the open/close sound (file in assets/audio), e.g. a starship swish.
+@export var sound := ""
 @export var frame_color := Color("8E9AA8")
 @export var leaf_color := Color("C9D2DC")
 @export var accent := Color("2A9D8F")
@@ -63,7 +65,7 @@ func _ready() -> void:
 		body.add_child(occ)
 		add_child(body)
 		_leaves.append(body)
-	_snd = GameplayUtil.load_audio("door_servo.wav" if heavy else "door_slide.wav")
+	_snd = GameplayUtil.load_audio(sound if sound != "" else ("door_servo.wav" if heavy else "door_slide.wav"))
 	_player = AudioStreamPlayer2D.new()
 	_player.bus = GameplayUtil.bus(&"SFX")
 	_player.max_distance = 500.0

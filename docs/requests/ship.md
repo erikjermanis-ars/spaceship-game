@@ -45,3 +45,15 @@
 - Headless runs print `N resources still in use at exit` for AudioStreamPlayers that were still playing at quit
   (dummy audio driver never releases playbacks; windowed runs exit clean). The ship's audio node skips creating
   players when `DisplayServer.get_name() == "headless"`. Other code can use the same guard to keep test logs clean.
+
+## KESTREL (frigate) notes
+- `FrigateShip` overrides `_apply_flight_forces()` completely: three main engines at their positions (impulse at
+  (−4.6, 0) m, nacelles at (−40, ±28) m), the turn couple with per-section efficiency, strafe, assist / all stop, venting
+  forces, drag. During soft capture it applies only `FrigateDock.apply_capture()` (pilot forces are ignored).
+- Hull damage goes through `take_damage()` into `FrigateDamage.hit()`; `hull` is the sections' weighted average.
+  Damage is ignored while clamped (frozen). `damage_scale()` is 0.3 for props.
+- Its collision is one convex `CollisionPolygon2D` per part from `FrigateShape.PARTS` (the first keeps the name
+  `CollisionPolygon2D`); `destroy()` / `respawn_at()` toggle all of them. `max_contacts_reported` is 12 and the prop
+  sensor radius 95 m.
+- Signals for presentation: `dock_event(event)` ("capture", "lock", "gangway", "undock", "unclamp", "release") and
+  `damage_event(kind, data)` ("hit", "shields_down", "shields_up", "alert", "core_breach", "destroyed").

@@ -43,6 +43,13 @@ EXPECTED = (
     + ["landing_chime_silk", "landing_abort_warble", "liftoff_whoosh", "magline_fire",
        "magline_latch", "magline_tension_loop", "clutch_scream_loop", "winch_loop",
        "magline_snap", "magline_release", "ramp_servo"]
+    # KESTREL frigate
+    + ["frigate_impulse_loop", "frigate_drive_hum_loop", "frigate_rcs_burst", "frigate_clamp_engage",
+       "frigate_clamp_release", "gangway_extend", "gangway_retract"]
+    + ["shield_hit_%d" % i for i in (1, 2, 3)]
+    + ["shield_down", "shield_up", "hull_breach", "venting_loop", "red_alert_loop", "core_breach_loop",
+       "frigate_hull_groan", "door_swish", "bridge_ambience_loop", "helm_engage", "synth_materialize",
+       "travelator_loop"]
 )
 STEREO = {"ambient_space_drone"}
 

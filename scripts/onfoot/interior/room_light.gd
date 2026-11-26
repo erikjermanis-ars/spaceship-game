@@ -57,6 +57,12 @@ func _ready() -> void:
 	_apply()
 
 
+## Multiplies the light's colour (red alert, emergency lighting). White = normal.
+func set_tint(c: Color) -> void:
+	if _light:
+		_light.color = color * c
+
+
 func toggle() -> void:
 	on = not on
 

@@ -3,9 +3,14 @@ extends Node
 ## Runs the "on foot" layer of the game: getting out of a docked ship,
 ## walking around the pad, going into an interior and back, and boarding.
 ##
-##   FLIGHT ──X (docked)──▶ EXTERIOR ──airlock──▶ INTERIOR
-##      ▲                     │  ▲                   │
-##      └──E at the hatch─────┘  └─────airlock───────┘
+##   FLIGHT ──X (docked)──▶ EXTERIOR ──airlock──▶ INTERIOR ◀──gangway──▶ INTERIOR (frigate)
+##      ▲                     │  ▲                   │                         │   ▲
+##      └──E at the hatch─────┘  └─────airlock───────┘   FLIGHT (KESTREL) ◀──chair  X┘
+##
+## The KESTREL frigate has no deck model: you board it on foot through the
+## Berth E2 gangway (an InteriorPortal from the Pier 7 concourse into the
+## frigate's own interior) and fly it from the captain's chair (take_helm).
+## X at its helm (leave_helm) puts you back on its bridge.
 ##
 ## Design (see README "On foot"):
 ##  * Exterior = the SAME world, zoomed in. The station is already loaded and
@@ -61,6 +66,7 @@ var _hatch_mark: Node2D
 var _shown_hint := false
 var _petrel_tip_shown := false
 var _dark_hint_shown := false
+var _helm_hint_shown := false
 
 
 func _ready() -> void:
@@ -170,6 +176,9 @@ func disembark() -> void:
 	if not can_exit():
 		return
 	var ship := Game.player as RigidBody2D
+	if ship.has_method(&"interior_scene"):
+		leave_helm()
+		return
 	var loc := WalkSite.locate(get_tree(), ship.global_position)
 	if loc.is_empty():
 		Game.toast("Nothing to stand on here  ·  land on a pad or a station deck", 2.5)
@@ -322,24 +331,14 @@ func _enter_interior() -> void:
 	await hud.fade_to(1.0, 0.4).finished
 
 	# ---- swap levels behind the fade
-	var packed := _packed_scene(path)
-	_interior = packed.instantiate() as InteriorLevel
-	_interior_path = path
-	_interior.position = _extras.global_position    # the cut-away sits where the pier really is
 	_suspend_world(true)
-	_interior_root.add_child(_interior)
-	if _states.has(path):
-		_interior.load_state(_states[path])
+	_install_interior(path)
 	door.close()
 	_extras.call(&"set_cycling", false)
 	var al := _interior.get_airlock() as Airlock
 	walker.place(al.arrival_global(), 0.0)
 	walker.set_flashlight_energy(1.25)
 	(Game.camera as CameraRig).snap_focus()
-	var amb := _ambient()
-	if amb:
-		amb.set_level_offset(_interior.music_offset_db, 2.0)
-	al.exit_requested.connect(_leave_interior)
 	var outer := al.get_node_or_null(al.outer_door) as SlidingDoor
 	if outer:
 		outer.snap(1.0)
@@ -350,6 +349,7 @@ func _enter_interior() -> void:
 	state = State.INTERIOR
 	hud.show_location(_interior.interior_name.to_upper(), "Airlock cycling  ·  equalising pressure")
 	Game.entered_interior.emit(_interior.interior_name)
+	_preload("res://scenes/onfoot/interiors/frigate_deck.tscn")
 	await al.cycle_done
 	if walker:
 		walker.helmet = false
@@ -380,6 +380,10 @@ func _leave_interior() -> void:
 	var amb := _ambient()
 	if amb:
 		amb.set_level_offset(0.0, 2.0)
+	if _extras == null:
+		# We came in through the frigate's gangway: the pad outside this
+		# airlock has no site yet (you never walked it).
+		_build_pad_site("Pad 2")
 	var door: SlidingDoor = _extras.get(&"door")
 	door.snap(1.0)
 	door.close()
@@ -391,6 +395,175 @@ func _leave_interior() -> void:
 	state = State.EXTERIOR
 	_show_site_card("Back outside  ·  suit sealed")
 	Game.exited_interior.emit(iname)
+
+
+# ========================================================== frigate & portals
+
+## Builds an interior (cached PackedScene), places it, restores its state and
+## wires its airlock (if it has one) to the way out.
+func _install_interior(path: String) -> void:
+	var packed := _packed_scene(path)
+	_interior = packed.instantiate() as InteriorLevel
+	_interior_path = path
+	_interior.position = _interior_origin(_interior)
+	_interior_root.add_child(_interior)
+	if _states.has(path):
+		_interior.load_state(_states[path])
+	var al := _interior.get_airlock() as Airlock
+	if al:
+		al.exit_requested.connect(_leave_interior)
+	var amb := _ambient()
+	if amb:
+		amb.set_level_offset(_interior.music_offset_db, 2.0)
+
+
+## Where an interior's origin goes: a frigate's deck rides with the ship,
+## a pier cut-away sits where the pier really is.
+func _interior_origin(il: InteriorLevel) -> Vector2:
+	if il.anchor_to_frigate:
+		var f := _frigate()
+		if f:
+			return f.global_position
+	if il.use_world_origin:
+		return il.world_origin
+	return _extras.global_position if _extras else Vector2.ZERO
+
+
+func _frigate() -> FrigateShip:
+	return get_tree().get_first_node_in_group(&"frigate") as FrigateShip
+
+
+func _build_pad_site(pname: String) -> void:
+	for n in get_tree().get_nodes_in_group(&"docking_pad"):
+		if String(n.get_meta(&"pad_name", "")) == pname:
+			_build_site(WalkSite.locate(get_tree(), (n as Node2D).global_position))
+			_site_root.modulate.a = 1.0
+			return
+
+
+## Through an InteriorPortal into another interior (the Berth E2 gangway).
+func transfer(portal: InteriorPortal) -> void:
+	if state != State.INTERIOR or walker == null:
+		return
+	state = State.BUSY
+	walker.controls_enabled = false
+	var door := portal.get_door()
+	if door:
+		door.open()
+		var guard := 0.0
+		while not door.is_open() and guard < 3.0:
+			await get_tree().process_frame
+			guard += get_process_delta_time()
+	# The portal belongs to the interior we're about to free: keep what we need.
+	var target := portal.target_scene
+	var arrival := portal.arrival
+	var note := portal.arrival_note
+	await _walk(portal.to_global(portal.walk_in), 1.4)
+	await hud.fade_to(1.0, 0.4).finished
+	_states[_interior_path] = _interior.save_state()
+	_interior.queue_free()
+	_interior = null
+	_install_interior(target)
+	var at := _interior.get_node_or_null(NodePath(arrival)) as Node2D
+	walker.place(at.global_position if at else _interior.global_position, at.global_rotation if at else 0.0)
+	walker.helmet = false
+	(Game.camera as CameraRig).snap_focus()
+	await hud.fade_to(0.0, 0.5).finished
+	walker.controls_enabled = true
+	state = State.INTERIOR
+	hud.show_location(_interior.interior_name.to_upper(), note)
+	Game.entered_interior.emit(_interior.interior_name)
+	_frigate_hint()
+
+
+func _frigate_hint() -> void:
+	if _interior is FrigateDeck and not _helm_hint_shown:
+		_helm_hint_shown = true
+		hud.show_hint("E:Use  ·  the captain's chair on the bridge (forward) takes the helm", 9.0)
+
+
+## The captain's chair: sit down, power up the bridge, cut to the ship outside.
+func take_helm(chair: Node2D) -> void:
+	var ship := _frigate()
+	if state != State.INTERIOR or walker == null or ship == null:
+		return
+	state = State.BUSY
+	walker.controls_enabled = false
+	await _walk(chair.call(&"seat_global"), 1.2)
+	if walker:
+		walker.place(chair.call(&"seat_global"), float(chair.call(&"facing")))
+	GameplayUtil.play_oneshot(self, GameplayUtil.load_audio("helm_engage.wav"), -4.0, 1.0, &"UI")
+	await get_tree().create_timer(0.7, false).timeout
+	await hud.fade_to(1.0, 0.5).finished
+	_states[_interior_path] = _interior.save_state()
+	_interior.queue_free()
+	_interior = null
+	_suspend_world(false)
+	walker.queue_free()
+	walker = null
+	hud.clear_hint()
+	_free_site()
+	_site_root.modulate.a = 1.0
+	_vehicle = ship
+	ship.take_control()
+	var cam := Game.camera as CameraRig
+	if cam:
+		cam.clear_focus(0.001)
+		cam.snap()
+	LevelArt.depth_amount = 1.0
+	_set_flight_layer(true)
+	_fade_engine(false)
+	var amb := _ambient()
+	if amb:
+		amb.set_level_offset(0.0, 1.0)
+	Game.mode = Game.Mode.FLIGHT
+	ship.on_boarded()
+	state = State.FLIGHT
+	await hud.fade_to(0.0, 0.8).finished
+	if ship.dock.state == FrigateDock.State.LOCKED:
+		Game.toast("%s  ·  you have the helm  ·  hold any flight key to undock  ·  X leave the bridge" % ship.vehicle_name, 6.0)
+	else:
+		Game.toast("%s  ·  you have the helm" % ship.vehicle_name, 3.0)
+	Game.boarded.emit(ship.vehicle_name)
+
+
+## X at the frigate's helm: back on its bridge, on foot.
+func leave_helm() -> void:
+	var ship := Game.player as FrigateShip
+	if state != State.FLIGHT or ship == null:
+		return
+	state = State.BUSY
+	GameplayUtil.play_oneshot(self, GameplayUtil.load_audio("ui_click.wav"), -10.0, 0.8, &"UI")
+	await hud.fade_to(1.0, 0.5).finished
+	_vehicle = ship
+	ship.park()
+	Game.mode = Game.Mode.ON_FOOT
+	_set_flight_layer(false)
+	_fade_engine(true)
+	LevelArt.depth_amount = 0.0
+	_suspend_world(true)
+	_install_interior(ship.interior_scene())
+	var at := _interior.get_node_or_null(^"BridgeStand") as Node2D
+	walker = Walker.new()
+	walker.name = "Walker"
+	walker.controls_enabled = false
+	walker.helmet = false
+	add_child(walker)
+	walker.place(at.global_position if at else _interior.global_position, at.global_rotation if at else 0.0)
+	walker.set_flashlight_energy(1.25)
+	var cam := Game.camera as CameraRig
+	if cam:
+		cam.set_focus(walker, ZOOM, 0.001)
+		cam.snap_focus()
+	pad_name = ship.vehicle_name
+	await hud.fade_to(0.0, 0.6).finished
+	walker.controls_enabled = true
+	state = State.INTERIOR
+	var where := "Clamped in Berth E2  ·  gangway to Pier 7 from the airlock" if ship.dock.state == FrigateDock.State.LOCKED else "All stop  ·  holding position"
+	hud.show_location(_interior.interior_name.to_upper() + "  ·  BRIDGE", where)
+	Game.disembarked.emit(ship.vehicle_name)
+	Game.entered_interior.emit(_interior.interior_name)
+	_preload("res://scenes/onfoot/interiors/pier7_concourse.tscn")
 
 
 # ================================================================ helpers
@@ -438,6 +611,10 @@ func _free_site() -> void:
 func _preload(path: String) -> void:
 	if path == "" or _packed.has(path) or _loading_path == path:
 		return
+	if _loading_path != "":
+		# One background load at a time: collect the previous one first.
+		_packed[_loading_path] = ResourceLoader.load_threaded_get(_loading_path)
+		_loading_path = ""
 	if ResourceLoader.load_threaded_request(path) == OK:
 		_loading_path = path
 

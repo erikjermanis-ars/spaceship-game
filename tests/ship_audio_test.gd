@@ -9,9 +9,13 @@ extends Node2D
 ##   * A/D/Q/E: thruster hiss + a valve puff, engine bed stays at idle
 ##   * PETREL: no gyro sound at all (it has no gyro any more)
 ##   * Shift to 100 %: the high-power roar layer comes in; at 50 % it is silent
+##   * KESTREL: the drive hum runs at idle, W swells the impulse throb, S / A /
+##     D / Q / E / Space fire the deep RCS (hiss + valve thud) with the impulse
+##     silent, and a hit on the shield plays the shield crackle
 
 const WREN := preload("res://scenes/ship/player_ship.tscn")
 const SHUTTLE := preload("res://scenes/ship/shuttle.tscn")
+const FRIGATE := preload("res://scenes/ship/frigate.tscn")
 const LOUD := -35.0     # "audible" bed level (dB)
 const QUIET := -60.0    # "silent" bed level (dB)
 
@@ -62,8 +66,74 @@ func _run() -> void:
 	await _probe(ship, func() -> Dictionary:
 		return {"engine": _db(pa.get(&"_engine")), "roar": _db(pa.get(&"_burner")), "hiss": _db(pa.get(&"_hiss")),
 			"puff_t": float(pa.get(&"_since_puff"))})
+	ship.queue_free()
+	await _ticks(4)
+	await _probe_frigate()
 	print("ship_audio_test: %s (%d failure%s)" % ["OK" if _fails == 0 else "FAILED", _fails, "" if _fails == 1 else "s"])
 	get_tree().quit(0 if _fails == 0 else 1)
+
+
+## The KESTREL has its own sound model (an always-on drive hum, an impulse
+## throb, a deep RCS), so it gets its own expectations.
+func _probe_frigate() -> void:
+	var k := FRIGATE.instantiate() as FrigateShip
+	add_child(k)
+	await _ticks(4)
+	k.respawn_at(Transform2D(0.0, Vector2(0, 0)))     # no berth here: adrift
+	await _ticks(2)
+	k.take_control()
+	k.on_boarded()
+	await _ticks(4)
+	var fa := k.get_node(^"Audio")
+	print("KESTREL")
+	var read := func() -> Dictionary:
+		return {"hum": _db(fa.get(&"_hum")), "engine": _db(fa.get(&"_impulse")), "hiss": _db(fa.get(&"_hiss")),
+			"roar": -100.0, "puff_t": float(fa.get(&"_since_burst"))}
+	k.flight_assist = false
+	k.throttle_setting = 0.5
+	await _secs(1.5)
+	var idle: Dictionary = read.call()
+	_check(idle.hum > -20.0 and idle.engine <= QUIET and idle.hiss <= QUIET, "idle: drive hum only  hum %.0f  %s" % [idle.hum, _fmt(idle)])
+	for row in [
+			[&"thrust_forward", "W", true, false, false],
+			[&"thrust_reverse", "S", false, true, true],
+			[&"turn_left", "A", false, true, true],
+			[&"turn_right", "D", false, true, true],
+			[&"strafe_left", "Q", false, true, true],
+			[&"strafe_right", "E", false, true, true]]:
+		_halt(k)
+		await _secs(1.2)
+		Input.action_press(row[0])
+		await _secs(0.6)
+		var r: Dictionary = read.call()
+		Input.action_release(row[0])
+		var ok_engine: bool = (r.engine > LOUD) if row[2] else (r.engine <= QUIET)
+		var ok_hiss: bool = (r.hiss > LOUD) if row[3] else (r.hiss <= QUIET + 15.0)
+		var ok_puff: bool = (r.puff_t < 0.7) if row[4] else true
+		_check(ok_engine and ok_hiss and ok_puff, "%s: impulse %s, RCS %s%s  %s" % [row[1], "throbs" if row[2] else "silent",
+			"on" if row[3] else "quiet", ", valve thud" if row[4] else "", _fmt(r)])
+	# all stop while drifting: the RCS brakes
+	_halt(k)
+	k.linear_velocity = Vector2(30, 0)
+	await _secs(0.3)
+	Input.action_press(&"ship_hover")
+	await _secs(0.5)
+	var st: Dictionary = read.call()
+	Input.action_release(&"ship_hover")
+	_check(st.hiss > LOUD, "Space: all-stop RCS  %s" % _fmt(st))
+	# a hit on the shield
+	_halt(k)
+	var before := k.get_child_count()
+	k.take_damage(10.0, k.to_global(Vector2(700, 0)))
+	await _ticks(2)
+	var crackle := false
+	for i in range(before, k.get_child_count()):
+		var c := k.get_child(i)
+		if c is AudioStreamPlayer2D and (c as AudioStreamPlayer2D).playing:
+			crackle = true
+	_check(crackle, "shield hit crackle")
+	k.queue_free()
+	await _ticks(4)
 
 
 ## Holds each control in turn and checks the levels `read` reports.

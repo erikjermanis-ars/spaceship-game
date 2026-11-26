@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/onfoot/interior/interior_level.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/interior_room.gd" id="2"]
@@ -14,14 +14,23 @@
 [ext_resource type="Script" path="res://scripts/onfoot/interior/info_terminal.gd" id="12"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/airlock.gd" id="13"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/pier_exterior.gd" id="14"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_portal.gd" id="15"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/gangway_gate.gd" id="16"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/travelator.gd" id="17"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/berth_view.gd" id="18"]
 
 [node name="Pier7Concourse" type="Node2D"]
 script = ExtResource("1")
 interior_name = "Pier 7 · Crew concourse"
 airlock = NodePath("Airlock")
+use_world_origin = true
+world_origin = Vector2(5600, 1310)
 
 [node name="Exterior" type="Node2D" parent="."]
 script = ExtResource("14")
+
+[node name="BerthView" type="Node2D" parent="."]
+script = ExtResource("18")
 
 [node name="Rooms" type="Node2D" parent="."]
 
@@ -79,6 +88,42 @@ floor_color = Color(0.3, 0.37, 0.46, 1.0)
 floor_label = "OPS"
 label_offset_m = Vector2(-3.2, -1.5)
 
+[node name="BerthOffice" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(10.0, 140.0)
+room_name = "Berth office"
+size_m = Vector2(7.5, 12.0)
+floor_style = 1
+floor_color = Color(0.300, 0.340, 0.400, 1.0)
+floor_label = "CREW PREP"
+label_offset_m = Vector2(0.6, 3.6)
+
+[node name="SouthHall" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(85.0, 140.0)
+room_name = "South hall"
+size_m = Vector2(3.0, 12.0)
+floor_style = 0
+floor_color = Color(0.360, 0.420, 0.500, 1.0)
+
+[node name="BerthLounge" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(115.0, 140.0)
+room_name = "Berth E2 lounge"
+size_m = Vector2(12.5, 12.0)
+floor_style = 2
+floor_color = Color(0.260, 0.360, 0.440, 1.0)
+floor_label = "BERTH E2"
+label_offset_m = Vector2(-3.4, -3.0)
+
+[node name="Gangway" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(240.0, 177.0)
+room_name = "Gangway"
+size_m = Vector2(53.0, 2.6)
+floor_style = 1
+floor_color = Color(0.320, 0.360, 0.420, 1.0)
+
 [node name="Doors" type="Node2D" parent="."]
 
 [node name="OuterHatch" type="Node2D" parent="Doors"]
@@ -126,6 +171,49 @@ width_m = 1.6
 thickness_m = 0.3
 auto = true
 
+[node name="SouthDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(100.0, 140.0)
+rotation = 1.5707963
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="OfficeDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(85.0, 200.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="BerthLoungeDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(115.0, 200.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="GangwayDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(240.0, 190.0)
+width_m = 1.8
+thickness_m = 0.4
+auto = false
+locked = true
+heavy = true
+leaf_color = Color(0.850, 0.880, 0.910, 1.0)
+accent = Color(1.000, 0.690, 0.000, 1.0)
+
+[node name="FrigateHatch" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(775.0, 190.0)
+width_m = 1.8
+thickness_m = 1.0
+auto = false
+heavy = true
+leaf_color = Color(0.850, 0.880, 0.910, 1.0)
+accent = Color(0.165, 0.616, 0.561, 1.0)
+
 [node name="Windows" type="Node2D" parent="."]
 
 [node name="LoungeWindow" type="Node2D" parent="Windows"]
@@ -137,6 +225,107 @@ length_m = 11.0
 script = ExtResource("7")
 position = Vector2(245.0, 70.0)
 length_m = 6.0
+
+[node name="BerthWindow" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(245.0, 232.0)
+length_m = 4.0
+
+[node name="GangwayWindowN0" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(290.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS0" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(290.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN1" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(350.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS1" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(350.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN2" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(410.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS2" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(410.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN3" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(470.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS3" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(470.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN4" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(530.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS4" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(530.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN5" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(590.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS5" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(590.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN6" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(650.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS6" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(650.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowN7" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(710.0, 172.0)
+rotation = 1.5707963
+length_m = 3.6
+
+[node name="GangwayWindowS7" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(710.0, 208.0)
+rotation = 1.5707963
+length_m = 3.6
 
 [node name="Lights" type="Node2D" parent="."]
 
@@ -188,6 +377,29 @@ size_m = Vector2(12.5, 14.0)
 color = Color(0.85, 0.93, 1.0, 1.0)
 energy = 0.9
 on = true
+
+[node name="OfficeLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(47.5, 200.0)
+size_m = Vector2(7.5, 12.0)
+
+[node name="SouthHallLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(100.0, 200.0)
+size_m = Vector2(3.0, 12.0)
+
+[node name="BerthLoungeLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(177.5, 200.0)
+size_m = Vector2(12.5, 12.0)
+color = Color(0.92, 0.96, 1.0, 1)
+
+[node name="GangwayLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(505.0, 190.0)
+size_m = Vector2(53.0, 2.6)
+color = Color(0.85, 0.95, 1.0, 1)
+energy = 0.8
 
 [node name="Switches" type="Node2D" parent="."]
 
@@ -531,6 +743,92 @@ size_m = Vector2(1.2, 1.2)
 color = Color(0.3, 0.66, 0.87, 1.0)
 seed = 6
 
+[node name="PrepSuits" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(14.5, 200.0)
+kind = 13
+size_m = Vector2(0.8, 6.0)
+
+[node name="PrepLockers" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(47.0, 256.0)
+kind = 3
+size_m = Vector2(0.7, 3.2)
+rotation = -1.5707963
+
+[node name="PrepBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(47.0, 205.0)
+kind = 12
+size_m = Vector2(0.6, 2.8)
+
+[node name="PrepDesk" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(70.0, 146.0)
+kind = 1
+size_m = Vector2(0.8, 2.4)
+rotation = 1.5707963
+
+[node name="PrepChair" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(70.0, 155.0)
+kind = 2
+size_m = Vector2(0.8, 0.8)
+rotation = -1.5707963
+
+[node name="HallExtinguisher" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(87.2, 175.0)
+kind = 17
+size_m = Vector2(0.3, 0.6)
+
+[node name="BerthBench1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(165.0, 222.0)
+kind = 12
+size_m = Vector2(0.7, 4.0)
+
+[node name="BerthBench2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(195.0, 222.0)
+kind = 12
+size_m = Vector2(0.7, 4.0)
+
+[node name="BerthScreen" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(177.0, 142.0)
+kind = 18
+size_m = Vector2(0.2, 5.0)
+rotation = 1.5707963
+solid = false
+
+[node name="BerthPlant1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(121.0, 146.0)
+kind = 8
+size_m = Vector2(1.0, 1.0)
+seed = 21
+
+[node name="BerthPlant2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(121.0, 254.0)
+kind = 8
+size_m = Vector2(1.0, 1.0)
+seed = 22
+
+[node name="BerthPlant3" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(234.0, 254.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 23
+
+[node name="BerthCooler" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(234.0, 146.0)
+kind = 21
+size_m = Vector2(0.5, 0.5)
+
 [node name="Interactive" type="Node2D" parent="."]
 
 [node name="DeskLamp" type="Node2D" parent="Interactive"]
@@ -558,14 +856,43 @@ script = ExtResource("12")
 position = Vector2(56.0, -131.0)
 prompt = "Read crew log"
 title = "CREW LOG"
-entries = PackedStringArray("Day 212. Ring spin-up test went fine. The new pad crew still parks crates on the walkway.", "Day 214. Storage light is flickering again. Ticket #4471 filed. Again.", "Day 215. Halcyon Dawn moored at the east arms. Their cook trades real coffee for spare filters.", "Day 217. Someone keeps taking the last Comet Citrus. You know who you are.")
+entries = PackedStringArray("Day 212. Ring spin-up test went fine. The new pad crew still parks crates on the walkway.", "Day 214. Storage light is flickering again. Ticket #4471 filed. Again.", "Day 215. The frigate HALCYON is back in Berth E1. Their cook trades real coffee for spare filters.", "Day 217. Someone keeps taking the last Comet Citrus. You know who you are.")
 
 [node name="TrafficLog" type="Node2D" parent="Interactive"]
 script = ExtResource("12")
 position = Vector2(177.5, 131.0)
 prompt = "Read traffic log"
 title = "PIER 7 TRAFFIC"
-entries = PackedStringArray("11 craft in the local pattern. Lanes nominal. Crane C cycling every 24 s.", "Pad 2: courier WREN (MC-07) docked, clamped, crew on foot.", "Hangar Bay blast doors on auto-cycle. Do not loiter in the doorway.", "Meridian Circuit open for time trials. Current best lap posted on the pier board.")
+entries = PackedStringArray("11 craft in the local pattern. Lanes nominal. Crane C cycling every 24 s.", "Pad 2: courier WREN (MC-07) docked, clamped, crew on foot.", "Hangar Bay blast doors on auto-cycle. Do not loiter in the doorway.", "Meridian Circuit open for time trials. Current best lap posted on the pier board.", "Berth E2: frigate KESTREL (MFF-07) clamped, gangway sealed. Crew access through the south wing.")
+
+[node name="Departures" type="Node2D" parent="Interactive"]
+script = ExtResource("12")
+position = Vector2(177.0, 148.0)
+prompt = "Read the berth board"
+title = "BERTH E2"
+entries = PackedStringArray("KESTREL (MFF-07), civil exploration frigate, Meridian Exploration Service. Status: berthed, crew aboard on rotation.", "Gangway access: through the doors on the east wall, when the ship is clamped in and the gangway is sealed.", "Pilots: the capture box is small. Come in parallel to the pier, under 1.2 m/s, and let the clamps do the rest.", "HALCYON (MFF-04) in Berth E1 is in refit. No access.")
+
+[node name="GangwayGate" type="Node2D" parent="Interactive"]
+script = ExtResource("16")
+position = Vector2(240.0, 190.0)
+door = NodePath("../../Doors/GangwayDoor")
+sign_offset = Vector2(-16.0, -14.0)
+
+[node name="Travelator" type="Node2D" parent="Interactive"]
+script = ExtResource("17")
+position = Vector2(252.0, 190.0)
+length_m = 50.0
+
+[node name="BoardKestrel" type="Node2D" parent="Interactive"]
+script = ExtResource("15")
+position = Vector2(762.0, 190.0)
+prompt = "Board KESTREL"
+reach_m = 2.2
+target_scene = "res://scenes/onfoot/interiors/frigate_deck.tscn"
+arrival = "FromGangway"
+door = NodePath("../../Doors/FrigateHatch")
+walk_in = Vector2(40.0, 0.0)
+arrival_note = "Airlock  ·  the bridge is forward, up the main corridor"
 
 [node name="Airlock" type="Node2D" parent="."]
 script = ExtResource("13")
@@ -573,3 +900,7 @@ position = Vector2(10.0, 14.0)
 outer_door = NodePath("../Doors/OuterHatch")
 inner_door = NodePath("../Doors/AirlockInner")
 arrival_m = Vector2(1.4, -1.4)
+
+[node name="FromFrigate" type="Marker2D" parent="."]
+position = Vector2(752.0, 190.0)
+rotation = 3.1415927

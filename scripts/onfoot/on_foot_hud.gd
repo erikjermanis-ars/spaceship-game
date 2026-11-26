@@ -58,6 +58,10 @@ func show_location(title: String, sub: String) -> void:
 	_loc_t = 0.0
 
 
+func clear_hint() -> void:
+	_hint_t = 99.0
+
+
 func show_hint(text: String, time := 9.0) -> void:
 	_hint_text = text
 	_hint_t = -time

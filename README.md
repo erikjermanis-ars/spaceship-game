@@ -6,7 +6,9 @@ field, traffic lanes). It is a single sandbox level meant to show off **ship han
 **art direction** and **sound design**. Dock on a pad and you can **get out and walk**: around the pad, and on
 Pad 2 through an airlock into the pier's crew concourse (see [On foot](#on-foot)). In Hangar 2 a second ship
 waits: the **PETREL**, a heavy cargo hover shuttle with a magnetic towline that can land on any station deck
-(see [The PETREL](#the-petrel)). Everything (graphics, sound, shaders) is made from scratch in
+(see [The PETREL](#the-petrel)). Behind Pad 2 the frigate **KESTREL** sits clamped in Berth E2: walk the
+pier's south wing and its gangway aboard, go up to the bridge and take the captain's chair to fly a 158 m ship
+(see [The KESTREL](#the-kestrel)). Everything (graphics, sound, shaders) is made from scratch in
 GDScript, SVG, shader code and a small Python synthesiser. There are no add-ons and no imported asset packs.
 
 Renderer: **Compatibility** (OpenGL), so the project can also be exported to the web.
@@ -68,6 +70,16 @@ Flying the PETREL (the hangar shuttle):
 | **L** | Floodlights |
 | **X** | Get out (when landed). Any flight input lifts off |
 
+Flying the KESTREL (the frigate):
+
+| Key | Action |
+|---|---|
+| **W S A D Q E, Shift / Ctrl·Z, F** | As the WREN: impulse and drive nacelles at the throttle setting, retro, turn, strafe, throttle, flight assist (ON by default) |
+| **A D / ← →** | Turn in place: the bow and engineering RCS fire as a couple |
+| **Space (hold)** | All stop: every thruster brakes the drift and the spin |
+| **any flight key (hold, docked)** | Undock: the gangway retracts, the clamps open and push the ship off |
+| **X** | Leave the bridge (clamped in the berth, or at all stop) |
+
 Gamepads work too: left stick steers, the triggers are main engine and retro, D-pad up/down move the throttle
 setting, Y is flight assist and the shoulder buttons strafe. In the PETREL, A hovers, B hooks, X reels and the
 left-stick click switches the floodlights.
@@ -107,6 +119,14 @@ left-stick click switches the floodlights.
   floor, the fuel depot, a pad, back in the hangar. Get out, walk around, and board whichever ship is parked
   nearby. Hook a container with the **left mouse button** and fling it, or hook a pier corner at speed and swing
   round it.
+* **Take the frigate.** Get out on Pad 2, go in through Airlock 7B and walk south through the concourse to the
+  Berth E2 lounge. With the KESTREL clamped in, the gangway door opens: ride the moving walkway out to the ship,
+  press **E** at the hatch, walk up the main corridor to the bridge and press **E** at the captain's chair. Hold
+  any flight key to undock. To come back, fly the ship's centre into the capture box beside the pier (the berth
+  guidance shows the box, your heading error and closing speed), parallel to the pier, under 1.2 m/s: the clamp
+  arms reach out, close on the hardpoints and draw the ship onto its mark, then the gangway runs out to the
+  airlock. Hit something to see the deflector shield ripple; keep hitting things to lose it, breach the hull and
+  watch a hurt nacelle drag the ship off line. Press **X** at all stop to walk the ship in deep space.
 * **Watch the traffic.** Eleven AI shuttles, tugs and freighters follow lanes and do not avoid you.
 * **Tune the physics live** (Tab, in either ship). Move any slider (thrust, thrust points, turn couple,
   inertia, drag, bounce and so on). "WREN default" and "PETREL default" load either ship's stock numbers into
@@ -177,9 +197,9 @@ Getting out of the ship and walking around is a second layer on top of the fligh
 units as flight (1 m = 10 px), so the walker, the ship and the station share one physics world and one camera.
 
 ```
-FLIGHT ──X (docked)──▶ EXTERIOR ──airlock──▶ INTERIOR
-   ▲                     │  ▲                   │
-   └──E at the stairs────┘  └─────airlock───────┘
+FLIGHT ──X (docked)──▶ EXTERIOR ──airlock──▶ INTERIOR ◀──gangway──▶ INTERIOR (KESTREL)
+   ▲                     │  ▲                   │                          │    ▲
+   └──E at the stairs────┘  └─────airlock───────┘    FLIGHT (KESTREL) ◀──chair   X┘
 ```
 
 **Why the outside is the same scene, zoomed in.** The station is already loaded and simulated, so getting out
@@ -290,9 +310,60 @@ own numbers and a few tools of its own.
   station-keeping) uses the WREN's hiss loop and valve puffs, and S also adds a low rumble to the engine bed.
   `tests/ship_audio_test.gd` (run windowed) checks which sound every flight key makes on both ships.
 
+## The KESTREL
+
+A third ship: a 158 m civil exploration frigate (the HALCYON in Berth E1 is its static twin). Where the WREN and
+the PETREL are boarded from the deck, the frigate is a place: you walk aboard and fly it from its bridge.
+
+* **Flight** (`scripts/ship/frigate_ship.gd`, a `PlayerShip` subclass). 120 t, 360 kN of main thrust (3 m/s² at
+  full throttle, 50 m/s terminal at 100 %), a slow turn couple (bow RCS one way, Engineering's the other, about
+  14°/s at most), flight assist on by default, and **Space = all stop**. The main thrust comes from three engines at
+  their real positions: the impulse deck (40 %) and the two drive nacelles (30 % each). The stock numbers are
+  `FrigateShip.FRIGATE_DEFAULTS` ("KESTREL default" in the tuning panel, whose slider ranges stretch to fit). The
+  camera sits further out for it (`camera_zoom_scale()`).
+* **Docking** (`frigate_dock.gd`, `scripts/level/modules/frigate_berth.gd`). The berth has two heavy clamp pylons,
+  sized to the ship's hardpoints (the forward one on the primary hull's rim, the aft one on the outer face of the
+  nacelle), and a third, lighter pylon: the telescoping personnel gangway. Fly the ship's centre into a small
+  capture box (5 m fore/aft, 2.5 m toward the pier, 5 m away), within 4° of the berth heading, under 1.2 m/s and not
+  turning, and hold it for 1 s. Then **soft capture**: the clamp rams run out and their jaws close while a critically
+  damped spring draws the ship onto its mark. **Hard dock** freezes it, the gangway telescopes out to the airlock and
+  the berth repairs the ship. Holding any flight key undocks (gangway in, clamps open, a gentle push off the pier).
+  Approach guidance draws the berth's ghost outline, the centre line and the box in the world, and a HUD scope.
+* **Damage model** (`frigate_damage.gd`). A **deflector shield** takes hits first (1.5 shield points per hull point,
+  10 % bleeds through), shows a hex ripple where it was hit (`assets/art/fx/frigate_shield.gdshader`) and regenerates
+  after 2.5 s of quiet, powered by Engineering. What gets through lands on one of **six sections** (bow, port and
+  starboard hull, Engineering, two nacelles) by where you were hit; the HUD hull number is their weighted average.
+  Sections matter: a hurt nacelle loses thrust (so full throttle pulls to that side), sputters below 40 % and goes
+  dark when wrecked; the bow and Engineering carry the turn couple; the hull sides carry the strafe quads; a weak
+  Engineering means a weak shield. Hard hits leave **breaches** (scorched holes with glowing edges) that **vent
+  atmosphere** while their section is badly hurt, and the gas pushes the ship. **Red alert** (shields down, a section
+  under 35 % or a failing core) turns the window lights red. Engineering at zero is a **core breach**: an 8 s
+  countdown, then the ship is lost, and it comes back clamped in its berth. Inside, red alert lights the deck red,
+  hurt sections have failing lights and sparking conduits, the reactor stutters, and the systems table in
+  Engineering shows every section live.
+* **Walking aboard.** The Pier 7 concourse has a south wing (crew prep, a hall, the Berth E2 lounge) and the
+  52 m gangway tube with a two-way moving walkway (`Travelator`, which adds `Walker.conveyor`). Through its windows
+  you see the frigate's hull (`berth_view.gd`). The gangway door opens only while the ship is clamped in with the
+  gangway sealed (`gangway_gate.gd`). An `InteriorPortal` at the hatch swaps straight into the frigate's interior,
+  `scenes/onfoot/interiors/frigate_deck.tscn` (`FrigateDeck`, placed at the ship, north-up): bridge, ready room,
+  observation lounge, quarters, mess hall with a food synthesizer, sickbay, science lab, airlock and Engineering
+  with the reactor core. The bridge has helm and ops stations, a command ring, a split tactical rail, wall stations
+  and a floor-projected tactical hologram. **E at the captain's chair** (`OnFootDirector.take_helm`) cuts to the ship
+  outside with you at the helm; **X** (`leave_helm`) puts you back on the bridge. `InteriorLevel` now builds the hull
+  from room adjacency (an edge with a room on one side only), so an interior can grow a tube out of its pier.
+* **Art and sound.** The hull is generated by `tools/art/frigate_svg.py` (an elongated lens-shaped primary hull with
+  a mosaic of plating and rows of windows, a slim neck, the engineering hull, two drive nacelles on swept pylons
+  and a field-emitter arc joining their tails), as three layers: painted hull, livery (tinted per ship) and
+  window lights. The same script writes `scripts/ship/frigate_shape.gd` (collision parts, hardpoints, airlock), so
+  art, physics and docking share one geometry. `frigate_visuals.gd` adds the live glows (impulse, drive grilles whose
+  light flows aft with the throttle, bussards, the field arc, the deflector), RCS, nav lights, breaches, venting and
+  the shield. 22 new sounds (see `assets/audio/README.md`): drive hum and impulse throb, deep RCS thuds, clamp
+  engage and release, gangway extend and retract, shield hit/down/up, hull breach, venting, red alert, core breach,
+  hull groan, corridor door swish, bridge ambience, helm engage, the synthesizer and the walkway.
+
 ## How the assets were made
 
-* **Sound:** all 38 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
+* **Sound:** all 99 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
   dependencies and fixed seeds, so the output is reproducible. Engines are tuned oscillators and filtered noise,
   impacts are inharmonic modal metal, and the music bed is a slow D-major pad. Loops are built to be seamless
   and carry WAV loop markers.
@@ -304,7 +375,8 @@ own numbers and a few tools of its own.
   `assets/audio/README.md` lists the bus and suggested volume for every file. The bus layout
   (`default_bus_layout.tres`) is Master with a limiter, plus SFX (with light reverb), Engine, Ambient and UI.
 * **Ship art:** hand-written SVG (`assets/art/ship/ship_hull.svg`, plus `ship_damage.svg` as a scorch overlay
-  that fades in as the hull drops), imported at 6× with mipmaps. The landed close-up model is
+  that fades in as the hull drops), imported at 6× with mipmaps. The frigate's three SVG layers are generated by
+  `python3 tools/art/frigate_svg.py` (hull imported at 2×, livery and lights at 1×). The landed close-up model is
   `assets/art/onfoot/ship_landed.svg`, imported at 12×.
 * **On-foot art:** the character, interiors, furniture and pad details are vector-drawn in GDScript through
   `OnFootPainter` (batched triangles). Light falloff textures are generated at runtime (`OnFootArt`).
@@ -334,6 +406,8 @@ Any scene accepts these user arguments after `--` (they are parsed by `Game`):
 | `--perf` | Print fps, frame time and draw calls every 2 s |
 | `--dock-at=HangarBay` | Any pad by name (spaces optional) |
 | `--fly=petrel` or `--fly=petrel@x_px,y_px,deg` | Start aboard the PETREL (on its berth, or flying at that spot); the WREN is parked |
+| `--fly=kestrel` or `--fly=kestrel@x_px,y_px,deg` | Start at the KESTREL's helm (clamped in Berth E2, or adrift at that spot) |
+| `--frigate-hits=N` | N seeded 25 hp hits across the frigate's hull at start (shield, breaches, red alert) |
 
 Example: dock at Pad 2, get out, run to the airlock and go inside (on-foot actions are `move_up/down/left/right`,
 `run`, `interact`, `flashlight`):
@@ -361,7 +435,9 @@ $G --headless --path . --fixed-fps 120 res://scenes/test/gameplay_race_test.tscn
 $G --headless --path . --fixed-fps 120 res://scenes/test/onfoot_flow_test.tscn      # disembark, airlock, interior, state, board
 $G --headless --path . --fixed-fps 120 res://scenes/test/vehicles_flow_test.tscn    # hangar stairs, board PETREL, land anywhere, swap ships
 $G --headless --path . --fixed-fps 120 res://scenes/test/shuttle_flight_test.tscn   # PETREL turn-in-place, terminal speed, hover, mag-line tow
-$G --path . --fixed-fps 120 res://scenes/test/ship_audio_test.tscn                 # windowed (needs audio): which sound each flight key makes, both ships
+$G --headless --path . --fixed-fps 120 res://scenes/test/frigate_test.tscn          # KESTREL thrust, turn couple, all stop, shield, sections, core breach
+$G --headless --path . --fixed-fps 120 res://scenes/test/frigate_flow_test.tscn     # gangway, frigate deck, helm, undock, re-dock, leave helm, way back
+$G --path . --fixed-fps 120 res://scenes/test/ship_audio_test.tscn                 # windowed (needs audio): which sound each flight key makes, all three ships
 $G --headless --path . --quit-after 600 res://scenes/main.tscn                     # whole game: should print nothing
 ```
 

@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ship/frigate_ship.gd" id="1_ship"]
+[ext_resource type="Script" path="res://scripts/ship/frigate_visuals.gd" id="2_vis"]
+[ext_resource type="Script" path="res://scripts/ship/frigate_audio.gd" id="3_audio"]
+[ext_resource type="Script" path="res://scripts/ship/ship_debug_draw.gd" id="4_dbg"]
+
+[node name="Frigate" type="RigidBody2D" groups=["player_ship"]]
+z_index = 5
+z_as_relative = false
+collision_layer = 1
+collision_mask = 13
+gravity_scale = 0.0
+center_of_mass_mode = 1
+can_sleep = false
+freeze = true
+continuous_cd = 2
+contact_monitor = true
+max_contacts_reported = 12
+linear_damp_mode = 1
+angular_damp_mode = 1
+script = ExtResource("1_ship")
+start_as_player = false
+vehicle_name = "KESTREL"
+
+[node name="Visuals" type="Node2D" parent="."]
+script = ExtResource("2_vis")
+
+[node name="Audio" type="Node" parent="."]
+script = ExtResource("3_audio")
+
+[node name="DebugDraw" type="Node2D" parent="."]
+script = ExtResource("4_dbg")

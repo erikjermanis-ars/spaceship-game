@@ -1561,6 +1561,409 @@ def ramp_servo(rng):
     return [finish_oneshot(x, fade_in_s=0.002, fade_out_s=0.06, hp=35)], False
 
 
+# ======================================================== KESTREL frigate ===
+# A 120 t frigate is felt more than heard: the drive is a slow throb you feel
+# in the deck, the reactor hums a low D under everything (so it sits inside
+# the music bed), and its machinery (clamps, gangway) is huge and hydraulic.
+# Energy effects (the deflector shield) are the one place for bright, fizzy
+# synthetic colour. The alert tones are original two-note patterns.
+
+def frigate_impulse_loop(rng):
+    """Impulse drive under load: two saw cores on D1/A1 throbbing together at
+    1.5 Hz (six throbs per loop), a slow-beating sub, a dark plasma roar and a
+    faint high shimmer from the nacelle grilles."""
+    P = ns(4.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    tbl = saw_table(16, 1.4)
+    core = zeros(N)
+    for f, a in [(36.75, 1.0), (55.0, 0.55), (73.5, 0.35), (36.5, 0.5)]:
+        add_into(core, wt_osc(N, q(f), tbl, rng.uniform(0, TAU)), a)
+    throb = [0.62 + 0.38 * (0.5 + 0.5 * v) ** 1.6 for v in lfo(N, 6, P)]
+    core = at_rms(mul(saturate(norm(biquad(core, "lp", 420, 0.8)), 1.3), throb), -12)
+    sub = at_rms(mul(add_sines(N, [(q(36.75), 1.0), (q(37.0), 0.7)]), throb), -15)
+    src = pnoise(P, 2, rng)
+    roar = biquad(biquad(src, "bp", 300, 0.5), "lp", 1400, 0.7)
+    roar = at_rms(mul(roar, smooth_random(N, 1.2, rng, P, 0.7, 1.0)), -22)
+    shim = fm_sine(N, q(880.0), q(1.5), 1.6, rng.uniform(0, TAU))
+    add_into(shim, sine(N, q(1320.5), rng.uniform(0, TAU)), 0.4)
+    shim = at_rms(mul(shim, smooth_random(N, 0.8, rng, P, 0.3, 1.0)), -36)
+    mix = [a + b + c + d for a, b, c, d in zip(core, sub, roar, shim)]
+    return [finish_loop(mix, P)], True
+
+
+def frigate_drive_hum_loop(rng):
+    """Reactor / drive at rest (6 s loop): D2-A2-D3 sines with slow beating,
+    a 0.5 Hz breathing swell and a soft electrical sizzle. The ship's idle
+    bed in flight and the room tone of Engineering."""
+    P = ns(6.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    hum = zeros(N)
+    for f, a in [(73.42, 1.0), (73.6, 0.6), (110.0, 0.45), (146.83, 0.35), (220.0, 0.12), (293.66, 0.06)]:
+        add_into(hum, sine(N, q(f), rng.uniform(0, TAU)), a)
+    breath = [0.75 + 0.25 * v for v in lfo(N, 3, P)]
+    hum = at_rms(mul(saturate(norm(hum), 1.2), breath), -14)
+    src = pnoise(P, 2, rng)
+    siz = biquad(biquad(src, "bp", 5200, 1.4), "hp", 3000, 0.7)
+    siz = at_rms(mul(siz, smooth_random(N, 3.0, rng, P, 0.1, 1.0)), -42)
+    air = at_rms(biquad(src, "lp", 260, 0.7), -30)
+    mix = [a + b + c for a, b, c in zip(hum, siz, air)]
+    return [finish_loop(mix, P)], True
+
+
+def frigate_rcs_burst(rng):
+    """Big maneuvering thruster: a heavy valve thud, then a deep gas roar
+    (band sweeping down) that cuts off with a soft clack."""
+    n = ns(0.75)
+    x = zeros(n)
+    add_into(x, norm(thump(n, 70, 38, 0.08, 0.25, rng)), 0.9)
+    m = ns(0.6)
+    roar = biquad_tv(white(m, rng), "bp", sweep(m, 1400, 500, "exp", 0.7), 0.8)
+    add_into(roar, biquad(white(m, rng), "lp", 400, 0.7), 0.6)
+    roar = mul(roar, env_points(m, [(0, 0), (0.02, 1.0), (0.3, 0.7), (0.6, 0.0)]))
+    add_into(x, norm(roar), 0.7, ns(0.02))
+    add_into(x, norm(_clack(n - ns(0.6), rng, 520, 120, 0.05)), 0.25, ns(0.6))
+    return [finish_oneshot(saturate(norm(x), 1.3), fade_out_s=0.05, hp=25)], False
+
+
+def _hydraulic(n, rng, f0, f1, run_s, level=1.0):
+    """Big hydraulic ram: pump whine (saw through a resonance) over fluid hiss."""
+    run = ns(run_s)
+    fr = sweep(run, f0, f1, "exp", 0.8)
+    pump = osc_var(fr, table=saw_table(20, 1.2))
+    y = scale(biquad(pump, "bp", 380, 1.4), 0.7)
+    add_into(y, biquad(pump, "lp", 220, 0.7), 0.6)
+    hiss = biquad(white(run, rng), "bp", 2600, 0.6)
+    add_into(y, norm(hiss), 0.18)
+    y = mul(y, env_points(run, [(0, 0), (0.12, 1.0), (run_s - 0.2, 0.9), (run_s, 0.0)]))
+    out = zeros(n)
+    add_into(out, norm(y), level)
+    return out
+
+
+def _bolt(n, rng, f0):
+    """Locking bolt: a short metallic clack with a little ring."""
+    y = norm(thump(n, 140, 80, 0.03, 0.08, rng))
+    add_into(y, norm(decaying_sines(n, metal_modes(rng, f0, PLATE[:8], 0.25, hardness_hz=4000))), 0.6)
+    return y
+
+
+def frigate_clamp_engage(rng):
+    """Berth clamps taking a 120 t ship: the rams run out (hydraulic whine),
+    the jaws close with a huge clank and a sub thump through the hull, two
+    locking bolts shoot home, the hydraulics vent."""
+    n = ns(3.6)
+    x = zeros(n)
+    add_into(x, _hydraulic(n, rng, 70, 110, 1.6), 0.55)
+    m = n - ns(1.55)
+    add_into(x, norm(heavy_hit(rng, m, 70, 330, 0.25)), 1.0, ns(1.55))
+    add_into(x, norm(thump(m, 55, 30, 0.35, 1.0, rng)), 0.7, ns(1.55))
+    for t in (2.15, 2.4):
+        mm = n - ns(t)
+        add_into(x, _bolt(mm, rng, 520), 0.45, ns(t))
+    m2 = n - ns(2.6)
+    vent = biquad_tv(white(m2, rng), "bp", sweep(m2, 4000, 1500, "exp", 0.6), 0.8)
+    vent = mul(vent, env_points(m2, [(0, 0), (0.03, 1.0), (0.5, 0.3), (1.0, 0.0)]))
+    add_into(x, norm(vent), 0.3, ns(2.6))
+    x = wet_mix(x, 1.4, 1.2, 0.18)
+    return [finish_oneshot(saturate(norm(x), 1.2), fade_out_s=0.2, hp=22)], False
+
+
+def frigate_clamp_release(rng):
+    """Clamps letting go: bolts withdraw, a heavy unlatch clunk, the rams
+    pull back, and the hull groans as the load comes off."""
+    n = ns(2.8)
+    x = zeros(n)
+    for t in (0.0, 0.18):
+        add_into(x, _bolt(n - ns(t), rng, 480), 0.4, ns(t))
+    m = n - ns(0.4)
+    add_into(x, norm(heavy_hit(rng, m, 80, 360, 0.12)), 0.75, ns(0.4))
+    add_into(x, _hydraulic(n - ns(0.55), rng, 105, 70, 1.4), 0.5, ns(0.55))
+    m2 = n - ns(0.5)
+    groan = creak(m2, rng, 0.05, 1.8, 18, 30, 0.4, [(85, 18, 1.0), (128, 22, 0.6), (211, 25, 0.35)])
+    add_into(x, norm(groan), 0.35, ns(0.5))
+    x = wet_mix(x, 1.3, 1.2, 0.18)
+    return [finish_oneshot(saturate(norm(x), 1.2), fade_out_s=0.2, hp=22)], False
+
+
+def gangway_extend(rng):
+    """Personnel gangway running out: a long telescoping drive (gear whine),
+    a clunk as each of the four segments locks out, then the collar seals on
+    the hull with a thud and an air hiss as the tube pressurises."""
+    n = ns(5.0)
+    x = zeros(n)
+    add_into(x, _servo(n, rng, 95, 120, 4.3, 1.0), 0.5)
+    add_into(x, _hydraulic(n, rng, 60, 80, 4.3, 1.0), 0.2)
+    for t in (1.05, 2.1, 3.15):
+        add_into(x, _clack(n - ns(t), rng, 300, 110, 0.12), 0.45, ns(t))
+    m = n - ns(4.3)
+    seal = norm(thump(m, 85, 48, 0.08, 0.35, rng))
+    add_into(seal, norm(decaying_sines(m, metal_modes(rng, 190, PLATE[:10], 0.5, hardness_hz=2400))), 0.6)
+    add_into(x, seal, 0.85, ns(4.3))
+    m2 = n - ns(4.4)
+    air = biquad_tv(white(m2, rng), "lp", sweep(m2, 600, 5000, "exp", 0.6), 0.7)
+    air = mul(air, env_points(m2, [(0, 0), (0.08, 1.0), (0.6, 0.0)]))
+    add_into(x, norm(air), 0.35, ns(4.4))
+    return [finish_oneshot(saturate(norm(x), 1.15), fade_out_s=0.15, hp=28)], False
+
+
+def gangway_retract(rng):
+    """Gangway folding back: unseal puff, the drive running down, segment
+    clunks, and the stow thud in its housing."""
+    n = ns(3.4)
+    x = zeros(n)
+    puff = biquad(mul(white(n, rng), env_perc(n, 0.004, 0.3)), "bp", 2400, 0.7)
+    add_into(x, norm(puff), 0.35)
+    add_into(x, _servo(n - ns(0.15), rng, 125, 95, 2.8, 1.0), 0.5, ns(0.15))
+    for t in (0.85, 1.6, 2.35):
+        add_into(x, _clack(n - ns(t), rng, 280, 105, 0.12), 0.4, ns(t))
+    m = n - ns(2.95)
+    stow = norm(thump(m, 80, 45, 0.08, 0.3, rng))
+    add_into(stow, norm(decaying_sines(m, metal_modes(rng, 170, PLATE[:10], 0.4, hardness_hz=2200))), 0.5)
+    add_into(x, stow, 0.7, ns(2.95))
+    return [finish_oneshot(saturate(norm(x), 1.15), fade_out_s=0.12, hp=28)], False
+
+
+def shield_hit(rng, v):
+    """Deflector impact: a bright electric crack, a fizzing band of noise that
+    falls in pitch as the field soaks up the energy, an inharmonic shimmer
+    (the field ringing) and a soft sub whump."""
+    n = ns(1.1)
+    x = zeros(n)
+    f0 = [2600, 3100, 2300][v]
+    crack = noise_burst(n, rng, 0.004, kind="hp", f=3000)
+    add_into(x, norm(crack), 0.6)
+    m = ns(0.7)
+    fz = biquad_tv(white(m, rng), "bp", sweep(m, f0 * 1.6, f0 * 0.35, "exp", 0.6), 3.0)
+    fz = mul(fz, env_points(m, [(0, 0), (0.005, 1.0), (0.25, 0.4), (0.7, 0.0)]))
+    add_into(x, norm(fz), 0.7)
+    k = 1.0 / (0.25 * SR)
+    idx = [3.0 * math.exp(-i * k) for i in range(n)]
+    ring = mul(fm_sine(n, f0 * 0.5, f0 * 0.5 * 1.414, idx), env_perc(n, 0.002, 0.6))
+    add_into(ring, mul(sine(n, f0 * 0.37), env_perc(n, 0.002, 0.8)), 0.5)
+    add_into(x, norm(ring), 0.45)
+    add_into(x, norm(thump(n, 90, 55, 0.06, 0.3, rng)), 0.5)
+    x = wet_mix(x, 0.9, 0.8, 0.2)
+    return [finish_oneshot(saturate(norm(x), 1.25), fade_in_s=0.0003, fade_out_s=0.1, hp=40)], False
+
+
+def shield_down(rng):
+    """Shields collapsing: a big crackling discharge, a field wow sliding down
+    two octaves, electric fizz dying out and a low boom."""
+    n = ns(2.4)
+    x = zeros(n)
+    times = [0.6 * rng.random() ** 1.5 for _ in range(260)]
+    cr = burst_events(n, rng, times, [rng.uniform(0.0005, 0.004) for _ in times],
+                      [(1.0 - t / 0.6) * rng.random() for t in times])
+    add_into(x, norm(biquad(cr, "hp", 1500, 0.7)), 0.6)
+    fr = sweep(n, 660, 150, "exp", 0.5)
+    wow = osc_var(fr, table=saw_table(10, 1.3))
+    wow = mul(biquad(wow, "lp", 2200, 1.2), env_points(n, [(0, 0), (0.03, 1.0), (1.2, 0.6), (2.3, 0.0)]))
+    add_into(x, norm(wow), 0.55)
+    fz = biquad(white(n, rng), "bp", 6000, 2.0)
+    fz = mul(fz, mul(env_points(n, [(0, 1.0), (1.6, 0.0)]), smooth_random(n, 25.0, rng, None, 0.0, 1.0)))
+    add_into(x, norm(fz), 0.3)
+    add_into(x, norm(thump(n, 70, 35, 0.4, 1.1, rng)), 0.8)
+    x = wet_mix(x, 1.6, 1.2, 0.25)
+    return [finish_oneshot(saturate(norm(x), 1.3), fade_out_s=0.25, hp=25)], False
+
+
+def shield_up(rng):
+    """Shields restored: a rising shimmer sweep (A3 -> A5 FM) resolving into a
+    soft D-major chime."""
+    n = ns(1.6)
+    x = zeros(n)
+    m = ns(0.8)
+    fr = sweep(m, A3, A5, "exp", 0.8)
+    sh = osc_var(fr)
+    add_into(sh, osc_var([f * 1.5 for f in fr]), 0.4)
+    sh = mul(sh, env_points(m, [(0, 0), (0.6, 1.0), (0.8, 0.0)]))
+    add_into(x, norm(sh), 0.5)
+    m2 = n - ns(0.72)
+    ch = bell(m2, D6, 0.9, rng, 0.6)
+    add_into(ch, bell(m2, A5, 1.0, rng, 0.5), 0.7)
+    add_into(x, norm(ch), 0.5, ns(0.72))
+    x = wet_mix(x, 1.0, 0.9, 0.25)
+    return [finish_oneshot(norm(x), fade_out_s=0.15, hp=60)], False
+
+
+def hull_breach(rng):
+    """Hull breach: plating tears (a fast creak into a crunch), then the
+    sudden roar of decompression (low-passed noise collapsing as the section
+    empties) with debris tinkling off the hull."""
+    n = ns(2.4)
+    x = zeros(n)
+    tear = creak(n, rng, 0.0, 0.35, 60, 300, 0.7, [(240, 12, 1.0), (410, 14, 0.7), (760, 16, 0.4), (1300, 18, 0.25)])
+    add_into(x, norm(tear), 0.6)
+    m = n - ns(0.3)
+    add_into(x, norm(heavy_hit(rng, m, 95, 420, 0.3)), 0.75, ns(0.3))
+    m2 = n - ns(0.35)
+    roar = biquad_tv(white(m2, rng), "lp", sweep(m2, 6000, 300, "exp", 0.5), 0.7)
+    roar = mul(roar, env_points(m2, [(0, 0), (0.02, 1.0), (0.6, 0.6), (2.0, 0.0)]))
+    add_into(x, norm(roar), 0.7, ns(0.35))
+    for k in range(6):
+        t = 0.5 + rng.random() * 1.3
+        add_into(x, tinkle(rng, rng.uniform(1800, 4200), 0.12), 0.12, ns(t))
+    return [finish_oneshot(saturate(norm(x), 1.3), fade_out_s=0.2, hp=28)], False
+
+
+def venting_loop(rng):
+    """Atmosphere venting through a breach: a high-pressure roar with a
+    whistling edge that wanders (2 s loop)."""
+    P = ns(2.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    src = pnoise(P, 2, rng)
+    roar = biquad(src, "bp", 1800, 0.5)
+    add_into(roar, biquad(src, "lp", 500, 0.7), 0.5)
+    roar = at_rms(mul(roar, smooth_random(N, 4.0, rng, P, 0.75, 1.0)), -14)
+    wh = biquad_tv(src, "bp", [3200 + 400 * v for v in smooth_random(N, 1.5, rng, P)], 12.0)
+    wh = at_rms(wh, -26)
+    mix = [a + b for a, b in zip(roar, wh)]
+    return [finish_loop(mix, P)], True
+
+
+def red_alert_loop(rng):
+    """Red alert (2.4 s loop, original): two rising whoops, E5 -> A5, with a
+    square-ish horn timbre, then a beat of silence."""
+    P = ns(2.4)
+    x = zeros(P)
+    for t0 in (0.0, 0.62):
+        m = ns(0.5)
+        fr = sweep(m, E5 * 0.5, A5 * 0.5, "exp", 0.6)
+        tone = osc_var(fr, table=square_table(11))
+        add_into(tone, osc_var([f * 2.0 for f in fr]), 0.3)
+        tone = biquad(saturate(norm(biquad(tone, "lp", 2400, 0.9)), 1.3), "hp", 120, 0.7)
+        tone = mul(tone, env_points(m, [(0, 0), (0.015, 1.0), (0.42, 0.9), (0.5, 0.0)]))
+        add_into(x, tone, 1.0, ns(t0))
+    x = periodic_reverb(x, P, 0.7, 0.9, 0.18)
+    return [finish_loop(x, P)], True
+
+
+def core_breach_loop(rng):
+    """Core breach warning (1 s loop): three fast high beeps over a pulsing
+    low drone - unmistakably worse than red alert."""
+    P = ns(1.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    x = zeros(N)
+    for rep in range(2):
+        for k in range(3):
+            m = ns(0.09)
+            b = mul(add_sines(m, [(B6 * 0.5, 1.0), (B6, 0.3)]), env_points(m, [(0, 0), (0.005, 1.0), (0.08, 0.8), (0.09, 0.0)]))
+            add_into(x, b, 0.6, rep * P + ns(0.05 + k * 0.13))
+    drone = mul(add_sines(N, [(q(73.42), 1.0), (q(77.8), 0.6)]), [0.5 + 0.5 * v for v in lfo(N, 4, P)])
+    add_into(x, norm(drone), 0.5)
+    return [finish_loop(x, P)], True
+
+
+def frigate_hull_groan(rng):
+    """A big hull under sudden load: a slow, deep stick-slip groan with a
+    metallic tail. Layered on heavy frigate impacts."""
+    n = ns(2.8)
+    x = zeros(n)
+    g = creak(n, rng, 0.05, 2.2, 12, 26, 0.35, [(62, 20, 1.0), (93, 24, 0.7), (151, 26, 0.45), (233, 30, 0.25)])
+    add_into(x, norm(g), 1.0)
+    add_into(x, norm(decaying_sines(n, metal_modes(rng, 70, PLATE, 2.2, amp_tilt=0.5, hardness_hz=900))), 0.4)
+    x = wet_mix(x, 1.8, 1.3, 0.2)
+    return [finish_oneshot(saturate(norm(x), 1.2), fade_in_s=0.02, fade_out_s=0.3, hp=25)], False
+
+
+def door_swish(rng):
+    """Starship corridor door: a quick, smooth pneumatic glide (band-passed
+    noise sweeping up then settling) over a soft motor, no clunk."""
+    n = ns(0.7)
+    x = zeros(n)
+    m = ns(0.55)
+    src = white(m, rng)
+    sw = biquad_tv(src, "bp", sweep(m, 700, 2600, "exp", 0.5), 1.1)
+    sw = mul(sw, env_points(m, [(0, 0), (0.06, 1.0), (0.22, 0.75), (0.55, 0.0)], 1.0))
+    add_into(x, norm(sw), 0.8)
+    mo = mul(osc_var(sweep(m, 180, 240, "exp"), table=saw_table(8, 1.5)), env_points(m, [(0, 0), (0.05, 1.0), (0.4, 0.4), (0.55, 0.0)]))
+    add_into(x, norm(biquad(mo, "lp", 700, 0.7)), 0.18)
+    return [finish_oneshot(norm(x), fade_in_s=0.005, fade_out_s=0.08, hp=80)], False
+
+
+def bridge_ambience_loop(rng):
+    """Bridge room tone (8 s loop): air handling, the ship's low D hum and
+    sparse, soft console chirps (pentatonic blips in D)."""
+    P = ns(8.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    src = pnoise(P, 2, rng)
+    air = at_rms(mul(biquad(src, "lp", 700, 0.7), [0.88 + 0.12 * a for a in lfo(N, 2, P)]), -20)
+    hum = at_rms(add_sines(N, [(q(73.42), 1.0), (q(146.83), 0.4), (q(220.0), 0.12)]), -26)
+    chirps = zeros(P)
+    notes = [D6, E6, Fs6, A6, B6, D7]
+    t = 0.3
+    while t < 7.6:
+        f = rng.choice(notes)
+        m = ns(rng.uniform(0.03, 0.07))
+        b = mul(sine(m, f), env_points(m, [(0, 0), (0.004, 1.0), (m / SR, 0.0)]))
+        add_into(chirps, b, rng.uniform(0.3, 1.0), ns(t))
+        if rng.random() < 0.4:
+            m2 = ns(0.04)
+            b2 = mul(sine(m2, f * 1.5), env_points(m2, [(0, 0), (0.004, 1.0), (0.04, 0.0)]))
+            add_into(chirps, b2, 0.5, ns(t + 0.07))
+        t += rng.uniform(0.35, 1.4)
+    ch = at_rms(tile(chirps, 2), -34)
+    mix = [a + b + c for a, b, c in zip(air, hum, ch)]
+    return [finish_loop(mix, P)], True
+
+
+def helm_engage(rng):
+    """Taking the helm: consoles power up (a rising hum swell) under a quick
+    D-major arpeggio of soft bells, ending on a held A."""
+    n = ns(1.8)
+    x = zeros(n)
+    sw = mul(osc_var(sweep(n, 55, 110, "exp", 0.4), table=saw_table(10, 1.6)), env_points(n, [(0, 0), (0.5, 1.0), (1.2, 0.6), (1.8, 0.0)]))
+    add_into(x, norm(biquad(sw, "lp", 500, 0.8)), 0.35)
+    for i, f in enumerate([D5, Fs5, A5, D6]):
+        m = n - ns(0.1 + i * 0.11)
+        add_into(x, norm(bell(m, f, 0.7 if i < 3 else 1.2, rng, 0.5)), 0.4 if i < 3 else 0.5, ns(0.1 + i * 0.11))
+    x = wet_mix(x, 1.1, 0.9, 0.22)
+    return [finish_oneshot(norm(x), fade_out_s=0.15, hp=40)], False
+
+
+def synth_materialize(rng):
+    """Food synthesizer: a sparkling FM shimmer rising over a soft whoosh,
+    settling with a tiny chime (something just appeared on the tray)."""
+    n = ns(1.6)
+    x = zeros(n)
+    m = ns(1.1)
+    fr = sweep(m, 900, 3600, "exp", 0.7)
+    k = 1.0 / m
+    idx = [2.5 * (1.0 - i * k) for i in range(m)]
+    sp = mul(fm_sine(m, 1800, 2400, idx), env_points(m, [(0, 0), (0.5, 1.0), (1.1, 0.0)]))
+    add_into(sp, mul(osc_var(fr), env_points(m, [(0, 0), (0.6, 0.6), (1.1, 0.0)])), 0.6)
+    tw = mul(sp, smooth_random(m, 30.0, rng, None, 0.4, 1.0))
+    add_into(x, norm(tw), 0.6)
+    wh = biquad_tv(white(m, rng), "bp", sweep(m, 800, 4000, "exp", 0.8), 1.0)
+    add_into(x, norm(mul(wh, env_points(m, [(0, 0), (0.7, 1.0), (1.1, 0.0)]))), 0.3)
+    m2 = n - ns(1.05)
+    add_into(x, norm(bell(m2, Fs6, 0.6, rng, 0.4)), 0.35, ns(1.05))
+    x = wet_mix(x, 0.8, 0.7, 0.2)
+    return [finish_oneshot(norm(x), fade_out_s=0.12, hp=80)], False
+
+
+def travelator_loop(rng):
+    """Moving walkway in the gangway tube (3 s loop): a low motor hum and the
+    belt's soft rhythmic clack every half second."""
+    P = ns(3.0)
+    N = 2 * P
+    q = lambda f: qf(f, P)
+    mo = at_rms(add_sines(N, [(q(98.0), 1.0), (q(196.0), 0.35), (q(294.0), 0.1)]), -24)
+    rol = at_rms(biquad(pnoise(P, 2, rng), "bp", 420, 0.8), -30)
+    cl = zeros(P)
+    for k in range(6):
+        m = ns(0.06)
+        add_into(cl, _clack(m, rng, 260 + rng.uniform(-15, 15), 120, 0.04), 0.5, ns(k * 0.5))
+    cl = at_rms(biquad(tile(cl, 2), "lp", 2500, 0.7), -30)
+    mix = [a + b + c for a, b, c in zip(mo, rol, cl)]
+    return [finish_loop(mix, P)], True
+
+
 # ================================================================== jobs ===
 JOBS = [
     # (output name, recipe, extra args, seed)
@@ -1643,6 +2046,29 @@ JOBS = [
     ("magline_snap", magline_snap, (), 158),
     ("magline_release", magline_release, (), 159),
     ("ramp_servo", ramp_servo, (), 160),
+    # KESTREL frigate
+    ("frigate_impulse_loop", frigate_impulse_loop, (), 171),
+    ("frigate_drive_hum_loop", frigate_drive_hum_loop, (), 172),
+    ("frigate_rcs_burst", frigate_rcs_burst, (), 173),
+    ("frigate_clamp_engage", frigate_clamp_engage, (), 174),
+    ("frigate_clamp_release", frigate_clamp_release, (), 175),
+    ("gangway_extend", gangway_extend, (), 176),
+    ("gangway_retract", gangway_retract, (), 177),
+    ("shield_hit_1", shield_hit, (0,), 178),
+    ("shield_hit_2", shield_hit, (1,), 179),
+    ("shield_hit_3", shield_hit, (2,), 180),
+    ("shield_down", shield_down, (), 181),
+    ("shield_up", shield_up, (), 182),
+    ("hull_breach", hull_breach, (), 183),
+    ("venting_loop", venting_loop, (), 184),
+    ("red_alert_loop", red_alert_loop, (), 185),
+    ("core_breach_loop", core_breach_loop, (), 186),
+    ("frigate_hull_groan", frigate_hull_groan, (), 187),
+    ("door_swish", door_swish, (), 188),
+    ("bridge_ambience_loop", bridge_ambience_loop, (), 189),
+    ("helm_engage", helm_engage, (), 190),
+    ("synth_materialize", synth_materialize, (), 191),
+    ("travelator_loop", travelator_loop, (), 192),
 ]
 
 

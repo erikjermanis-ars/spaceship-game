@@ -39,6 +39,10 @@ var helmet := true:
 			_art.helmet = v
 var running := false
 var flashlight_on := false
+## Extra velocity (px/s) from what you stand on (the gangway's moving
+## walkway). Set every physics frame by a Travelator, consumed and cleared
+## here, so the feet don't walk while the belt carries you.
+var conveyor := Vector2.ZERO
 
 var _art: WalkerArt
 var _light: PointLight2D
@@ -185,8 +189,14 @@ func _physics_process(delta: float) -> void:
 	if _auto_active:
 		# Scripted moves ignore the ship collision (we walk up its ramp).
 		global_position += velocity * delta
+	elif conveyor != Vector2.ZERO:
+		var own := velocity
+		velocity = own + conveyor
+		move_and_slide()
+		velocity = own
 	else:
 		move_and_slide()
+	conveyor = Vector2.ZERO
 
 	# Face where we're going (or where the stick points when blocked).
 	var look := want if want.length_squared() > 0.04 else velocity / maxf(velocity.length(), 0.001)

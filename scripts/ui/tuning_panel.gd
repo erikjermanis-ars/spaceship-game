@@ -1,8 +1,8 @@
 extends CanvasLayer
 ## Live flight-model tuning panel (Tab / F1). Edits the flown ship's exported
-## SI tunables (WREN or PETREL: both fly the same PlayerShip model) and the
-## CameraRig's juice settings while you fly. Never pauses. The two presets
-## load either ship's stock numbers into whichever ship you are flying.
+## SI tunables (WREN, PETREL or KESTREL: all fly the same PlayerShip model)
+## and the CameraRig's juice settings while you fly. Never pauses. The
+## presets load any ship's stock numbers into whichever ship you are flying.
 ## All controls use FOCUS_NONE so A/D/arrows keep flying the ship instead of
 ## nudging a slider; the mouse operates the panel.
 
@@ -40,6 +40,7 @@ const SLIDERS := [
 const PRESETS := {
 	"WREN default": PlayerShip.WREN_DEFAULTS,
 	"PETREL default": ShuttleShip.PETREL_DEFAULTS,
+	"KESTREL default": FrigateShip.FRIGATE_DEFAULTS,
 }
 
 var _rows := {}            # property -> {slider, value_label, target, unit}
@@ -267,7 +268,7 @@ func _slider_row(def: Array) -> Control:
 	var prop: String = def[2]
 	s.value_changed.connect(_on_slider.bind(prop))
 	box.add_child(s)
-	_rows[prop] = {"slider": s, "label": val_l, "target": def[1], "unit": def[6], "step": def[5]}
+	_rows[prop] = {"slider": s, "label": val_l, "target": def[1], "unit": def[6], "step": def[5], "max0": def[4]}
 	return box
 
 
@@ -307,6 +308,9 @@ func _sync_from_targets() -> void:
 		if v == null:
 			continue
 		var s: HSlider = row.slider
+		# The frigate's numbers are 10-40x the small ships': stretch a slider's
+		# range to fit whatever the flown ship carries (never below stock).
+		s.max_value = maxf(float(row.max0), float(v) * 1.6)
 		s.value = float(v)
 		(row.label as Label).text = _fmt(float(v), row.step, row.unit)
 	var ship := _ship()

@@ -1,8 +1,9 @@
 @tool
 extends StationModule
 ## Meridian Spaceport: the commerce pier. A long colliding spine with a
-## control tower, mooring arms for docked freighters on the east side and
-## jet-bridges reaching over the landing pads on the west side.
+## control tower, optional mooring arms on the east side (none in the level:
+## the east face has the frigate berths, see FrigateBerth) and jet-bridges
+## reaching over the landing pads on the west side.
 ## Local origin = spine centre line; all numbers in metres.
 
 @export var spine_top_m := -375.0:

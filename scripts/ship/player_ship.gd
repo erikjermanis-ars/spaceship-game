@@ -119,6 +119,9 @@ var powered: bool = true
 @export var start_as_player := true
 ## Shown on location cards and toasts.
 @export var vehicle_name := "WREN"
+## Reach of the prop sensor that caches neighbours' pre-contact velocity
+## (must cover the hull: the frigate needs far more than the WREN).
+var sensor_radius_m := 9.0
 ## Live input readouts for the HUD. throttle_input is the engine command:
 ## forward = W x throttle_setting (0..1), retro = -S (-1..0).
 var throttle_input: float = 0.0   # -1..1
@@ -223,7 +226,7 @@ func _build_sensor() -> void:
 	area.monitorable = false
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = 9.0 * PX
+	circle.radius = sensor_radius_m * PX
 	shape.shape = circle
 	area.add_child(shape)
 	add_child(area)
@@ -629,6 +632,12 @@ func uses_pad_clamps() -> bool:
 ## Override: where a destroyed ship is brought back when not racing.
 func home_transform() -> Transform2D:
 	return GameplayUtil.spawn_transform(get_tree())
+
+
+## Override: how much further out the flight camera sits for this ship
+## (multiplies the camera zoom: the frigate is 17x the WREN's length).
+func camera_zoom_scale() -> float:
+	return 1.0
 
 
 ## Override: damage multiplier for a hit on `other` at `speed_mps`.

@@ -255,8 +255,9 @@ func _ship_view(ship: RigidBody2D, dt: float) -> Dictionary:
 	# and flattens towards boost speed.
 	var x := clampf(speed_mps / zoom_speed_ref_mps, 0.0, 1.0)
 	var k := (1.0 - (1.0 - x) * (1.0 - x)) * speed_zoom_amount
-	var target_zoom := lerpf(zoom_rest, zoom_fast, clampf(k, 0.0, 1.5)) * manual_zoom
-	target_zoom = maxf(target_zoom, 0.12)
+	var ship_scale := float(ship.call(&"camera_zoom_scale")) if ship.has_method(&"camera_zoom_scale") else 1.0
+	var target_zoom := lerpf(zoom_rest, zoom_fast, clampf(k, 0.0, 1.5)) * manual_zoom * ship_scale
+	target_zoom = maxf(target_zoom, 0.12 * ship_scale)
 	if _snap:
 		_zoom = target_zoom
 	else:

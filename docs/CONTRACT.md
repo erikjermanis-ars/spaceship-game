@@ -66,7 +66,7 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
 Project settings (already set): physics 120 Hz, zero default gravity & damping,
 viewport 1920×1080 with `canvas_items` stretch/expand, window 1600×900.
 
-## 2. Two ships and on-foot hooks
+## 2. Three ships and on-foot hooks
 
 The PETREL (`scripts/ship/shuttle_ship.gd`, `scenes/ship/shuttle.tscn`, plus `mag_line.gd`, `landing_probe.gd`
 and `landing_overlay.gd`) is a second pilotable ship. `Game.player` can change at runtime:
@@ -75,6 +75,22 @@ the vehicle API (`park`, `take_control`, `on_boarded`, `can_disembark`, `disemba
 `ship_id`, `uses_pad_clamps`, `home_transform`, `damage_scale`) and a virtual `_apply_flight_forces()`. Parked
 ships sit on `LAYER_WORLD`, frozen. Static station modules publish deck floors in `LevelArt.walk_decks` (landing
 and walking surfaces). PETREL input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`.
+
+The KESTREL (`scripts/ship/frigate_ship.gd`, `scenes/ship/frigate.tscn`, plus `frigate_damage.gd`,
+`frigate_dock.gd`, `frigate_visuals.gd`, `frigate_audio.gd` and the generated `frigate_shape.gd`) is a third,
+frigate-sized one. It has no deck model (`landed_model()` returns null): it adds `interior_scene()` (its walkable
+deck), `gangway_ready()`, `exit_label()` and `get_radar_polygons()` (it is in group `radar_structure` and `frigate`).
+`PlayerShip.camera_zoom_scale()` (1 by default) lets a ship sit the flight camera further out. The frigate docks
+only in its own `FrigateBerth` (group `frigate_berth`, matched by `berth_id`); `DockingSystem` ignores it
+(`uses_pad_clamps()` is false). It uses `ship_hover` (Space) for all stop. Never edit `frigate_shape.gd` by hand:
+`tools/art/frigate_svg.py` writes it together with the art.
+
+On-foot additions for the frigate: `OnFootDirector.transfer(portal)` (an `InteriorPortal` swaps one interior for
+another, the Berth E2 gangway), `take_helm(chair)` (a `CaptainChair`) and `leave_helm()` (X at a ship with an
+`interior_scene()`). `InteriorLevel` has `use_world_origin` / `world_origin` (where a pier cut-away sits) and
+`anchor_to_frigate` (placed at the frigate, north-up), and builds the hull from room adjacency (an edge with a room
+on one side only). `Walker.conveyor` is extra velocity from a moving walkway, set every physics frame.
+`SlidingDoor.sound` overrides the door sound. `RoomLight.set_tint()` colours a light (red alert).
 
 Hooks other systems provide for on foot: `CameraRig.set_focus()`, `clear_focus()` and `snap_focus()`;
 `LevelArt.depth_amount` (flattens the 2.5D parallax); `DockingSystem.is_docked()`, `is_settled()` and
@@ -104,6 +120,9 @@ and the on-foot help page.
     `contact_monitor` on) that emit `Game.impact` for prop↔world/prop↔prop/prop↔traffic contacts
     only (NEVER for contacts with the player — the player reports those).
   * Traffic ships: `AnimatableBody2D` (layer `LAYER_TRAFFIC`) following lanes, or similar.
+  * Frigate berths: `FrigateBerth` modules (group `frigate_berth`, `berth_id`). The module's transform is the docked
+    frigate's (origin = its centre, +X = its heading); the pier wall is at local y = `pier_dist_m` × `pier_side`.
+    Berth E1 holds the static HALCYON (`occupied_static`), Berth E2 is the KESTREL's.
   * Colliding structure must be on layer `LAYER_WORLD`. Moving structure (rotating ring,
     crane arm, blast doors) = `AnimatableBody2D` with `sync_to_physics = true`, moved in
     `_physics_process`.
@@ -120,6 +139,7 @@ and the on-foot help page.
     Level             (instance level.tscn)
     PlayerShip        (instance player_ship.tscn)  -> moved to PlayerSpawn (or --spawn) on start
     Shuttle           (instance shuttle.tscn)      -> the PETREL, parked in Hangar 2 unless --fly=petrel
+    Frigate           (instance frigate.tscn)      -> the KESTREL, clamped in Berth E2 unless --fly=kestrel@...
     CameraRig         (instance camera_rig.tscn)
     Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio, FlightGuide
     HUD               (instance hud.tscn)
@@ -130,7 +150,10 @@ and the on-foot help page.
   (registered in `WalkSite.PAD_EXTRAS`, optionally with a `covers` area so the site also applies when you
   land elsewhere in it). It may emit `enter_requested` and provide `get_interior_path()`,
   `outside_point()`, `inside_point()`, `door` and `set_cycling()`. `res://scenes/onfoot/interiors/*.tscn` has an
-  `InteriorLevel` root whose origin is placed at the site's origin, plus an `Airlock` node.
+  `InteriorLevel` root whose origin is placed at the site's origin (or its `world_origin`, or the frigate), plus an
+  `Airlock` node if it has a way outside. `pier7_concourse.tscn` also has the Berth E2 south wing and gangway
+  (`BoardKestrel` portal, `FromFrigate` arrival). `frigate_deck.tscn` (`FrigateDeck`) has no airlock to space; its
+  `GangwayHatch` portal leads back, and the `FromGangway` and `BridgeStand` markers are where you arrive.
 
 ## 4. PlayerShip API (SHIP implements, GAMEPLAY/HUD consume)
 

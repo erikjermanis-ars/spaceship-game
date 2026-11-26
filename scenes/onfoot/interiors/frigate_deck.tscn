@@ -1,0 +1,783 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/frigate_deck.gd" id="interior_level"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_room.gd" id="room"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/room_light.gd" id="light"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_prop.gd" id="prop"]
+[ext_resource type="Script" path="res://scripts/onfoot/sliding_door.gd" id="door"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_window.gd" id="window"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/holo_table.gd" id="holo"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/info_terminal.gd" id="term"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_portal.gd" id="portal"]
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/captain_chair.gd" id="chair"]
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/bridge_set.gd" id="bridge"]
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/reactor_core.gd" id="reactor"]
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/systems_table.gd" id="msd"]
+[ext_resource type="Script" path="res://scripts/onfoot/frigate/food_synth.gd" id="synth"]
+
+[node name="FrigateDeck" type="Node2D"]
+script = ExtResource("interior_level")
+interior_name = "KESTREL · Deck 1"
+ambient = Color(0.090, 0.110, 0.160, 1.000)
+room_tone = "bridge_ambience_loop.wav"
+room_tone_db = -15.0
+music_offset_db = -8.0
+airlock = NodePath("NoAirlock")
+anchor_to_frigate = true
+
+[node name="Rooms" type="Node2D" parent="."]
+
+[node name="Bridge" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-90.0, -300.0)
+room_name = "Bridge"
+size_m = Vector2(18.0, 13.0)
+floor_style = 2
+floor_color = Color(0.200, 0.240, 0.330, 1.000)
+
+[node name="ReadyRoom" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(20.0, -170.0)
+room_name = "ReadyRoom"
+size_m = Vector2(7.0, 8.0)
+floor_style = 2
+floor_color = Color(0.360, 0.290, 0.250, 1.000)
+
+[node name="Observation" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-90.0, -170.0)
+room_name = "Observation"
+size_m = Vector2(7.0, 12.0)
+floor_style = 2
+floor_color = Color(0.250, 0.300, 0.380, 1.000)
+
+[node name="Corridor" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-20.0, -170.0)
+room_name = "Corridor"
+size_m = Vector2(4.0, 33.0)
+floor_style = 0
+floor_color = Color(0.420, 0.470, 0.550, 1.000)
+
+[node name="Airlock" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(20.0, -90.0)
+room_name = "Airlock"
+size_m = Vector2(7.0, 6.0)
+floor_style = 1
+floor_color = Color(0.290, 0.330, 0.390, 1.000)
+floor_label = "AIRLOCK"
+label_offset_m = Vector2(0.0, 1.8)
+
+[node name="Sickbay" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(20.0, -30.0)
+room_name = "Sickbay"
+size_m = Vector2(7.0, 11.0)
+floor_style = 3
+floor_color = Color(0.600, 0.660, 0.720, 1.000)
+floor_label = "SICKBAY"
+label_offset_m = Vector2(0.0, 3.3)
+
+[node name="Quarters" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-90.0, -50.0)
+room_name = "Quarters"
+size_m = Vector2(7.0, 10.0)
+floor_style = 2
+floor_color = Color(0.340, 0.400, 0.500, 1.000)
+
+[node name="Mess" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-90.0, 50.0)
+room_name = "Mess"
+size_m = Vector2(7.0, 11.0)
+floor_style = 3
+floor_color = Color(0.450, 0.470, 0.500, 1.000)
+floor_label = "MESS"
+label_offset_m = Vector2(0.0, 3.3)
+
+[node name="Lab" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(20.0, 80.0)
+room_name = "Lab"
+size_m = Vector2(7.0, 8.0)
+floor_style = 3
+floor_color = Color(0.340, 0.400, 0.480, 1.000)
+floor_label = "SCIENCE"
+label_offset_m = Vector2(0.0, 2.4)
+
+[node name="Engineering" type="Node2D" parent="Rooms"]
+script = ExtResource("room")
+position = Vector2(-90.0, 160.0)
+room_name = "Engineering"
+size_m = Vector2(18.0, 14.0)
+floor_style = 1
+floor_color = Color(0.210, 0.250, 0.310, 1.000)
+floor_label = "ENGINEERING"
+label_offset_m = Vector2(0.0, 4.2)
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="BridgeLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(0.0, -235.0)
+size_m = Vector2(18.0, 13.0)
+color = Color(0.800, 0.900, 1.000, 1.000)
+energy = 0.85
+
+[node name="ReadyRoomLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(55.0, -130.0)
+size_m = Vector2(7.0, 8.0)
+color = Color(1.000, 0.900, 0.780, 1.000)
+energy = 0.85
+
+[node name="ObservationLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(-55.0, -110.0)
+size_m = Vector2(7.0, 12.0)
+color = Color(0.900, 0.930, 1.000, 1.000)
+energy = 0.75
+
+[node name="CorridorLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(0.0, -5.0)
+size_m = Vector2(4.0, 33.0)
+color = Color(1.000, 0.970, 0.920, 1.000)
+energy = 0.90
+
+[node name="AirlockLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(55.0, -60.0)
+size_m = Vector2(7.0, 6.0)
+color = Color(1.000, 0.970, 0.920, 1.000)
+energy = 0.90
+
+[node name="SickbayLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(55.0, 25.0)
+size_m = Vector2(7.0, 11.0)
+color = Color(0.950, 1.000, 1.000, 1.000)
+energy = 1.00
+
+[node name="QuartersLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(-55.0, 0.0)
+size_m = Vector2(7.0, 10.0)
+color = Color(1.000, 0.970, 0.920, 1.000)
+energy = 0.90
+
+[node name="MessLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(-55.0, 105.0)
+size_m = Vector2(7.0, 11.0)
+color = Color(1.000, 0.920, 0.800, 1.000)
+energy = 0.95
+
+[node name="LabLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(55.0, 120.0)
+size_m = Vector2(7.0, 8.0)
+color = Color(1.000, 0.970, 0.920, 1.000)
+energy = 0.90
+
+[node name="EngineeringLight" type="Node2D" parent="Lights"]
+script = ExtResource("light")
+position = Vector2(0.0, 230.0)
+size_m = Vector2(18.0, 14.0)
+color = Color(0.600, 0.750, 1.000, 1.000)
+energy = 0.60
+
+[node name="Doors" type="Node2D" parent="."]
+
+[node name="BridgeDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(0.0, -170.0)
+width_m = 2.0
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+rotation = 1.5707963
+
+[node name="ReadyBridgeDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(75.0, -170.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+rotation = 1.5707963
+
+[node name="ReadyDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(20.0, -130.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="ObsDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(-20.0, -110.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="AirlockInner" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(20.0, -60.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="SickbayDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(20.0, 25.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="QuartersDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(-20.0, 0.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="MessDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(-20.0, 105.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="LabDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(20.0, 120.0)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+
+[node name="EngDoor" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(0.0, 160.0)
+width_m = 2.0
+thickness_m = 0.3
+auto = true
+sound = "door_swish.wav"
+leaf_color = Color(0.860, 0.890, 0.920, 1.000)
+accent = Color(0.110, 0.210, 0.340, 1.000)
+rotation = 1.5707963
+
+[node name="OuterHatch" type="Node2D" parent="Doors"]
+script = ExtResource("door")
+position = Vector2(95.0, -60.0)
+width_m = 1.6
+thickness_m = 1.0
+auto = false
+heavy = true
+leaf_color = Color(0.850, 0.880, 0.910, 1.000)
+accent = Color(1.000, 0.690, 0.000, 1.000)
+
+[node name="Windows" type="Node2D" parent="."]
+
+[node name="ObsWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(-95.0, -110.0)
+length_m = 10.0
+
+[node name="QuartersWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(-95.0, 0.0)
+length_m = 4.0
+
+[node name="MessWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(-95.0, 105.0)
+length_m = 6.0
+
+[node name="ReadyWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(95.0, -130.0)
+length_m = 4.0
+
+[node name="SickbayWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(95.0, 25.0)
+length_m = 4.0
+
+[node name="LabWindow" type="Node2D" parent="Windows"]
+script = ExtResource("window")
+position = Vector2(95.0, 120.0)
+length_m = 4.0
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="ReadyDesk" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(76.0, -130.0)
+kind = 1
+size_m = Vector2(0.9, 2.4)
+rotation = 3.1415927
+
+[node name="ReadyChair" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(64.0, -130.0)
+kind = 2
+size_m = Vector2(0.8, 0.8)
+color = Color(0.300, 0.250, 0.220, 1.000)
+
+[node name="ReadySofa" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(40.0, -162.0)
+kind = 4
+size_m = Vector2(0.9, 3.0)
+rotation = 1.5707963
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ReadyPlant" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(84.0, -96.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 3
+
+[node name="ObsRug" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-60.0, -110.0)
+kind = 7
+size_m = Vector2(4.0, 9.0)
+color = Color(0.180, 0.250, 0.360, 1.000)
+
+[node name="ObsTable" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, -110.0)
+kind = 6
+size_m = Vector2(1.4, 6.0)
+
+[node name="ObsChairW1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-73.0, -132.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsChairW2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-73.0, -110.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsChairW3" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-73.0, -88.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsChairE1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-43.0, -132.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+rotation = 3.1415927
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsChairE2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-43.0, -110.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+rotation = 3.1415927
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsChairE3" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-43.0, -88.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+rotation = 3.1415927
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="ObsPlant1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-84.0, -164.0)
+kind = 8
+size_m = Vector2(1.0, 1.0)
+seed = 5
+
+[node name="ObsPlant2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-26.0, -56.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 6
+
+[node name="BunkA" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-79.0, -38.0)
+kind = 0
+size_m = Vector2(2.1, 1.1)
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="BunkB" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-79.0, 38.0)
+kind = 0
+size_m = Vector2(2.1, 1.1)
+color = Color(0.170, 0.270, 0.420, 1.000)
+
+[node name="QNight" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-86.0, 18.0)
+kind = 19
+size_m = Vector2(0.6, 0.6)
+
+[node name="QLockers" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-26.0, -36.0)
+kind = 3
+size_m = Vector2(0.7, 2.4)
+rotation = 3.1415927
+
+[node name="QDesk" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-55.0, 45.0)
+kind = 1
+size_m = Vector2(0.8, 2.0)
+rotation = -1.5707963
+
+[node name="QChair" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-55.0, 36.0)
+kind = 2
+size_m = Vector2(0.8, 0.8)
+rotation = 1.5707963
+
+[node name="MessBar" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-55.0, 155.0)
+kind = 14
+size_m = Vector2(0.7, 4.0)
+rotation = -1.5707963
+
+[node name="MessTable1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 82.0)
+kind = 6
+size_m = Vector2(1.2, 1.2)
+
+[node name="MessTable2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 120.0)
+kind = 6
+size_m = Vector2(1.2, 1.2)
+
+[node name="MessStool1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 72.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 92.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool3" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-68.0, 82.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool4" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-48.0, 82.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool5" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 110.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool6" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-58.0, 130.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool7" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-68.0, 120.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessStool8" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-48.0, 120.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+
+[node name="MessPlant" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-84.0, 56.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 8
+
+[node name="CorrPlant1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-15.0, 150.0)
+kind = 8
+size_m = Vector2(0.8, 0.8)
+seed = 9
+
+[node name="CorrPlant2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(15.0, -164.0)
+kind = 8
+size_m = Vector2(0.8, 0.8)
+seed = 10
+
+[node name="CorrBench" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(16.0, 60.0)
+kind = 12
+size_m = Vector2(0.6, 2.4)
+rotation = 3.1415927
+
+[node name="CorrExt" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-18.6, -20.0)
+kind = 17
+size_m = Vector2(0.3, 0.6)
+
+[node name="SuitRack" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(50.0, -86.0)
+kind = 13
+size_m = Vector2(0.8, 4.0)
+rotation = 1.5707963
+
+[node name="AirlockBench" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(50.0, -34.0)
+kind = 12
+size_m = Vector2(0.7, 3.0)
+rotation = -1.5707963
+
+[node name="Biobed1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(78.0, -16.0)
+kind = 0
+size_m = Vector2(2.1, 1.1)
+rotation = 3.1415927
+color = Color(0.850, 0.900, 0.950, 1.000)
+
+[node name="Biobed2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(78.0, 60.0)
+kind = 0
+size_m = Vector2(2.1, 1.1)
+rotation = 3.1415927
+color = Color(0.850, 0.900, 0.950, 1.000)
+
+[node name="SickConsole" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(26.0, 58.0)
+kind = 9
+size_m = Vector2(0.8, 2.4)
+occlude = true
+
+[node name="SickLockers" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(45.0, -26.0)
+kind = 3
+size_m = Vector2(0.7, 3.0)
+rotation = 1.5707963
+
+[node name="SickPlant" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(84.0, -24.0)
+kind = 8
+size_m = Vector2(0.8, 0.8)
+seed = 12
+
+[node name="LabConsole" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(84.0, 148.0)
+kind = 9
+size_m = Vector2(0.8, 2.4)
+rotation = 3.1415927
+occlude = true
+
+[node name="LabShelf" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(50.0, 155.0)
+kind = 11
+size_m = Vector2(0.8, 4.0)
+rotation = -1.5707963
+
+[node name="LabCrates" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(28.0, 88.0)
+kind = 10
+size_m = Vector2(1.2, 1.2)
+color = Color(0.300, 0.660, 0.870, 1.000)
+
+[node name="EngConsoleW1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-84.0, 195.0)
+kind = 9
+size_m = Vector2(0.8, 3.0)
+occlude = true
+
+[node name="EngConsoleW2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-84.0, 255.0)
+kind = 9
+size_m = Vector2(0.8, 3.0)
+occlude = true
+
+[node name="EngConsoleE1" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(84.0, 195.0)
+kind = 9
+size_m = Vector2(0.8, 3.0)
+rotation = 3.1415927
+occlude = true
+
+[node name="EngConsoleE2" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(84.0, 255.0)
+kind = 9
+size_m = Vector2(0.8, 3.0)
+rotation = 3.1415927
+occlude = true
+
+[node name="EngLockersW" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-62.0, 296.0)
+kind = 3
+size_m = Vector2(0.7, 2.4)
+rotation = -1.5707963
+
+[node name="EngLockersE" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(62.0, 296.0)
+kind = 3
+size_m = Vector2(0.7, 2.4)
+rotation = -1.5707963
+
+[node name="EngShelfW" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-50.0, 165.0)
+kind = 11
+size_m = Vector2(0.8, 4.0)
+rotation = 1.5707963
+
+[node name="EngShelfE" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(50.0, 165.0)
+kind = 11
+size_m = Vector2(0.8, 4.0)
+rotation = 1.5707963
+
+[node name="EngCrates" type="Node2D" parent="Props"]
+script = ExtResource("prop")
+position = Vector2(-80.0, 170.0)
+kind = 10
+size_m = Vector2(1.2, 1.2)
+color = Color(1.000, 0.690, 0.000, 1.000)
+
+[node name="Interactive" type="Node2D" parent="."]
+
+[node name="BridgeSet" type="Node2D" parent="Interactive"]
+script = ExtResource("bridge")
+position = Vector2(0.0, -235.0)
+
+[node name="CaptainChair" type="Node2D" parent="Interactive"]
+script = ExtResource("chair")
+position = Vector2(0.0, -221.0)
+rotation = -1.5707963
+
+[node name="Reactor" type="Node2D" parent="Interactive"]
+script = ExtResource("reactor")
+position = Vector2(0.0, 222.0)
+radius_m = 2.4
+
+[node name="SystemsTable" type="Node2D" parent="Interactive"]
+script = ExtResource("msd")
+position = Vector2(0.0, 284.0)
+
+[node name="Synthesizer" type="Node2D" parent="Interactive"]
+script = ExtResource("synth")
+position = Vector2(-89.0, 75.0)
+
+[node name="LabHolo" type="Node2D" parent="Interactive"]
+script = ExtResource("holo")
+position = Vector2(55.0, 120.0)
+radius_m = 1.4
+
+[node name="CaptainsLog" type="Node2D" parent="Interactive"]
+script = ExtResource("term")
+position = Vector2(76.0, -116.0)
+prompt = "Read the captain's log"
+title = "CAPTAIN'S LOG"
+entries = PackedStringArray("Day 3 in Berth E2. Clamp drill: 41 s from capture box to hard dock. The yard says 35. The yard has never docked a frigate.", "Port nacelle grille recalibrated. Ops swears the starboard one hums a quarter tone sharp. It does.", "Reminder to all hands: the synthesizer is not a coffee machine. It is also not NOT a coffee machine.", "Shield drill passed. If the bubble lights up on a pier approach, you came in too fast. Everyone did, once.")
+
+[node name="SickLog" type="Node2D" parent="Interactive"]
+script = ExtResource("term")
+position = Vector2(30.0, 40.0)
+prompt = "Read the medical log"
+title = "SICKBAY"
+entries = PackedStringArray("No crew in treatment. Biobeds calibrated.", "Note: two sprained ankles from the gangway travelator. Stand on it, then walk.")
+
+[node name="GangwayHatch" type="Node2D" parent="Interactive"]
+script = ExtResource("portal")
+position = Vector2(82.0, -60.0)
+prompt = "Cross the gangway to Pier 7"
+reach_m = 2.2
+target_scene = "res://scenes/onfoot/interiors/pier7_concourse.tscn"
+arrival = "FromFrigate"
+door = NodePath("../../Doors/OuterHatch")
+walk_in = Vector2(40.0, 0.0)
+blocked_text = "Airlock sealed  ·  no gangway out here. Dock in Berth E2 first"
+arrival_note = "Berth E2 gangway  ·  back on the station"
+
+[node name="FromGangway" type="Marker2D" parent="."]
+position = Vector2(72.0, -60.0)
+rotation = 3.1415927
+
+[node name="BridgeStand" type="Marker2D" parent="."]
+position = Vector2(14.0, -214.0)
+rotation = -1.5707963

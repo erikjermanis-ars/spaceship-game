@@ -77,6 +77,9 @@ func _draw() -> void:
 
 	# --- docking ---
 	var exit_at := c + Vector2(-70.0, 250.0)
+	var frigate := Game.player as FrigateShip if GameplayUtil.player_alive() else null
+	if frigate:
+		exit_at = _draw_berth(c, frigate)
 	if _dock and _dock.phase != DockingSystem.Phase.NONE:
 		var visible_prompt := _dock.phase != DockingSystem.Phase.APPROACH or _dock.hint != ""
 		if visible_prompt:
@@ -109,7 +112,77 @@ func _draw_exit_prompt(at: Vector2) -> void:
 		return
 	if bool(dir.call(&"can_exit")):
 		var pulse := 0.75 + 0.25 * sin(_t * 3.0)
-		HudStyle.key_hint(self, at, "X", "Exit ship", pulse)
+		var label := String(Game.player.call(&"exit_label")) if Game.player.has_method(&"exit_label") else "Exit ship"
+		HudStyle.key_hint(self, at, "X", label, pulse)
+
+
+## The KESTREL's berth approach: state, distance and closing speed, an
+## alignment scope (capture box to scale, where the ship's centre is, heading
+## error) and what still needs fixing. Returns where the X prompt goes.
+func _draw_berth(c: Vector2, ship: FrigateShip) -> Vector2:
+	var dk := ship.dock
+	# The frigate fills the middle of the screen: guidance sits at the top
+	# and the X prompt at the bottom.
+	var exit_at := Vector2(c.x - 90.0, size.y - 70.0)
+	var showing := dk.state != FrigateDock.State.FREE or (dk.in_range and dk.dist < 260.0 and (dk.speed < 6.0 or dk.dist < 120.0))
+	if not showing or (dk.state == FrigateDock.State.LOCKED and dk.gangway_t >= 1.0):
+		return exit_at
+	var r := Rect2(Vector2(c.x - 250.0, 70.0), Vector2(500, 150))
+	var col := HudStyle.CYAN
+	var title := "BERTH %s  ·  APPROACH" % ship.berth_id
+	match dk.state:
+		FrigateDock.State.CAPTURE:
+			title = "SOFT CAPTURE  ·  CLAMPS ENGAGING"
+			col = HudStyle.AMBER
+		FrigateDock.State.LOCKED:
+			title = "HARD DOCK  ·  GANGWAY EXTENDING"
+			col = HudStyle.GREEN
+		FrigateDock.State.UNDOCKING:
+			title = "UNDOCKING  ·  GANGWAY RETRACTING" if dk.gangway_t > 0.0 else "UNDOCKING  ·  CLAMPS RELEASING"
+			col = HudStyle.AMBER
+	if dk.state == FrigateDock.State.FREE and dk.hint == "" and dk.in_box:
+		col = HudStyle.GREEN
+		title = "CAPTURE  ·  HOLD STEADY"
+	HudStyle.draw_panel(self, r, 12.0, Color(col, 0.7))
+	HudStyle.text(self, r.position + Vector2(18, 30), title, 19, col)
+	# alignment scope: +/-12 m fore/aft across, +/-8 m lateral (pier up)
+	var sc := Rect2(r.position + Vector2(18, 44), Vector2(200, 92))
+	draw_rect(sc, Color(0.0, 0.03, 0.06, 0.5))
+	draw_rect(sc, Color(col, 0.35), false, 1.0)
+	var kx := sc.size.x * 0.5 / 12.0
+	var ky := sc.size.y * 0.5 / 8.0
+	var mid := sc.get_center()
+	var box := Rect2(mid + Vector2(-FrigateDock.BOX_AXIAL * kx, -FrigateDock.BOX_IN * ky), Vector2(FrigateDock.BOX_AXIAL * 2.0 * kx, (FrigateDock.BOX_IN + FrigateDock.BOX_OUT) * ky))
+	draw_rect(box, Color(col, 0.12))
+	draw_rect(box, Color(col, 0.8), false, 1.5)
+	draw_line(Vector2(sc.position.x, mid.y), Vector2(sc.end.x, mid.y), Color(col, 0.25), 1.0)
+	draw_line(Vector2(mid.x, sc.position.y), Vector2(mid.x, sc.end.y), Color(col, 0.25), 1.0)
+	HudStyle.text(self, Vector2(sc.position.x + 4, sc.position.y + 13), "PIER", 11, HudStyle.MUTED)
+	var p := mid + Vector2(clampf(dk.err.x, -12.0, 12.0) * kx, -clampf(dk.err.y, -8.0, 8.0) * ky)
+	var hd := Vector2.from_angle(deg_to_rad(dk.heading_err))
+	draw_circle(p, 5.0, HudStyle.WHITE)
+	draw_line(p, p + hd * 16.0, HudStyle.WHITE, 2.0, true)
+	# readouts
+	var tx := r.position + Vector2(236, 62)
+	HudStyle.label(self, tx, "Range")
+	HudStyle.text(self, tx + Vector2(84, 0), "%.1f m" % dk.dist, 18, HudStyle.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
+	HudStyle.label(self, tx + Vector2(0, 24), "Speed")
+	var sp_col := HudStyle.WHITE if dk.speed <= FrigateDock.MAX_SPEED else HudStyle.AMBER
+	HudStyle.text(self, tx + Vector2(84, 24), "%.2f m/s" % dk.speed, 18, sp_col, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
+	HudStyle.label(self, tx + Vector2(0, 48), "Heading")
+	var hd_col := HudStyle.WHITE if absf(dk.heading_err) <= FrigateDock.MAX_HEADING_DEG else HudStyle.AMBER
+	HudStyle.text(self, tx + Vector2(84, 48), "%+.1f°" % dk.heading_err, 18, hd_col, HORIZONTAL_ALIGNMENT_LEFT, -1, HudStyle.mono())
+	if dk.state == FrigateDock.State.FREE and dk.hint != "":
+		HudStyle.text(self, tx + Vector2(0, 74), dk.hint, 15, HudStyle.AMBER)
+	var prog := dk.hold
+	match dk.state:
+		FrigateDock.State.CAPTURE: prog = dk.clamp_t
+		FrigateDock.State.LOCKED: prog = dk.gangway_t
+		FrigateDock.State.UNDOCKING: prog = 1.0 - (dk.gangway_t * 0.6 + dk.clamp_t * 0.4)
+	var bar := Rect2(r.position + Vector2(236, 138), Vector2(r.size.x - 254, 5))
+	draw_rect(bar, Color(col, 0.15))
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(prog, 0.0, 1.0), bar.size.y)), col)
+	return exit_at
 
 
 func _stripes(r: Rect2) -> void:

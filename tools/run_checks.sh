@@ -37,6 +37,8 @@ CHECKS=(
 	"onfoot_flow|res://scenes/test/onfoot_flow_test.tscn|--headless --fixed-fps 120|^onfoot_flow_test: OK"
 	"vehicles_flow|res://scenes/test/vehicles_flow_test.tscn|--headless --fixed-fps 120|^vehicles_flow_test: OK"
 	"shuttle_flight|res://scenes/test/shuttle_flight_test.tscn|--headless --fixed-fps 120|^shuttle_flight_test: OK"
+	"frigate|res://scenes/test/frigate_test.tscn|--headless --fixed-fps 120|^frigate_test: OK"
+	"frigate_flow|res://scenes/test/frigate_flow_test.tscn|--headless --fixed-fps 120|^frigate_flow_test: OK"
 )
 AUDIO_CHECK="ship_audio|res://scenes/test/ship_audio_test.tscn|--fixed-fps 120|^ship_audio_test: OK"
 

@@ -92,6 +92,10 @@ func _draw() -> void:
 	if petrel:
 		_draw_petrel(r, o, petrel)
 		return
+	var frigate := ship as FrigateShip
+	if frigate:
+		_draw_frigate(r, o, frigate)
+		return
 
 	# --- flight assist ---
 	var fa := bool(GameplayUtil.pget(ship, &"flight_assist", false))
@@ -304,3 +308,106 @@ func _draw_line_panel(r: Rect2, line: MagLine) -> void:
 		HudStyle.text(self, o + Vector2(140, 74), "CLUTCH SLIP", 13, HudStyle.RED)
 	elif line.winch_state != "":
 		HudStyle.text(self, o + Vector2(140, 74), "WINCH %s" % line.winch_state, 13, HudStyle.AMBER if line.winch_state == "STALL" else HudStyle.CYAN)
+
+
+# ================================================================ KESTREL
+
+const DOCK_NAMES := ["FREE", "SOFT CAPTURE", "DOCKED", "UNDOCKING"]
+
+
+func _sec_color(v: float) -> Color:
+	if v <= 0.5:
+		return Color(0.25, 0.08, 0.08, 0.9)
+	if v < 35.0:
+		return HudStyle.RED if fmod(_t, 0.6) < 0.4 else HudStyle.RED.darkened(0.45)
+	if v < 70.0:
+		return HudStyle.AMBER
+	return HudStyle.CYAN.lerp(HudStyle.GREEN, 0.35)
+
+
+func _draw_frigate(r: Rect2, o: Vector2, ship: FrigateShip) -> void:
+	var dmg := ship.damage
+	# --- chips: dock state, assist, all stop, alert
+	var dname: String = DOCK_NAMES[ship.dock.state]
+	var dcol := HudStyle.GREEN if ship.dock.state == FrigateDock.State.LOCKED else (HudStyle.AMBER if ship.dock.busy() else HudStyle.MUTED)
+	var chip := Rect2(o + Vector2(0, 204), Vector2(112, 22))
+	draw_rect(chip, Color(dcol, 0.14))
+	draw_rect(chip, Color(dcol, 0.7), false, 1.0)
+	HudStyle.text(self, chip.position + Vector2(8, 17), dname, 14, dcol)
+	var fa_col := HudStyle.GREEN if ship.flight_assist else HudStyle.MUTED
+	var fa := Rect2(o + Vector2(120, 204), Vector2(112, 22))
+	draw_rect(fa, Color(fa_col, 0.14 if ship.flight_assist else 0.06))
+	draw_rect(fa, Color(fa_col, 0.7), false, 1.0)
+	HudStyle.text(self, fa.position + Vector2(8, 17), "ASSIST %s [F]" % ("ON" if ship.flight_assist else "OFF"), 14, fa_col)
+	if ship.red_alert:
+		var on := fmod(_t, 0.8) < 0.5
+		var ra := Rect2(o + Vector2(240, 204), Vector2(110, 22))
+		draw_rect(ra, Color(HudStyle.RED, 0.3 if on else 0.1))
+		draw_rect(ra, Color(HudStyle.RED, 0.9), false, 1.0)
+		HudStyle.text(self, ra.position + Vector2(10, 17), "RED ALERT", 14, HudStyle.RED if on else HudStyle.RED.darkened(0.3))
+	elif ship.all_stop > 0.1:
+		HudStyle.text(self, o + Vector2(244, 221), "ALL STOP", 14, HudStyle.AMBER)
+	else:
+		HudStyle.text(self, o + Vector2(244, 221), "SPACE all stop", 13, HudStyle.MUTED)
+	# --- ship schematic (bow up): sections by integrity, shield ring
+	var c := r.position + Vector2(PANEL_SIZE.x - 92, 120)
+	HudStyle.label(self, c + Vector2(-46, -96), "Systems")
+	var sh := clampf(dmg.shield / FrigateDamage.SHIELD_MAX, 0.0, 1.0)
+	var ring_col := HudStyle.CYAN if dmg.shield_online else HudStyle.RED.darkened(0.3)
+	var segs := 24
+	for i in segs:
+		var a0 := -PI * 0.5 + TAU * i / segs + 0.03
+		var a1 := -PI * 0.5 + TAU * (i + 1) / segs - 0.03
+		var lit := float(i) / segs < sh
+		_ellipse_arc(c, Vector2(44, 80), a0, a1, Color(ring_col, 0.85 if lit else 0.15), 3.0)
+	var D := FrigateDamage.Sec
+	var k := 1.05     # px per metre (bow up: ship +X -> screen -Y)
+	var to := func(p: Vector2) -> Vector2: return c + Vector2(p.y, -p.x) * k
+	# Sections as outlined cells of a deck-plan schematic (ship metres,
+	# clipped from the hull shapes so the cells share their borders).
+	var lens := PackedVector2Array()
+	for i in 40:
+		var a := TAU * i / 40.0
+		lens.append(Vector2(36.0 + 42.0 * cos(a), 23.5 * sin(a)))
+	var cells := [
+		[D.BOW, Geometry2D.intersect_polygons(lens, _box(22.0, -30.0, 90.0, 30.0))],
+		[D.PORT, Geometry2D.intersect_polygons(lens, _box(-10.0, -30.0, 22.0, 0.0))],
+		[D.STARBOARD, Geometry2D.intersect_polygons(lens, _box(-10.0, 0.0, 22.0, 30.0))],
+		[D.ENGINEERING, [PackedVector2Array([Vector2(-6, -6), Vector2(-6, 6), Vector2(-64, 8), Vector2(-64, -8)])]],
+		[D.NACELLE_P, [_box(-76.0, -31.5, -16.0, -24.5)]],
+		[D.NACELLE_S, [_box(-76.0, 24.5, -16.0, 31.5)]],
+	]
+	for cell in cells:
+		var col := _sec_color(dmg.integrity[int(cell[0])])
+		for poly: PackedVector2Array in cell[1]:
+			var sp := PackedVector2Array()
+			for v in poly:
+				sp.append(to.call(v))
+			draw_colored_polygon(sp, Color(col, 0.28))
+			sp.append(sp[0])
+			draw_polyline(sp, Color(col, 0.95), 1.5, true)
+	for side: float in [-1.0, 1.0]:
+		draw_line(to.call(Vector2(-36, 7 * side)), to.call(Vector2(-44, 24.5 * side)), Color(1, 1, 1, 0.35), 2.0, true)
+		# engine output bar behind each nacelle
+		var e := ship.engine_out.z if side > 0.0 else ship.engine_out.y
+		var b0: Vector2 = to.call(Vector2(-78, 28 * side))
+		draw_line(b0, b0 + Vector2(0, 22.0 * e), Color(0.5, 0.75, 1.0, 0.9), 3.0)
+	for b in dmg.breaches:
+		var p: Vector2 = to.call(b.pos)
+		draw_circle(p, 2.5, Color(1.0, 0.45, 0.15, 0.95))
+	HudStyle.text(self, c + Vector2(-60, 104), "SHIELD %d%%" % int(round(sh * 100.0)), 14, ring_col, HORIZONTAL_ALIGNMENT_CENTER, 120)
+	if dmg.core_breach >= 0.0:
+		var on := fmod(_t, 0.4) < 0.25
+		HudStyle.text(self, Vector2(r.position.x, r.position.y - 16), "CORE BREACH IN %.1f s  ·  REACTOR CONTAINMENT FAILING" % dmg.core_breach, 20, HudStyle.RED if on else HudStyle.AMBER)
+
+
+func _box(x0: float, y0: float, x1: float, y1: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)])
+
+
+func _ellipse_arc(c: Vector2, radii: Vector2, a0: float, a1: float, col: Color, w: float) -> void:
+	var pts := PackedVector2Array()
+	for i in 5:
+		var a := lerpf(a0, a1, i / 4.0)
+		pts.append(c + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	draw_polyline(pts, col, w, true)

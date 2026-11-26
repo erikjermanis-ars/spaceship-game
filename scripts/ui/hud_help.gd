@@ -43,11 +43,26 @@ const CONTROLS_PETREL := [
 	["R / T", "Race / reset (best lap kept per ship)"],
 	["P / Esc · H", "Pause · this help"],
 ]
+const CONTROLS_FRIGATE := [
+	["KESTREL frigate", ""],
+	["W / ↑  ·  S / ↓", "Impulse + drive nacelles at the throttle setting  ·  retro"],
+	["Shift  /  Ctrl · Z", "Throttle up / down (hold)"],
+	["A D / ← →", "Turn in place (bow and engineering RCS couple)"],
+	["Q / E", "Strafe thrusters"],
+	["F", "Flight assist (on by default)"],
+	["Space (hold)", "All stop: every thruster brakes drift and spin"],
+	["Berth E2", "Fly the ship's centre into the capture box, aligned, < 1.2 m/s"],
+	["Docked", "Hold any flight key to undock  ·  X leave the bridge"],
+	["X (adrift)", "At all stop: leave the bridge and walk the ship"],
+	["View", ""],
+	["C · Wheel · M · G", "Camera · zoom · map · flight guide"],
+	["P / Esc · H", "Pause · this help"],
+]
 const CONTROLS_ON_FOOT := [
 	["On foot", ""],
 	["W A S D / ↑ ← ↓ →", "Walk"],
 	["Shift", "Run"],
-	["E / Enter", "Use: doors, switches, terminals, board ship"],
+	["E / Enter", "Use: doors, switches, terminals, board ship, the captain's chair"],
 	["F", "Helmet flashlight"],
 	["Wheel  = / -", "Zoom"],
 	["Docked ship", ""],
@@ -91,7 +106,9 @@ func _draw() -> void:
 		rows = CONTROLS_ON_FOOT
 	elif Game.player is ShuttleShip:
 		rows = CONTROLS_PETREL
-	var w := 940.0 if rows == CONTROLS_PETREL else 720.0
+	elif Game.player is FrigateShip:
+		rows = CONTROLS_FRIGATE
+	var w := 940.0 if rows == CONTROLS_PETREL or rows == CONTROLS_FRIGATE else 720.0
 	var h := 64.0 + rows.size() * 30.0
 	var r := Rect2((size - Vector2(w, h)) * 0.5, Vector2(w, h))
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.01, 0.03, 0.45 * _a))

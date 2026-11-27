@@ -33,6 +33,9 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _draw() -> void:
+	# The Meridian Circuit is Meridian's: nothing to show at another station.
+	if Game.sector != Sectors.MERIDIAN:
+		return
 	if _race == null or _race.gate_count() < 2:
 		return
 	var r := PANEL_RECT

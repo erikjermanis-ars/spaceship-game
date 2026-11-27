@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/onfoot/interior/interior_level.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/interior_room.gd" id="2"]
@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://scripts/onfoot/interior/gangway_gate.gd" id="16"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/travelator.gd" id="17"]
 [ext_resource type="Script" path="res://scripts/onfoot/interior/berth_view.gd" id="18"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/pier_north_transit_sign.gd" id="19"]
 
 [node name="Pier7Concourse" type="Node2D"]
 script = ExtResource("1")
@@ -886,13 +887,11 @@ length_m = 50.0
 [node name="BoardKestrel" type="Node2D" parent="Interactive"]
 script = ExtResource("15")
 position = Vector2(762.0, 190.0)
-prompt = "Board KESTREL"
+prompt = "Board the KESTREL"
 reach_m = 2.2
-target_scene = "res://scenes/onfoot/interiors/frigate_deck.tscn"
-arrival = "FromGangway"
 door = NodePath("../../Doors/FrigateHatch")
 walk_in = Vector2(40.0, 0.0)
-arrival_note = "Airlock  ·  the bridge is forward, up the main corridor"
+berth_id = "E2"
 
 [node name="Airlock" type="Node2D" parent="."]
 script = ExtResource("13")
@@ -904,3 +903,226 @@ arrival_m = Vector2(1.4, -1.4)
 [node name="FromFrigate" type="Marker2D" parent="."]
 position = Vector2(752.0, 190.0)
 rotation = 3.1415927
+
+[node name="TransitPlatform" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(45.0, 270.0)
+room_name = "Transit platform"
+size_m = Vector2(11.0, 6.5)
+floor_style = 0
+floor_color = Color(0.33, 0.39, 0.47, 1.0)
+floor_label = "TRANSIT  ·  PIER 7 SOUTH"
+label_offset_m = Vector2(-4.2, 0.9)
+
+[node name="PodNorth" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(10.0, 270.0)
+room_name = "Pod · Pier 7 North"
+size_m = Vector2(3.5, 6.5)
+floor_style = 3
+floor_color = Color(0.2, 0.34, 0.37, 1.0)
+
+[node name="PodCargo" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(155.0, 270.0)
+room_name = "Pod · Cargo Yard C"
+size_m = Vector2(3.5, 6.5)
+floor_style = 3
+floor_color = Color(0.2, 0.34, 0.37, 1.0)
+
+[node name="TransitDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(100.0, 265.0)
+rotation = 1.5708
+width_m = 1.8
+thickness_m = 1.0
+auto = true
+
+[node name="PodNorthDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(45.0, 302.5)
+width_m = 1.8
+thickness_m = 0.4
+auto = false
+leaf_color = Color(0.85, 0.88, 0.91, 1.0)
+accent = Color(1.0, 0.69, 0.0, 1.0)
+
+[node name="PodCargoDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(155.0, 302.5)
+width_m = 1.8
+thickness_m = 0.4
+auto = false
+leaf_color = Color(0.85, 0.88, 0.91, 1.0)
+accent = Color(1.0, 0.69, 0.0, 1.0)
+
+[node name="ScreenNorthN" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(45.0, 281.5)
+length_m = 1.6
+thickness_m = 0.3
+
+[node name="ScreenNorthS" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(45.0, 323.5)
+length_m = 1.6
+thickness_m = 0.3
+
+[node name="ScreenCargoN" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(155.0, 281.5)
+length_m = 1.6
+thickness_m = 0.3
+
+[node name="ScreenCargoS" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(155.0, 323.5)
+length_m = 1.6
+thickness_m = 0.3
+
+[node name="TransitLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(100.0, 302.5)
+size_m = Vector2(28.0, 6.5)
+color = Color(0.85, 0.93, 1.0, 1.0)
+energy = 0.95
+
+[node name="PodNorthLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(27.5, 302.5)
+size_m = Vector2(3.5, 6.5)
+color = Color(0.45, 1.0, 0.85, 1.0)
+energy = 0.45
+
+[node name="PodCargoLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(172.5, 302.5)
+size_m = Vector2(3.5, 6.5)
+color = Color(0.45, 1.0, 0.85, 1.0)
+energy = 0.45
+
+[node name="PodNorthBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(14.5, 302.5)
+kind = 12
+size_m = Vector2(0.7, 4.6)
+
+[node name="PodNorthStrip" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(27.5, 333.2)
+rotation = -1.5708
+kind = 18
+size_m = Vector2(0.25, 2.2)
+solid = false
+
+[node name="PodCargoBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(185.5, 302.5)
+rotation = 3.1416
+kind = 12
+size_m = Vector2(0.7, 4.6)
+
+[node name="PodCargoStrip" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(172.5, 333.2)
+rotation = -1.5708
+kind = 18
+size_m = Vector2(0.25, 2.2)
+solid = false
+
+[node name="TransitBoard" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(100.0, 333.2)
+rotation = -1.5708
+kind = 18
+size_m = Vector2(0.25, 3.2)
+solid = false
+
+[node name="TransitBenchW" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(69.0, 331.0)
+rotation = -1.5708
+kind = 12
+size_m = Vector2(0.6, 2.2)
+
+[node name="TransitBenchE" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(131.0, 331.0)
+rotation = -1.5708
+kind = 12
+size_m = Vector2(0.6, 2.2)
+
+[node name="TransitPlantW" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(51.5, 329.0)
+kind = 8
+size_m = Vector2(0.8, 0.8)
+seed = 41
+
+[node name="TransitPlantE" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(148.5, 329.0)
+kind = 8
+size_m = Vector2(0.8, 0.8)
+seed = 42
+
+[node name="TransitBin" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(120.0, 274.5)
+kind = 16
+size_m = Vector2(0.6, 0.6)
+
+[node name="TransitExtinguisher" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(82.0, 272.2)
+rotation = 1.5708
+kind = 17
+size_m = Vector2(0.3, 0.6)
+solid = false
+
+[node name="PodPier7North" type="Node2D" parent="Interactive"]
+script = ExtResource("15")
+position = Vector2(57.0, 302.5)
+prompt = "Transit pod  ·  Pier 7 North"
+reach_m = 2.2
+target_scene = "res://scenes/onfoot/interiors/pier7_north.tscn"
+arrival = "TransitArrive"
+door = NodePath("../../Doors/PodNorthDoor")
+walk_in = Vector2(-30.0, 0.0)
+ride = true
+arrival_note = "Pier 7 North"
+
+[node name="PodCargoYardC" type="Node2D" parent="Interactive"]
+script = ExtResource("15")
+position = Vector2(143.0, 302.5)
+prompt = "Transit pod  ·  Cargo Yard C"
+reach_m = 2.2
+target_scene = "res://scenes/onfoot/interiors/cargo_control.tscn"
+arrival = "TransitArrive"
+door = NodePath("../../Doors/PodCargoDoor")
+walk_in = Vector2(30.0, 0.0)
+ride = true
+arrival_note = "Cargo Yard C"
+
+[node name="SignPier7North" type="Node2D" parent="Interactive"]
+script = ExtResource("19")
+position = Vector2(58.5, 279.5)
+heading = "PIER LINE  ·  NORTHBOUND"
+destination = "PIER 7 NORTH"
+
+[node name="SignCargoYardC" type="Node2D" parent="Interactive"]
+script = ExtResource("19")
+position = Vector2(141.5, 279.5)
+heading = "PIER LINE  ·  SOUTHBOUND"
+destination = "CARGO YARD C"
+
+[node name="TransitMap" type="Node2D" parent="Interactive"]
+script = ExtResource("12")
+position = Vector2(100.0, 326.5)
+prompt = "Read the line map"
+title = "PIER LINE"
+entries = PackedStringArray("MERIDIAN TRANSIT. Four stops in a row: Hangar 2, Pier 7 North, Pier 7 South, Cargo Yard C. You are at Pier 7 South.", "West pod: Pier 7 North, for Berth E1 and the HALCYON's gangway. East pod: Cargo Yard C.", "Hangar 2 is one stop beyond Pier 7 North. Change pods on the platform there.", "Lost property this week: one glove, one visor wipe, one pallet jack. The Quartermaster at Pier 7 North says the jack is his.")
+
+[node name="TransitArrive" type="Marker2D" parent="."]
+position = Vector2(100.0, 298.5)
+rotation = -1.5708

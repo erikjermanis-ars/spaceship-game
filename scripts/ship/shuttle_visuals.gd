@@ -33,6 +33,9 @@ var _t := 0.0
 var _plume := Vector2.ZERO
 var _puff := PackedFloat32Array([0, 0, 0, 0, 0, 0, 0, 0])
 var _overlay: LandingOverlay
+## Hold lamps: slots lit last frame, and a flash (1 -> 0) when that changes.
+var _hold_used := 0
+var _hold_flash := 0.0
 
 
 func _ready() -> void:
@@ -106,6 +109,11 @@ func _process(delta: float) -> void:
 		var want := clampf(float(wants[i]) * 1.5, 0.0, 1.0) if ship.powered and ship.alive else 0.0
 		_puff[i] = move_toward(_puff[i], want, delta * 10.0)
 	_flood.modulate.a = move_toward(_flood.modulate.a, 0.35 if ship.floodlights and ship.powered else 0.0, delta * 4.0)
+	var used := ship.hold.used() if ship.hold else 0
+	if used != _hold_used:
+		_hold_used = used
+		_hold_flash = 1.0
+	_hold_flash = maxf(0.0, _hold_flash - delta * 2.0)
 	_fx.queue_redraw()
 
 
@@ -148,6 +156,17 @@ func _draw_fx() -> void:
 	var ph := fmod(_t, 1.6)
 	if ph < 0.06:
 		pen.circle(Vector2(-64, 0), 4.0, Color(1, 1, 1, 0.9))
+	# --- hold lamps: one per slot in a row across the navy stern block (the
+	# only dark stretch of hull, so additive light shows), lit amber when used
+	if ship.hold and ship.powered and ship.alive:
+		var cap := ship.hold.capacity
+		for i in cap:
+			var p := Vector2(-59.6, lerpf(-18.0, 18.0, i / maxf(cap - 1.0, 1.0)))
+			if i < _hold_used:
+				pen.circle(p, 2.5 + 2.5 * _hold_flash, Color(1.0, 0.62, 0.15, 0.2 + 0.45 * _hold_flash))
+				pen.circle(p, 1.35, Color(1.0, 0.86, 0.55, 0.95))
+			else:
+				pen.circle(p, 1.1, Color(0.45, 0.85, 1.0, 0.3))
 	# --- skid legs (extend below 2 m)
 	if ship.skids > 0.01:
 		for s in LandingProbe.SKIDS:

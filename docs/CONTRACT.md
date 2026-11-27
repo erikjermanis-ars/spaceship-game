@@ -35,7 +35,10 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
   `scrape(pos, normal, tangent_speed_mps, source)`, `hull_changed(hull, max_hull)`,
   `ship_destroyed(pos)`, `ship_respawned(pos)`, `race_started()`,
   `checkpoint_passed(index, total, split_time)`, `race_finished(time, best)`,
-  `docked(pad_name)`, `undocked(pad_name)`, `message(text, duration)`, `debug_draw_changed(enabled)`.
+  `docked(pad_name)`, `undocked(pad_name)`, `message(text, duration)`, `debug_draw_changed(enabled)`,
+  `cargo_delivered(brand, receiver_id, slots)` (a `FreightReceiver` took a container).
+  `shot_hit(pos, normal, collider, shooter)` (a weapon bolt hit something), `target_destroyed(kind)`
+  (something shootable was destroyed; kind `"drone"`).
 * Shared refs: `Game.player` (set by ship), `Game.camera` (set by camera rig),
   `Game.level` (set by level root), `Game.world_bounds: Rect2` (set by level),
   `Game.debug_draw: bool` (F3 toggles it).
@@ -47,7 +50,8 @@ Everything is GDScript and Godot-native nodes. No add-ons, no C#.
   `camera_mode` (C), `zoom_in`/`zoom_out` (wheel, =/-), `tuning_panel` (Tab/F1), `help` (H),
   `restart_race` (R), `respawn` (T), `pause` (P/Esc), `radar_toggle` (M), `debug_draw` (F3).
   On foot: `move_up/down/left/right` (WASD/arrows, left stick), `run` (Shift), `interact` (E/Enter),
-  `flashlight` (F/L), and `disembark` (X) while docked. Gamepad bindings are included.
+  `flashlight` (F/L), and `disembark` (X) while docked. `ship_fire` (Space, left mouse, pad A) fires the
+  WREN's guns. Gamepad bindings are included.
 * **Test harness** via user args after `--`:
   `--spawn=x_px,y_px,heading_deg`, `--input=0.5-3:thrust_forward;1-1.6:turn_left+throttle_up`,
   `--shots=1,2.5` (PNG captures at physics-time seconds), `--shot-dir=/abs/dir`,
@@ -74,7 +78,19 @@ use `Game.set_player()` and listen to `Game.player_changed(new, old)`; never cac
 the vehicle API (`park`, `take_control`, `on_boarded`, `can_disembark`, `disembark_hint`, `landed_model`,
 `ship_id`, `uses_pad_clamps`, `home_transform`, `damage_scale`) and a virtual `_apply_flight_forces()`. Parked
 ships sit on `LAYER_WORLD`, frozen. Static station modules publish deck floors in `LevelArt.walk_decks` (landing
-and walking surfaces). PETREL input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`.
+and walking surfaces). PETREL input actions: `ship_hover`, `ship_line`, `ship_reel`, `aim_*`, `cargo_unload`
+(U, right-stick click).
+
+The PETREL's cargo: `ShuttleShip.hold` is a `CargoHold` (`scripts/ship/cargo_hold.gd`): `capacity` (10), `used()`,
+`free_slots()`, `count()`, `items()` (first in first: `{brand, color, slots, size_m, body}`), `top()`,
+`can_take(body)`, `stow(body) -> bool`, `eject() -> RigidBody2D` (last in, first out; the node is handed back
+out of the tree, put it somewhere with `CargoHold.put_in_world()`), `mass_kg()`, and signals `changed`,
+`stowed(body)`, `ejected(body)`. Anything in group `cargo_container` can be stowed: 1 slot, or 2 if its `size_m.x`
+is 9 m or more (meta `cargo_slots` overrides). Stowed containers are out of the scene tree and are freed with
+the hold. `ShuttleShip.cargo` is the `CargoHandler` (`cargo_handler.gd`) that decides when to stow (hooked,
+reeling, within 1.5 m of the hull), and has `unload() -> RigidBody2D`, `unload_block() -> String` and `spill()`.
+`ShuttleShip.mass_kg` includes the cargo (160 kg per used slot); `dry_mass_kg()` is the ship alone, and setting
+`mass_kg` from outside sets the dry mass.
 
 The KESTREL (`scripts/ship/frigate_ship.gd`, `scenes/ship/frigate.tscn`, plus `frigate_damage.gd`,
 `frigate_dock.gd`, `frigate_visuals.gd`, `frigate_audio.gd` and the generated `frigate_shape.gd`) is a third,
@@ -96,6 +112,45 @@ Hooks other systems provide for on foot: `CameraRig.set_focus()`, `clear_focus()
 `LevelArt.depth_amount` (flattens the 2.5D parallax); `DockingSystem.is_docked()`, `is_settled()` and
 `force_dock()`; `AmbientAudio.set_level_offset()`; and on the HUD the "X Exit ship" prompt, `HudStyle.key_hint()`
 and the on-foot help page.
+
+### Two frigates, the flight deck, sectors and the quantum drive
+
+* `scenes/main.tscn` holds two `frigate.tscn` instances: `Frigate` (KESTREL, `berth_id = "E2"`) and `Halcyon`
+  (HALCYON, `berth_id = "E1"`). `berth_id` is the HOME berth; `FrigateShip.dock.berth` is the berth in use (a
+  frigate docks at any free `FrigateBerth`, at either station), `berth_name()` its id, `home_berth` the home node.
+  `ship_id()` is the lower-case `vehicle_name`. `FrigateShip.aboard` (static) is the frigate whose deck the player
+  walks; `FrigateShip.docked_at(tree, berth_id)` the frigate sealed to a berth. `FrigateBerth` has `gangway_scene`,
+  `gangway_arrival` and `station_name` (where a docked ship's airlock leads).
+* `frigate_shape.gd` (generated) has `PARTS` (convex collision parts), `BODY` (silhouette with the bay notch),
+  `RING_OUTER` / `RING_INNER` / `RING_MID`, `outlines()`, `half_beam(x_m)`, `CLAMP_FWD`, `CLAMP_AFT`, `AIRLOCK`,
+  `BAY` (Rect2, m), `BAY_PADS`, `BAY_PAD_SIZE`, the RCS quad positions, `CENTRE_X`, `HALF_LENGTH`, `HALF_BEAM`.
+* `FrigateShip.bay` (`FrigateBay`): `pads` (two `FrigateBayPad`s, each with a `DockTrigger` Area2D in group
+  `docking_pad` named "<SHIP> Bay A/B"), `contains(global_point)`, `refresh()` (called by `take_control()`),
+  `stowed` (`[{ship, local}]`), `is_stowed(ship)`. The deck is an entry in `LevelArt.walk_decks` whose polygon
+  follows the ship. A stowed ship has `PlayerShip.carrier` set and is drawn at `carrier.render_transform()`.
+  Frigates draw at `Game.Z_CAPITAL` (4), under the small ships.
+* `Sectors` (`scripts/systems/sectors.gd`): `DEFS[id]` = `{name, kind, beacon, origin, half, arrive,
+  arrive_heading, map, look, notes}`; `has(id)`, `bounds(id)`, `arrival(id)`, `at(world_pos)`, `origin(id)`.
+  Meridian is `&"meridian"` at (0, 0); Vesper Rock is `&"vesper"` at (90000, 0) px.
+* `JumpSystem` (`Main/Systems/JumpSystem`, group `jump_system`): `course`, `set_course(id)`, `open_map()`,
+  `busy()`, `phase` (`IDLE, SPOOL, LEAP, TUNNEL, ARRIVE`), `progress`, `blocker(ship)` (why the drive won't spool,
+  "" = it will), `force_jump(ship)` (tests). It owns `Game.sector`, `Game.world_bounds` and
+  `SpaceBackground.set_look()`, and emits `Game.sector_changed(id)` and `Game.jump_event(phase, data)`. During a
+  jump `FrigateShip.jump_ctl` is the system (its `apply(state, ship)` replaces the flight model) and
+  `jump_glow` (0..1) lights the rings. Input actions `jump_engage` (J) and `star_map` (N) are registered by it.
+* `PlayerShip.home_transform()` is sector-aware: away from Meridian a lost small ship is recovered to the nearest
+  station pad of the sector it is in (`nearest_pad_transform()`); a frigate goes to its home berth.
+* `Contracts` (`Main/Systems/Contracts`, group `contracts`): `DEFS`, `state[id] = {count, target, reward, tier,
+  flash}`, `credits`, `advance(id)`, signals `changed`, `completed(id, reward)`. It listens to
+  `Game.cargo_delivered` and `Game.target_destroyed`.
+* On foot: `InteriorPortal` (fixed target, `ride` for a transit pod, `berth_id` for a station gangway,
+  `frigate_side` for a frigate's airlock; `resolve()` returns `{scene, arrival, note, frigate, ride}` or `{}`),
+  `OnFootDirector.transfer(portal)`, `ride_lift(lift)`, `board_stowed(ship)`, `take_helm(chair)`, `leave_helm()`.
+  `Airlock.exit_point` / `exit_facing` + `ExteriorDoors.DOORS` give an interior a door onto any deck; an interior
+  may have several airlocks. `FrigateDeck.to_deck(ship_m)` / `to_ship(deck_px)` map between the ship's frame and
+  the deck plan; `stowed_model(ship)` is a parked ship's model in the hangar. Arrival markers: `FromGangwayS` /
+  `FromGangwayP`, `BridgeStand`, `LiftBridge`, `LiftHangar`, `DeckStand` in the frigate deck; `FromFrigate` and
+  `TransitArrive` in station interiors.
 
 ## 3. Scene contract (other scenes instance these paths, so moving them breaks things)
 
@@ -122,7 +177,13 @@ and the on-foot help page.
   * Traffic ships: `AnimatableBody2D` (layer `LAYER_TRAFFIC`) following lanes, or similar.
   * Frigate berths: `FrigateBerth` modules (group `frigate_berth`, `berth_id`). The module's transform is the docked
     frigate's (origin = its centre, +X = its heading); the pier wall is at local y = `pier_dist_m` × `pier_side`.
-    Berth E1 holds the static HALCYON (`occupied_static`), Berth E2 is the KESTREL's.
+    Berth E1 is the HALCYON's home, Berth E2 the KESTREL's, Berth V1 (Vesper Rock) starts empty.
+  * Freight intakes: `FreightReceiver` modules (`scripts/level/modules/freight_receiver.gd`, group
+    `freight_receiver`; exports `receiver_id`, `title`, `accepts` (brands, empty = anything), `size_m`, `trunk_m`).
+    Nothing in them collides. A `cargo_container` whose centre is inside the `size_m` rectangle and slower than
+    1 m/s for 0.6 s is taken (freed) if `takes(brand)`: `FreightLedger.record()` (`scripts/systems/freight_ledger.gd`:
+    static `delivered` receiver_id -> count, `slots`, `brands`, `total()`), then `Game.cargo_delivered`. The hatch is
+    on the module's −Y edge. Meridian's is `YardsIntake` (`receiver_id` `yards`) at (0, −420) m.
   * Colliding structure must be on layer `LAYER_WORLD`. Moving structure (rotating ring,
     crane arm, blast doors) = `AnimatableBody2D` with `sync_to_physics = true`, moved in
     `_physics_process`.
@@ -141,7 +202,8 @@ and the on-foot help page.
     Shuttle           (instance shuttle.tscn)      -> the PETREL, parked in Hangar 2 unless --fly=petrel
     Frigate           (instance frigate.tscn)      -> the KESTREL, clamped in Berth E2 unless --fly=kestrel@...
     CameraRig         (instance camera_rig.tscn)
-    Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio, FlightGuide
+    Systems (Node)    ImpactFX, DamageSystem, RaceSystem, DockingSystem, BoundarySystem, AmbientAudio, FlightGuide,
+                      Weapons (WeaponSystem)
     HUD               (instance hud.tscn)
     TuningPanel       (instance tuning_panel.tscn)
     OnFoot (Node)     OnFootDirector: walker, landed ship, pad site, interiors, on-foot HUD
@@ -181,6 +243,26 @@ sliding along something (tangential speed > ~1 m/s). The ship does NOT deal dama
 GAMEPLAY's DamageSystem listens to `Game.impact` and calls `take_damage`.
 
 CameraRig API: `add_trauma(amount: float)` (0..1, shake = trauma²), `punch(direction: Vector2, strength_px: float)`.
+
+### Weapons
+
+`WeaponSystem` (`Main/Systems/Weapons`, group `weapon_system`) flies every bolt:
+`fire(origin: Vector2, dir: Vector2, inherit_velocity: Vector2, shooter: Node)` (px, px/s). Bolts ray-cast against
+`LAYER_WORLD | LAYER_PROPS | LAYER_TRAFFIC` and skip the shooter. When a bolt hits collider `c` at `pos`:
+
+1. hit FX and a positional sound, always;
+2. if `c.has_method("take_shot")`: `c.take_shot(damage: float, at: Vector2, dir: Vector2, shooter: Node)` and nothing
+   else (damage is 10 per bolt; `at` is global px, `dir` the bolt's unit direction; `shooter` may be null). The
+   receiver owns its reaction: stagger, damage, destruction, `Game.target_destroyed(kind)`;
+3. else if `c` is a `RigidBody2D` on `LAYER_PROPS`: a 400 N·s impulse along `dir` at `pos`;
+4. else if `c` is in group `player_ship`, has `take_damage` and is not the shooter: `c.take_damage(1.5, pos)`
+   (for a ship nobody flies: not below half hull, and without `Game.hull_changed` reaching the HUD);
+5. structure and traffic: FX only;
+
+then `Game.shot_hit(pos, normal, c, shooter)`. To make something shootable, put its body on one of those layers
+and give that body `take_shot`. The WREN's guns are the node `Guns` (`WrenGuns`: `heat` 0..1, `overheated`) in
+`player_ship.tscn`; they read their trigger through `PlayerShip.pilot_action(action)`, which applies the same
+controls-off and boarding-latch rules as the flight keys. Target drones are in groups `target_drone` and `radar_prop`.
 
 ## 5. Flight model (SHIP) — reproduce Pat Kerr's "Motion Lab" ship, side-thruster variant
 

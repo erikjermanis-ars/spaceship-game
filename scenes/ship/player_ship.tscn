@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/ship/player_ship.gd" id="1_ship"]
 [ext_resource type="Script" path="res://scripts/ship/ship_visuals.gd" id="2_vis"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/ship/ship_debug_draw.gd" id="4_dbg"]
 [ext_resource type="Texture2D" path="res://assets/art/ship/ship_hull.svg" id="5_hull"]
 [ext_resource type="Texture2D" path="res://assets/art/ship/ship_damage.svg" id="6_dmg"]
+[ext_resource type="Script" path="res://scripts/ship/wren_guns.gd" id="7_guns"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_ship"]
 friction = 0.2
@@ -63,3 +64,6 @@ script = ExtResource("3_audio")
 
 [node name="DebugDraw" type="Node2D" parent="."]
 script = ExtResource("4_dbg")
+
+[node name="Guns" type="Node" parent="."]
+script = ExtResource("7_guns")

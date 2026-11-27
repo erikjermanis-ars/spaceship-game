@@ -55,7 +55,7 @@ func _run() -> void:
 	await _wait(func() -> bool: return _dir.state == OnFootDirector.State.INTERIOR and _dir.get(&"_interior") is FrigateDeck, 10.0, "through the hatch onto the KESTREL")
 	var deck := _dir.get(&"_interior") as FrigateDeck
 	_check(deck.global_position.distance_to(kestrel.global_position) < 1.0, "deck placed on the ship")
-	_check(_dir.walker.global_position.distance_to(deck.get_node(^"FromGangway").global_position) < 4.0, "arrived in the airlock")
+	_check(_dir.walker.global_position.distance_to(deck.get_node(^"FromGangwayS").global_position) < 4.0, "arrived in the airlock")
 	_check(not _dir.walker.helmet, "helmet off aboard")
 
 	# ---- the captain's chair
@@ -102,7 +102,7 @@ func _run() -> void:
 	_check(_dir.walker.global_position.distance_to(deck.get_node(^"BridgeStand").global_position) < 2.0, "standing by the chair")
 
 	# ---- the way back: gangway -> concourse -> airlock 7B -> Pad 2 -> WREN
-	var hatch := deck.get_node(^"Interactive/GangwayHatch") as InteriorPortal
+	var hatch := deck.get_node(^"Interactive/GangwayHatchS") as InteriorPortal
 	_dir.walker.place(hatch.global_position - Vector2(10, 0), 0.0)
 	hatch.interact(_dir.walker)
 	await _wait(func() -> bool: return _dir.state == OnFootDirector.State.INTERIOR and _dir.get(&"_interior") != null and String((_dir.get(&"_interior") as Node).name) == "Pier7Concourse", 10.0, "back across the gangway")

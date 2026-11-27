@@ -99,6 +99,9 @@ func _ready() -> void:
 		manual_zoom = clampf(float(Game.cmd["cam-zoom"]), 0.1, 8.0)
 	if Game.cmd.has("cam-rotate"):
 		rotate_with_ship = true
+	# --foot-zoom=0.1: on-foot zoom factor (unclamped), for whole-deck overviews.
+	if Game.cmd.has("foot-zoom"):
+		focus_manual_zoom = float(Game.cmd["foot-zoom"])
 	Game.impact.connect(_on_impact)
 	Game.scrape.connect(_on_scrape)
 	Game.ship_respawned.connect(func(_p: Vector2) -> void: _snap = true)

@@ -1,6 +1,6 @@
 class_name FrigateDamage
 extends RefCounted
-## The KESTREL's damage model. The WREN has one hull number; a 158 m frigate
+## The KESTREL's damage model. The WREN has one hull number; a 150 m frigate
 ## is a set of systems that fail one by one, so a hit has consequences you
 ## can feel at the helm:
 ##
@@ -9,7 +9,7 @@ extends RefCounted
 ##     powered by Engineering: a damaged Engineering section gives a weaker,
 ##     slower shield, and a wrecked one none at all.
 ##   * SIX SECTIONS take what gets through, by where you were hit: Bow, Port
-##     and Starboard hull, Engineering, Port and Starboard nacelle. `hull`
+##     and Starboard hull, Engineering, Port and Starboard drive ring. `hull`
 ##     (the number every HUD shows) is their weighted average.
 ##   * EFFECTS. Each nacelle gives 30 % of the main thrust and Engineering
 ##     (the impulse deck) 40 %, so a hurt nacelle makes the ship pull to one
@@ -26,7 +26,13 @@ extends RefCounted
 ## and the breach marks close up as their section is patched.
 
 enum Sec { BOW, PORT, STARBOARD, ENGINEERING, NACELLE_P, NACELLE_S }
-const NAMES := ["BOW", "PORT HULL", "STBD HULL", "ENGINEERING", "PORT NACELLE", "STBD NACELLE"]
+const NAMES := ["BOW", "PORT HULL", "STBD HULL", "ENGINEERING", "PORT RING", "STBD RING"]
+## Where the sections meet (local m): the bow is forward of BOW_X, Engineering
+## (the hangar block and the flight deck) aft of ENG_X, and anything further
+## out than RING_Y belongs to that side's drive ring.
+const BOW_X := 30.0
+const ENG_X := -18.0
+const RING_Y := 21.0
 const WEIGHT := [0.18, 0.17, 0.17, 0.2, 0.14, 0.14]
 
 const SHIELD_MAX := 100.0
@@ -65,11 +71,11 @@ func _init() -> void:
 
 ## Which section a local point (metres) belongs to.
 static func section_at(p: Vector2) -> int:
-	if absf(p.y) > 22.0 and p.x < -12.0:
+	if absf(p.y) > RING_Y and p.x < 0.0:
 		return Sec.NACELLE_S if p.y > 0.0 else Sec.NACELLE_P
-	if p.x > 22.0:
+	if p.x > BOW_X:
 		return Sec.BOW
-	if p.x > -8.0:
+	if p.x > ENG_X:
 		return Sec.STARBOARD if p.y > 0.0 else Sec.PORT
 	return Sec.ENGINEERING
 

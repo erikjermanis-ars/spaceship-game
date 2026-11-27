@@ -23,6 +23,7 @@ const LAYER_WALKER := 64    # layer 7: the on-foot player character
 const Z_BELOW_DECK := -50     # non-colliding decks/structure the ship flies OVER
 const Z_STRUCTURE := -10      # colliding station structure (ship level)
 const Z_PROPS := 0            # containers, traffic, gates
+const Z_CAPITAL := 4          # frigates: under the small ships parked on their flight deck
 const Z_SHIP := 5             # player ship
 const Z_FX := 8               # sparks, explosions, debris
 const Z_OVERHEAD := 20        # non-colliding structure the ship flies UNDER
@@ -71,13 +72,27 @@ signal disembarked(pad_name: String)
 signal boarded(pad_name: String)
 signal entered_interior(interior_name: String)
 signal exited_interior(interior_name: String)
+## A FreightReceiver took a container (slots: 1 for a 6 m box, 2 for a 12 m one).
+signal cargo_delivered(brand: String, receiver_id: String, slots: int)
+## A weapon bolt hit `collider` (WeaponSystem; `normal` points off the surface).
+signal shot_hit(pos: Vector2, normal: Vector2, collider: Node, shooter: Node)
+## Something shootable was destroyed (kind: "drone", ...), for objectives.
+signal target_destroyed(kind: String)
 signal debug_draw_changed(enabled: bool)
+## The player is now at another station (a frigate jumped, or a respawn took
+## them home). World bounds and the sky have already been switched.
+signal sector_changed(id: StringName)
+## Quantum-drive milestones for HUD, audio and tests: "course" {to},
+## "spool", "abort" {why}, "leap", "arrive" {sector}.
+signal jump_event(phase: String, data: Dictionary)
 
 # ------------------------------------------------------ shared refs ------
 var player: RigidBody2D      ## set by the player ship in _ready
 var camera: Camera2D         ## set by the camera rig in _ready
 var level: Node2D            ## set by the level root in _ready
 var walker: Node2D           ## the on-foot character while it exists (else null)
+## Which station the player is at (see Sectors). Kept by JumpSystem.
+var sector: StringName = &"meridian"
 ## Playable area in pixels; the level overwrites this in _ready.
 var world_bounds := Rect2(-8000, -6000, 16000, 12000)
 ## Physics/collision debug overlay (toggled with F3).
@@ -192,10 +207,16 @@ func _register_inputs() -> void:
 	_action(&"ship_reel", [KEY_B], [JOY_BUTTON_X])
 	_mouse_action(&"ship_reel", MOUSE_BUTTON_RIGHT)
 	_action(&"ship_lights", [KEY_L], [JOY_BUTTON_LEFT_STICK])
+	# Right-stick click: D-pad right already turns the ship (turn_right).
+	_action(&"cargo_unload", [KEY_U], [JOY_BUTTON_RIGHT_STICK])
 	_action(&"aim_left", [], [], [[JOY_AXIS_RIGHT_X, -1.0]])
 	_action(&"aim_right", [], [], [[JOY_AXIS_RIGHT_X, 1.0]])
 	_action(&"aim_up", [], [], [[JOY_AXIS_RIGHT_Y, -1.0]])
 	_action(&"aim_down", [], [], [[JOY_AXIS_RIGHT_Y, 1.0]])
+	# WREN pulse cannons. Shares Space/LMB/A with the PETREL's and frigate's
+	# own actions; only the ship you fly reads its own.
+	_action(&"ship_fire", [KEY_SPACE], [JOY_BUTTON_A])
+	_mouse_action(&"ship_fire", MOUSE_BUTTON_LEFT)
 
 func _action(action: StringName, keys: Array, joy_buttons := [], joy_axes := []) -> void:
 	if not InputMap.has_action(action):

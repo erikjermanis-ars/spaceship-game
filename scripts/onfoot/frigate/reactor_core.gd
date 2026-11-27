@@ -53,7 +53,7 @@ func _ready() -> void:
 		_hum.max_distance = 420.0
 		add_child(_hum)
 		_hum.play()
-	var f := get_tree().get_first_node_in_group(&"frigate") as FrigateShip
+	var f := FrigateShip.aboard
 	if f:
 		_health = f.damage.integrity[FrigateDamage.Sec.ENGINEERING] / 100.0
 		_breach = f.damage.core_breach >= 0.0

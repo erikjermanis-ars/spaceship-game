@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Damage overlay for target_drone.svg (same viewBox): shown after the first
+     hit. Scorched shell, a cracked target face and the amber ring gone red. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="-32 -32 64 64">
+  <defs>
+    <radialGradient id="burn" gradientUnits="userSpaceOnUse" cx="6" cy="-5" r="17">
+      <stop offset="0" stop-color="#0A0A0C" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#16120F" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#1A1614" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="soot" gradientUnits="userSpaceOnUse" cx="-12" cy="13" r="11">
+      <stop offset="0" stop-color="#14110F" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#14110F" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- the ring reads red now: "one more" -->
+  <circle r="14.2" fill="none" stroke="#FF3B3B" stroke-width="4.2"/>
+  <circle r="16.3" fill="none" stroke="#FFB0A0" stroke-width="0.5" opacity="0.8"/>
+  <!-- scorch -->
+  <circle cx="6" cy="-5" r="17" fill="url(#burn)"/>
+  <circle cx="-12" cy="13" r="11" fill="url(#soot)"/>
+  <!-- cracks from the strike -->
+  <path d="M 6 -5 L 12 -12 L 13 -19 M 6 -5 L 15 -2 L 21 2 M 6 -5 L 3 4 L 7 12 L 5 19 M 6 -5 L -3 -8 L -9 -15 M 3 4 L -6 7 L -14 6"
+        stroke="#05070B" stroke-width="1.1" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 6.6 -5.4 L 12.6 -12.4 M 6.4 -4.4 L 15.2 -1.4 M 3.6 4.2 L 7.6 12.2" stroke="#FF8A3A" stroke-width="0.5" fill="none" opacity="0.9"/>
+  <!-- glowing wound -->
+  <circle cx="6" cy="-5" r="2.6" fill="#FFB060"/>
+  <circle cx="6" cy="-5" r="1.2" fill="#FFF3D0"/>
+  <!-- a shell panel knocked loose -->
+  <path d="M 22.2 -9.2 L 9.2 -22.2 L 7 -17 L 17 -7 Z" fill="#3A4350" opacity="0.75"/>
+</svg>

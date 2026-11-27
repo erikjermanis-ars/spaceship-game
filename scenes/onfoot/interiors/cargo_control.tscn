@@ -1,0 +1,708 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_level.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_room.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/room_light.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/light_switch.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_prop.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/onfoot/sliding_door.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_window.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/vending_machine.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/holo_table.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/info_terminal.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/airlock.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/cargo_yard_view.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/interior_portal.gd" id="13"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/cargo_freight_board.gd" id="14"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/desk_lamp.gd" id="15"]
+[ext_resource type="Script" path="res://scripts/onfoot/interior/pier_north_transit_sign.gd" id="16"]
+
+[node name="CargoControl" type="Node2D"]
+script = ExtResource("1")
+interior_name = "Cargo Yard C · Yard control"
+airlock = NodePath("Airlock")
+use_world_origin = true
+world_origin = Vector2(1500, 5650)
+
+[node name="YardView" type="Node2D" parent="."]
+script = ExtResource("12")
+
+[node name="Rooms" type="Node2D" parent="."]
+
+[node name="Control" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(10.0, 60.0)
+room_name = "Yard control"
+size_m = Vector2(14.0, 13.0)
+floor_style = 3
+floor_color = Color(0.28, 0.35, 0.45, 1.0)
+floor_label = "YARD CONTROL"
+label_offset_m = Vector2(1.0, 4.1)
+
+[node name="Arrivals" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(150.0, 60.0)
+room_name = "Arrivals hall"
+size_m = Vector2(20.0, 5.5)
+floor_style = 0
+floor_color = Color(0.36, 0.42, 0.5, 1.0)
+floor_label = "YARD C"
+label_offset_m = Vector2(-1.5, 0.5)
+
+[node name="Airlock" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(150.0, 115.0)
+room_name = "Airlock"
+size_m = Vector2(6.0, 7.5)
+floor_style = 1
+floor_color = Color(0.29, 0.33, 0.39, 1.0)
+floor_label = "AIRLOCK C4"
+label_offset_m = Vector2(0.0, -1.2)
+
+[node name="Mess" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(210.0, 115.0)
+room_name = "Stevedores' mess"
+size_m = Vector2(14.0, 7.5)
+floor_style = 2
+floor_color = Color(0.4, 0.37, 0.36, 1.0)
+
+[node name="Platform" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(265.0, 0.0)
+room_name = "Transit platform"
+size_m = Vector2(8.5, 6.0)
+floor_style = 3
+floor_color = Color(0.33, 0.38, 0.45, 1.0)
+floor_label = "PIER LINE"
+label_offset_m = Vector2(-0.6, 1.3)
+
+[node name="Pod" type="Node2D" parent="Rooms"]
+script = ExtResource("2")
+position = Vector2(350.0, 14.0)
+room_name = "Transit pod"
+size_m = Vector2(3.4, 3.2)
+floor_style = 2
+floor_color = Color(0.3, 0.42, 0.5, 1.0)
+
+[node name="Doors" type="Node2D" parent="."]
+
+[node name="OuterHatch" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(180.0, 195.0)
+rotation = 1.5708
+width_m = 1.6
+thickness_m = 1.0
+auto = false
+heavy = true
+leaf_color = Color(0.85, 0.88, 0.91, 1.0)
+accent = Color(1.0, 0.69, 0.0, 1.0)
+
+[node name="AirlockInner" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(180.0, 115.0)
+rotation = 1.5708
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="ControlDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(150.0, 87.5)
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="MessDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(307.5, 115.0)
+rotation = 1.5708
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="PlatformDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(307.5, 60.0)
+rotation = 1.5708
+width_m = 1.6
+thickness_m = 0.3
+auto = true
+
+[node name="PodDoor" type="Node2D" parent="Doors"]
+script = ExtResource("6")
+position = Vector2(350.0, 30.0)
+width_m = 1.8
+thickness_m = 0.4
+auto = false
+leaf_color = Color(0.85, 0.88, 0.91, 1.0)
+accent = Color(1.0, 0.69, 0.0, 1.0)
+
+[node name="Windows" type="Node2D" parent="."]
+
+[node name="ControlWindowW" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(5.0, 130.0)
+length_m = 9.0
+
+[node name="ControlWindowS" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(80.0, 195.0)
+rotation = 1.5708
+length_m = 10.0
+
+[node name="MessWindow" type="Node2D" parent="Windows"]
+script = ExtResource("7")
+position = Vector2(280.0, 195.0)
+rotation = 1.5708
+length_m = 8.0
+
+[node name="Lights" type="Node2D" parent="."]
+
+[node name="ControlLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(80.0, 125.0)
+size_m = Vector2(14.0, 13.0)
+color = Color(0.82, 0.9, 1.0, 1.0)
+energy = 0.85
+on = true
+
+[node name="ArrivalsLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(250.0, 87.5)
+size_m = Vector2(20.0, 5.5)
+color = Color(0.85, 0.93, 1.0, 1.0)
+energy = 0.9
+on = true
+
+[node name="AirlockLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(180.0, 152.5)
+size_m = Vector2(6.0, 7.5)
+color = Color(0.85, 0.93, 1.0, 1.0)
+energy = 0.95
+on = true
+
+[node name="MessLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(280.0, 152.5)
+size_m = Vector2(14.0, 7.5)
+color = Color(1.0, 0.86, 0.68, 1.0)
+energy = 0.95
+on = true
+
+[node name="PlatformLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(307.5, 30.0)
+size_m = Vector2(8.5, 6.0)
+color = Color(0.9, 0.96, 1.0, 1.0)
+energy = 0.95
+on = true
+
+[node name="PodLight" type="Node2D" parent="Lights"]
+script = ExtResource("3")
+position = Vector2(367.0, 30.0)
+size_m = Vector2(3.4, 3.2)
+color = Color(1.0, 0.9, 0.7, 1.0)
+energy = 1.0
+on = true
+
+[node name="Switches" type="Node2D" parent="."]
+
+[node name="ControlSwitch" type="Node2D" parent="Switches"]
+script = ExtResource("4")
+position = Vector2(148.5, 70.0)
+rotation = 3.1416
+lights = Array[NodePath]([NodePath("../../Lights/ControlLight")])
+
+[node name="ArrivalsSwitch" type="Node2D" parent="Switches"]
+script = ExtResource("4")
+position = Vector2(151.5, 103.0)
+rotation = 0.0
+lights = Array[NodePath]([NodePath("../../Lights/ArrivalsLight")])
+
+[node name="AirlockSwitch" type="Node2D" parent="Switches"]
+script = ExtResource("4")
+position = Vector2(195.0, 116.5)
+rotation = 1.5708
+lights = Array[NodePath]([NodePath("../../Lights/AirlockLight")])
+
+[node name="MessSwitch" type="Node2D" parent="Switches"]
+script = ExtResource("4")
+position = Vector2(322.0, 116.5)
+rotation = 1.5708
+lights = Array[NodePath]([NodePath("../../Lights/MessLight")])
+
+[node name="PlatformSwitch" type="Node2D" parent="Switches"]
+script = ExtResource("4")
+position = Vector2(322.0, 58.5)
+rotation = -1.5708
+lights = Array[NodePath]([NodePath("../../Lights/PlatformLight")])
+
+[node name="Props" type="Node2D" parent="."]
+
+[node name="CraneConsole" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(16.0, 140.0)
+kind = 9
+size_m = Vector2(0.8, 7.4)
+occlude = true
+
+[node name="CraneChair1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(25.5, 122.0)
+rotation = 3.1416
+kind = 2
+size_m = Vector2(0.75, 0.75)
+color = Color(0.3, 0.5, 0.62, 1.0)
+
+[node name="CraneChair2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(25.5, 158.0)
+rotation = 3.1416
+kind = 2
+size_m = Vector2(0.75, 0.75)
+color = Color(0.3, 0.5, 0.62, 1.0)
+
+[node name="YardConsole" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(80.0, 186.0)
+rotation = -1.5708
+kind = 9
+size_m = Vector2(0.8, 8.0)
+occlude = true
+
+[node name="YardChair1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(62.0, 177.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.75, 0.75)
+color = Color(0.3, 0.5, 0.62, 1.0)
+
+[node name="YardChair2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(98.0, 177.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.75, 0.75)
+color = Color(0.3, 0.5, 0.62, 1.0)
+
+[node name="ControlPlant" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(19.0, 183.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 9
+
+[node name="YardmasterDesk" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(112.0, 64.5)
+rotation = 1.5708
+kind = 1
+size_m = Vector2(0.8, 2.4)
+
+[node name="YardmasterChair" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(112.0, 73.5)
+rotation = -1.5708
+kind = 2
+size_m = Vector2(0.75, 0.75)
+color = Color(0.9, 0.44, 0.32, 1.0)
+
+[node name="ManifestShelves" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(145.5, 135.0)
+rotation = 3.1416
+kind = 11
+size_m = Vector2(0.9, 5.6)
+occlude = true
+seed = 4
+
+[node name="ControlExtinguisher" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(147.8, 172.0)
+rotation = 3.1416
+kind = 17
+size_m = Vector2(0.3, 0.6)
+solid = false
+
+[node name="ControlBin" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(141.0, 184.0)
+kind = 16
+size_m = Vector2(0.6, 0.6)
+
+[node name="ArrivalsPlant" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(163.0, 66.5)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 3
+
+[node name="ArrivalsBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(190.0, 64.0)
+rotation = 1.5708
+kind = 12
+size_m = Vector2(0.6, 3.0)
+
+[node name="NoticeScreen" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(235.0, 62.0)
+rotation = 1.5708
+kind = 18
+size_m = Vector2(0.25, 5.0)
+solid = false
+
+[node name="ArrivalsCooler" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(276.0, 63.5)
+rotation = 1.5708
+kind = 21
+size_m = Vector2(0.5, 0.5)
+
+[node name="ArrivalsExtinguisher" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(163.0, 112.8)
+rotation = -1.5708
+kind = 17
+size_m = Vector2(0.3, 0.6)
+solid = false
+
+[node name="VestLockers" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(240.0, 111.5)
+rotation = -1.5708
+kind = 3
+size_m = Vector2(0.7, 4.0)
+color = Color(0.95, 0.66, 0.2, 1.0)
+occlude = true
+
+[node name="ArrivalsCrates" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(341.0, 68.0)
+kind = 10
+size_m = Vector2(1.2, 1.2)
+color = Color(0.3, 0.66, 0.87, 1.0)
+seed = 2
+
+[node name="ArrivalsPalletJack" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(336.0, 104.0)
+rotation = 3.4416
+kind = 20
+size_m = Vector2(1.6, 1.0)
+
+[node name="SuitRack" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(154.0, 150.0)
+kind = 13
+size_m = Vector2(0.8, 4.5)
+occlude = true
+
+[node name="AirlockBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(206.5, 143.0)
+rotation = 3.1416
+kind = 12
+size_m = Vector2(0.7, 3.5)
+
+[node name="AirlockLockers" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(206.5, 174.0)
+rotation = 3.1416
+kind = 3
+size_m = Vector2(0.7, 2.4)
+color = Color(0.79, 0.82, 0.86, 1.0)
+occlude = true
+
+[node name="Kitchenette" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(250.0, 118.5)
+rotation = 1.5708
+kind = 14
+size_m = Vector2(0.7, 4.4)
+seed = 3
+
+[node name="Stool1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(239.0, 127.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+color = Color(0.9, 0.44, 0.32, 1.0)
+
+[node name="Stool2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(250.0, 127.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+color = Color(0.9, 0.44, 0.32, 1.0)
+
+[node name="Stool3" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(261.0, 127.0)
+kind = 15
+size_m = Vector2(0.5, 0.5)
+color = Color(0.9, 0.44, 0.32, 1.0)
+
+[node name="MessBin" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(279.0, 119.5)
+kind = 16
+size_m = Vector2(0.6, 0.6)
+
+[node name="ShiftScreen" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(212.0, 163.0)
+kind = 18
+size_m = Vector2(0.25, 4.0)
+solid = false
+
+[node name="TableA" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(243.0, 160.0)
+rotation = 1.5708
+kind = 6
+size_m = Vector2(1.2, 2.4)
+
+[node name="ChairA1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(236.0, 151.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairA2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(250.0, 151.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairA3" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(236.0, 169.0)
+rotation = -1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairA4" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(250.0, 169.0)
+rotation = -1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="TableB" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(279.0, 160.0)
+rotation = 1.5708
+kind = 6
+size_m = Vector2(1.2, 2.4)
+
+[node name="ChairB1" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(272.0, 151.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairB2" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(286.0, 151.0)
+rotation = 1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairB3" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(272.0, 169.0)
+rotation = -1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="ChairB4" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(286.0, 169.0)
+rotation = -1.5708
+kind = 2
+size_m = Vector2(0.7, 0.7)
+color = Color(0.16, 0.6, 0.56, 1.0)
+
+[node name="MessRug" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(329.0, 160.0)
+kind = 7
+size_m = Vector2(4.0, 5.0)
+color = Color(0.62, 0.36, 0.28, 1.0)
+solid = false
+
+[node name="MessSofa" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(344.0, 160.0)
+rotation = 3.1416
+kind = 4
+size_m = Vector2(1.0, 4.4)
+color = Color(0.3, 0.5, 0.62, 1.0)
+
+[node name="MessCoffeeTable" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(329.0, 160.0)
+kind = 6
+size_m = Vector2(1.0, 2.2)
+
+[node name="MessArmchair" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(314.0, 160.0)
+kind = 5
+size_m = Vector2(1.0, 1.0)
+color = Color(0.9, 0.6, 0.35, 1.0)
+
+[node name="MessPlantNE" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(343.5, 121.5)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 16
+
+[node name="MessPlantSW" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(217.0, 184.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 15
+
+[node name="PlatformBench" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(300.0, 4.0)
+rotation = 1.5708
+kind = 12
+size_m = Vector2(0.6, 3.4)
+
+[node name="LineScreen" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(267.0, 30.0)
+kind = 18
+size_m = Vector2(0.25, 4.0)
+solid = false
+
+[node name="PlatformPlant" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(271.5, 54.0)
+kind = 8
+size_m = Vector2(0.9, 0.9)
+seed = 12
+
+[node name="PlatformBin" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(344.0, 54.0)
+kind = 16
+size_m = Vector2(0.6, 0.6)
+
+[node name="PodBenchN" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(367.0, 17.5)
+rotation = 1.5708
+kind = 12
+size_m = Vector2(0.6, 2.6)
+
+[node name="PodBenchS" type="Node2D" parent="Props"]
+script = ExtResource("5")
+position = Vector2(367.0, 42.5)
+rotation = -1.5708
+kind = 12
+size_m = Vector2(0.6, 2.6)
+
+[node name="Interactive" type="Node2D" parent="."]
+
+[node name="FreightBoard" type="Node2D" parent="Interactive"]
+script = ExtResource("14")
+position = Vector2(50.0, 76.5)
+
+[node name="HoloTable" type="Node2D" parent="Interactive"]
+script = ExtResource("9")
+position = Vector2(92.0, 133.0)
+
+[node name="VendingMachine" type="Node2D" parent="Interactive"]
+script = ExtResource("8")
+position = Vector2(214.7, 131.0)
+
+[node name="DeskLamp" type="Node2D" parent="Interactive"]
+script = ExtResource("15")
+position = Vector2(121.0, 64.0)
+rotation = 1.5708
+
+[node name="YardNotices" type="Node2D" parent="Interactive"]
+script = ExtResource("10")
+position = Vector2(235.0, 68.0)
+prompt = "Read the yard notices"
+title = "YARD C NOTICES"
+entries = PackedStringArray("Crane C is live. It slews 46 degrees either side of due west, one full swing every 24 seconds. The amber arc on the deck is its reach. Stay outside it.", "Airlock C4 opens south, onto the aisle between stacks C4 and C5. It is the one clear patch in this yard: set your shuttle down there.", "Loose boxes drift. If one is leaning on the airlock when you cycle out, that is what a mag-line is for.", "Transit: one pod, Pier Line, next stop Pier 7 South. End of the line, so you cannot board the wrong one.")
+
+[node name="CraneDesk" type="Node2D" parent="Interactive"]
+script = ExtResource("10")
+position = Vector2(23.0, 140.0)
+prompt = "Check the crane desk"
+title = "CRANE C"
+entries = PackedStringArray("Boom 100 m, on a pivot 80 m west and 50 m south of this desk. Sweep: 46 degrees either side of due west, 24 seconds a cycle.", "The spreader is carrying a TIDEWAY forty-footer. It has been carrying it all week. Do not ask.", "Pilots: the boom is solid and it does not stop for you. Time your run across the yard, or go round the north side.", "Anything loose inside the slew arc gets batted across the apron. That is the crane's problem first, then yours.")
+
+[node name="YardLog" type="Node2D" parent="Interactive"]
+script = ExtResource("10")
+position = Vector2(80.0, 179.5)
+prompt = "Read the yard log"
+title = "YARD LOG"
+entries = PackedStringArray("Forty-odd loose boxes on the apron and nobody has hauled a full hold out of here since Tuesday. The freight board is behind you. It is not flattering.", "A PETREL's hold is ten slots. A 6 m box takes one, a 12 m box takes two. Count before you reel.", "Hook a box with the mag-line, then reel it right alongside: the stern hatch only takes one that is close and slow. Towing is not stowing.", "Yards Supply Intake: north of the hub, the striped pad under the MERIDIAN YARDS sign. Set boxes down inside the stripes and it takes them one by one.", "Vesper Rock pays three times what the Yards do, and it is a quantum jump away. Land the loaded PETREL on a frigate's flight deck and ride along.")
+
+[node name="ShiftBoard" type="Node2D" parent="Interactive"]
+script = ExtResource("10")
+position = Vector2(217.0, 163.0)
+prompt = "Read the shift board"
+title = "SHIFT BOARD"
+entries = PackedStringArray("Whoever keeps leaving the pallet jack in the arrivals hall: it has a home. The arrivals hall is not it.", "Ore canisters go to the Yards intake, never to Vesper's supply drop. Vesper digs the stuff up. They will not take it back.", "A full hold makes a lazy ship. A loaded PETREL brakes late and turns wide: start slowing early.", "Comet Citrus is for closers.  - night shift")
+
+[node name="LineMap" type="Node2D" parent="Interactive"]
+script = ExtResource("10")
+position = Vector2(272.0, 30.0)
+prompt = "Read the line map"
+title = "PIER LINE"
+entries = PackedStringArray("MERIDIAN TRANSIT  ·  PIER LINE:  Hangar 2  -  Pier 7 North  -  Pier 7 South  -  Cargo Yard C. You are at the south end.", "One pod serves this stop. Step in and it leaves when the doors close. Next stop: Pier 7 South.", "Pier 7 South is the stop for Berth E2 and the KESTREL's gangway, when she is clamped in.", "Hangar 2 is the far end of the line: the hangar floor, and the PETREL's painted bay.")
+
+[node name="SignPier7South" type="Node2D" parent="Interactive"]
+script = ExtResource("16")
+position = Vector2(335.5, 11.5)
+heading = "PIER LINE  ·  NORTHBOUND"
+destination = "PIER 7 SOUTH"
+
+[node name="PodPier7South" type="Node2D" parent="Interactive"]
+script = ExtResource("13")
+position = Vector2(339.0, 30.0)
+prompt = "Transit pod  ·  Pier 7 South"
+reach_m = 2.2
+target_scene = "res://scenes/onfoot/interiors/pier7_concourse.tscn"
+arrival = "TransitArrive"
+door = NodePath("../../Doors/PodDoor")
+walk_in = Vector2(28.0, 0.0)
+ride = true
+arrival_note = "Pier 7 South"
+
+[node name="Airlock" type="Node2D" parent="."]
+script = ExtResource("11")
+position = Vector2(194.0, 190.0)
+rotation = -1.5708
+outer_door = NodePath("../Doors/OuterHatch")
+inner_door = NodePath("../Doors/AirlockInner")
+arrival_m = Vector2(1.4, -1.4)
+exit_point = Vector2(1680, 5859)
+exit_facing = 1.5708
+
+[node name="TransitArrive" type="Marker2D" parent="."]
+position = Vector2(332.0, 30.0)
+rotation = 3.1416

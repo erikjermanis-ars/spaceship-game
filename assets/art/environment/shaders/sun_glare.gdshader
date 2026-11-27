@@ -10,6 +10,10 @@ uniform vec2 sun_pos = vec2(150.0, 150.0);   // canvas units
 uniform float sun_vis = 1.0;
 uniform float intensity = 1.0;
 uniform float ghost_gain = 1.0;
+// A farther sun (another sky look): `size` < 1 shrinks the whole glare around
+// the sun, `sun_tint` shifts its colour. Defaults are the Meridian sun.
+uniform float size = 1.0;
+uniform vec3 sun_tint = vec3(1.0);
 
 float hexagon(vec2 p, float radius) {
 	p = abs(p);
@@ -28,7 +32,7 @@ vec3 ghost(vec2 frag, vec2 at, float radius, vec3 tint, float hex) {
 void fragment() {
 	vec2 frag = UV * view_size;
 	float H = view_size.y;
-	vec2 d = (frag - sun_pos) / H;
+	vec2 d = (frag - sun_pos) / (H * size);
 	float r = length(d);
 
 	vec3 col = vec3(0.0);
@@ -64,6 +68,6 @@ void fragment() {
 	g += vec3(0.45, 0.55, 0.75) * ring * 0.022;
 	col += g * ghost_gain;
 
-	col *= intensity * sun_vis;
+	col *= sun_tint * (intensity * sun_vis);
 	COLOR = vec4(col, 1.0);
 }

@@ -144,6 +144,14 @@ static func deck_under(p: Vector2) -> bool:
 	return false
 
 
+## Is global point `p` on this site's walkable area?
+func covers(p: Vector2) -> bool:
+	for poly in _walk:
+		if Geometry2D.is_point_in_polygon(p, poly):
+			return true
+	return false
+
+
 func _add(poly: PackedVector2Array, rail: bool, gaps: Array) -> void:
 	_walk.append(poly)
 	if not rail:

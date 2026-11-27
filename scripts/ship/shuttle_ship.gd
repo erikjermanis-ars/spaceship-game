@@ -73,7 +73,13 @@ var probe := {}
 var floodlights := false
 var last_grade := ""
 var line: MagLine
+## Ten-slot cargo hold and its loadmaster (stow on reel, unload on U, spill).
+var hold: CargoHold
+var cargo: CargoHandler
 
+## mass_kg is what the flight model flies: this plus the cargo.
+var _dry_mass_kg := 0.0
+var _flown_mass_kg := -1.0
 var _hover_heading := 0.0
 var _hover_ok_t := 0.0
 var _probe_t := 0.0
@@ -104,6 +110,17 @@ func _ready() -> void:
 	contact_impact.connect(func(_p: Vector2, _n: Vector2, speed: float, _o: Node) -> void:
 		if speed >= 12.0 and line.is_attached():
 			line.release())
+	hold = CargoHold.new()
+	hold.name = "CargoHold"
+	add_child(hold)
+	hold.changed.connect(_on_hold_changed)
+	cargo = CargoHandler.new()
+	cargo.name = "CargoHandler"
+	cargo.ship = self
+	cargo.hold = hold
+	add_child(cargo)
+	if Game.cmd.has("hold"):
+		_harness_fill(int(Game.cmd["hold"]))
 	for n in ["skids_deploy", "landing_chime_silk", "landing_abort_warble", "liftoff_whoosh"]:
 		_snd[n] = GameplayUtil.load_audio(n + ".wav")
 	_snd["clunk"] = GameplayUtil.load_variations("touchdown_clunk_", 4, 1.05, 1.5)
@@ -184,7 +201,8 @@ func _zero_outputs() -> void:
 ## Respawn / berth: brought back landed and unpowered on the hangar floor.
 func home_transform() -> Transform2D:
 	var berth := get_tree().get_first_node_in_group(&"shuttle_berth") as Node2D
-	if berth:
+	# Away from Meridian (carried on a frigate) the base class picks a pad there.
+	if berth and Sectors.at(global_position) == Sectors.at(berth.global_position):
 		return berth.global_transform
 	return super.home_transform()
 
@@ -225,8 +243,54 @@ func destroy() -> void:
 	if line:
 		line.release(true)
 	land_state = Land.CRUISE
+	var was_alive := alive
 	super.destroy()
 	_zero_outputs()
+	if was_alive and cargo:
+		cargo.spill.call_deferred()
+
+
+# ================================================================== cargo
+
+## The hold's contents weigh on the ship (CargoHold.SLOT_KG per used slot).
+func _on_hold_changed() -> void:
+	_flown_mass_kg = _dry_mass_kg + hold.mass_kg()
+	mass_kg = _flown_mass_kg
+
+
+## The ship without its cargo.
+func dry_mass_kg() -> float:
+	return _dry_mass_kg
+
+
+## mass_kg carries the cargo so that drag, hover, flight assist and the flight
+## guide all fly the loaded ship. Anyone else who sets it (PETREL_DEFAULTS in
+## _init, a tuning preset, the mass slider) therefore means the DRY mass, and
+## the cargo goes back on top: a preset or a respawn can't lose its weight.
+func _apply_mass() -> void:
+	if not is_equal_approx(mass_kg, _flown_mass_kg):
+		_dry_mass_kg = mass_kg
+		_flown_mass_kg = _dry_mass_kg + (hold.mass_kg() if hold else 0.0)
+		if not is_equal_approx(mass_kg, _flown_mass_kg):
+			mass_kg = _flown_mass_kg     # comes back in here, now matching
+			return
+	super._apply_mass()
+
+
+## --hold=N (harness): start with N slots of generated containers aboard.
+func _harness_fill(slots: int) -> void:
+	var box_script: Script = load("res://scripts/level/cargo_box.gd")
+	var i := 0
+	while hold.used() < mini(slots, hold.capacity):
+		var lv: Dictionary = LevelArt.LIVERIES[(i * 3 + 1) % LevelArt.LIVERIES.size()]
+		var long := i % 3 == 1 and mini(slots, hold.capacity) - hold.used() >= 2
+		var box: RigidBody2D = box_script.new()
+		box.call(&"setup", Vector2(12.2 if long else 6.1, 2.44), lv["color"], lv["name"], "MRDU %06d" % (470000 + i * 137))
+		box.add_to_group(&"cargo_container")
+		if not hold.stow(box):
+			box.free()
+			break
+		i += 1
 
 
 # ================================================================== input
@@ -285,8 +349,11 @@ func _update_aim(active: bool) -> void:
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	_tick_landing(delta)
+	var reel := controls_enabled and Game.player == self and _act(&"ship_reel") > 0.5
 	if line:
-		line.physics_tick(delta, controls_enabled and Game.player == self and _act(&"ship_reel") > 0.5)
+		line.physics_tick(delta, reel)
+	if cargo:
+		cargo.physics_tick(delta, reel, _controls_active() and _act(&"cargo_unload") > 0.5)
 	if freeze or not alive:
 		_zero_outputs()
 

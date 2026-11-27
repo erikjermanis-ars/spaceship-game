@@ -9,8 +9,12 @@ extends Node2D
 ##   --fps            print FPS every second (run WITHOUT --fixed-fps)
 ##   --novsync        disable vsync so the FPS print shows real headroom
 ##   --no-ref         hide the white reference shapes
+##   --sky-look=vesper  start on the Vesper sky (read by SpaceBackground); the
+##                    camera path and reference shapes move to that look's origin
+##   --warp-demo      loop a scripted light-speed jump (see warp_demo.gd)
 
 @onready var cam: Camera2D = $Camera2D
+@onready var bg: SpaceBackground = $SpaceBackground
 
 var _t := 0.0
 var _fixed := false
@@ -19,6 +23,7 @@ var _fixed_zoom := 1.0
 var _speed := 1.0
 var _fps_acc := 0.0
 var _show_ref := true
+var _demo: WarpDemo
 
 
 func _ready() -> void:
@@ -34,7 +39,17 @@ func _ready() -> void:
 	if c.has("novsync"):
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	_show_ref = not c.has("no-ref")
+	# Everything here (camera path, reference shapes) is relative to the place
+	# the sky look is composed around, so `--sky-look=vesper` frames Vesper.
+	position = bg.look_origin()
 	cam.make_current()
+	if c.has("warp-demo"):
+		# The jump preview holds the camera on the ship unless --cam says otherwise.
+		_fixed = true
+		_demo = WarpDemo.new()
+		_demo.name = "WarpDemo"
+		add_child(_demo)
+		_demo.setup(self, bg, cam)
 	_place_camera()
 	queue_redraw()
 
@@ -81,6 +96,9 @@ func _draw() -> void:
 		draw_rect(Rect2(c - Vector2(40, 50), Vector2(80, 100)), navy)
 		draw_circle(c + Vector2(0, 400), 140.0, hull)
 		draw_arc(c + Vector2(0, 400), 140.0, 0.0, TAU, 64, Color("#2A9D8F"), 4.0, true)
+	if _demo != null:
+		return   # the demo flies its own ship
 	var ship := PackedVector2Array([Vector2(45, 0), Vector2(-40, -26), Vector2(-28, 0), Vector2(-40, 26)])
 	draw_colored_polygon(ship, hull)
 	draw_polyline(ship + PackedVector2Array([ship[0]]), panel, 2.0, true)
+

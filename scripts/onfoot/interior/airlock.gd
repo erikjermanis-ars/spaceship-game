@@ -14,6 +14,11 @@ signal cycle_done(pressurised: bool)
 ## Where you appear when coming in (local px), facing +X.
 @export var arrival_m := Vector2(1.6, 0)
 @export var exit_prompt := "Cycle airlock · exit"
+## Where this airlock lets you out (world px, on a deck), and the way you
+## face there. Zero = the pad site you came in from (Pad 2's airlock 7B).
+## Pair it with an ExteriorDoors entry at the same point to get back in.
+@export var exit_point := Vector2.ZERO
+@export var exit_facing := PI
 @export var cycle_time := 2.6
 
 var cycling := false

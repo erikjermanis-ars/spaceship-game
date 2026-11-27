@@ -1,31 +1,35 @@
 class_name FrigateVisuals
 extends Node2D
-## Everything you see of the KESTREL in flight. Pure presentation: it reads
+## Everything you see of a frigate in flight. Pure presentation: it reads
 ## the FrigateShip's outputs and FrigateDamage's state every frame (local px,
 ## bow = +X).
 ##
 ## Layers, bottom to top: drop shadow (on the below-deck band only), painted
 ## hull, livery stripes (white art tinted per ship), breach scorch marks,
 ## window lights (additive; they turn red at red alert), the ship's name,
-## then the live FX: impulse glow and plumes, drive-grille flow along the
-## nacelles, bussard and field-arc glows, the deflector, RCS puffs, nav lights
-## and strobes, hot breach edges, venting gas and sparks, and the shield
-## bubble (frigate_shield.gdshader).
+## then the live FX: impulse glow and plumes from the stern arms, light that
+## runs round the two drive rings (faster with the throttle, blazing white
+## when the quantum drive spools), the nose deflector, the flight deck's
+## atmosphere field across the bay mouth, RCS puffs, nav lights and strobes,
+## hot breach edges, venting gas and sparks, and the shield bubble
+## (frigate_shield.gdshader).
 
 const HULL_TEX := "res://assets/art/ship/frigate_hull.svg"
 const LIVERY_TEX := "res://assets/art/ship/frigate_livery.svg"
 const LIGHTS_TEX := "res://assets/art/ship/frigate_lights.svg"
 const SHIELD_SHADER := "res://assets/art/fx/frigate_shield.gdshader"
 const PX := 10.0
-## RCS quads: position (m) and gas direction (local). Lateral quads first:
-## bow port/stbd, stern port/stbd; then the fore and aft quads.
-const QUADS_BOW := [[Vector2(68, -5.2), Vector2(0, -1)], [Vector2(68, 5.2), Vector2(0, 1)],
-	[Vector2(36, -22.4), Vector2(0, -1)], [Vector2(36, 22.4), Vector2(0, 1)]]
-const QUADS_STERN := [[Vector2(-58, -8.4), Vector2(0, -1)], [Vector2(-58, 8.4), Vector2(0, 1)],
-	[Vector2(-68, -31.0), Vector2(0, -1)], [Vector2(-68, 31.0), Vector2(0, 1)]]
-const QUADS_FORE := [Vector2(72, -3.0), Vector2(72, 3.0)]
-const QUADS_AFT := [Vector2(-65.5, -4.0), Vector2(-65.5, 4.0)]
 const SHIELD_PAD := Vector2(12.0, 14.0)    ## bubble clearance around the hull (m)
+
+## RCS quads: [position (m), gas direction (local)]. Lateral quads in
+## port/starboard pairs (bow group, stern group), then the fore quads (fire
+## forward) and the aft quads (fire aft). Built from FrigateShape.
+var _quads_bow: Array = []
+var _quads_stern: Array = []
+var _quads_fore: Array[Vector2] = []
+var _quads_aft: Array[Vector2] = []
+var _ring_mid := PackedVector2Array()   ## starboard emitter loop (px)
+var _ring_glow := 0.0
 
 var ship: FrigateShip
 var _shadow: Sprite2D
@@ -53,6 +57,17 @@ var _vent_acc := 0.0
 
 func _ready() -> void:
 	ship = get_parent() as FrigateShip
+	for p: Vector2 in FrigateShape.RCS_BOW:
+		_quads_bow.append([Vector2(p.x, -p.y), Vector2(0, -1)])
+		_quads_bow.append([p, Vector2(0, 1)])
+	for p: Vector2 in FrigateShape.RCS_STERN:
+		_quads_stern.append([Vector2(p.x, -p.y), Vector2(0, -1)])
+		_quads_stern.append([p, Vector2(0, 1)])
+	for sgn: float in [-1.0, 1.0]:
+		_quads_fore.append(Vector2(FrigateShape.RCS_FORE.x, FrigateShape.RCS_FORE.y * sgn))
+		_quads_aft.append(Vector2(FrigateShape.RCS_AFT.x, FrigateShape.RCS_AFT.y * sgn))
+	for v: Vector2 in FrigateShape.RING_MID:
+		_ring_mid.append(v * PX)
 	_glow_tex = ShipFxTextures.glow()
 	var add := OnFootArt.add_unshaded()
 	_shadow = _sprite(HULL_TEX, 0.5, Color(0, 0.01, 0.03, 0.34))
@@ -109,7 +124,7 @@ func _build_shield() -> void:
 	_shield.texture = ImageTexture.create_from_image(img)
 	var half := (Vector2(FrigateShape.HALF_LENGTH, FrigateShape.HALF_BEAM) + SHIELD_PAD) * PX
 	_shield.scale = half * 2.0 / 4.0
-	_shield.position = Vector2(-1.0, 0.0) * PX
+	_shield.position = Vector2(FrigateShape.CENTRE_X, 0.0) * PX
 	_shield_mat = ShaderMaterial.new()
 	_shield_mat.shader = load(SHIELD_SHADER)
 	_shield_mat.set_shader_parameter(&"half_size", half)
@@ -131,8 +146,9 @@ func _process(delta: float) -> void:
 	_eng.x = move_toward(_eng.x, tgt.x, delta * (3.0 if tgt.x > _eng.x else 1.5))
 	_eng.y = move_toward(_eng.y, tgt.y, delta * (3.0 if tgt.y > _eng.y else 1.5))
 	_eng.z = move_toward(_eng.z, tgt.z, delta * (3.0 if tgt.z > _eng.z else 1.5))
-	# Parked: the drive sleeps (dim grilles); powered: idle glow comes up.
+	# Parked: the drive sleeps (dim rings); powered: idle glow comes up.
 	_idle = move_toward(_idle, 1.0 if live else 0.25, delta * 0.6)
+	_ring_glow = move_toward(_ring_glow, ship.jump_glow if live else 0.0, delta * 3.0)
 	var lv := ship.rcs_levels() if live else PackedFloat32Array([0, 0, 0, 0, 0, 0])
 	for i in 6:
 		_rcs[i] = move_toward(_rcs[i], clampf(lv[i] * 1.4, 0.0, 1.0), delta * 8.0)
@@ -231,7 +247,7 @@ func _tick_particles(delta: float) -> void:
 	# RCS gas (inherits the ship's velocity: in vacuum the puff travels with it)
 	var groups := [[0, 1], [2, 3]]
 	for g in 2:
-		var quads: Array = QUADS_BOW if g == 0 else QUADS_STERN
+		var quads: Array = _quads_bow if g == 0 else _quads_stern
 		for q in quads.size():
 			var lvl := _rcs[groups[g][q % 2]]
 			if lvl > 0.1 and randf() < lvl * 0.6:
@@ -259,12 +275,15 @@ func _draw_name() -> void:
 	var f := LevelArt.font()
 	var name_txt := String(ship.vehicle_name).to_upper()
 	var col := Color(0.11, 0.21, 0.34, 0.82)
-	_name.draw_set_transform(Vector2(240, 132), 0.0)
-	_name.draw_string(f, Vector2.ZERO, " ".join(name_txt.split("")), HORIZONTAL_ALIGNMENT_CENTER, 300, 30, col)
-	_name.draw_set_transform(Vector2(240, -112), 0.0)
-	_name.draw_string(f, Vector2.ZERO, ship.registry, HORIZONTAL_ALIGNMENT_CENTER, 300, 30, col)
-	_name.draw_set_transform(Vector2(-400, 8), 0.0)
-	_name.draw_string(f, Vector2.ZERO, ship.registry, HORIZONTAL_ALIGNMENT_CENTER, 140, 16, Color(col, 0.6))
+	# Name to starboard, registry to port, in the clear band between the
+	# livery sweep and the window rows.
+	_name.draw_set_transform(Vector2(260, 153), 0.0)
+	_name.draw_string(f, Vector2.ZERO, " ".join(name_txt.split("")), HORIZONTAL_ALIGNMENT_CENTER, 300, 28, col)
+	_name.draw_set_transform(Vector2(260, -131), 0.0)
+	_name.draw_string(f, Vector2.ZERO, ship.registry, HORIZONTAL_ALIGNMENT_CENTER, 300, 28, col)
+	# Registry again across the hangar block's roof, readable from astern.
+	_name.draw_set_transform(Vector2(-318, 60), -PI * 0.5)
+	_name.draw_string(f, Vector2.ZERO, ship.registry, HORIZONTAL_ALIGNMENT_CENTER, 120, 15, Color(col, 0.6))
 	_name.draw_set_transform(Vector2.ZERO)
 
 
@@ -295,47 +314,57 @@ func _blob(c: Vector2, r: float, rng: RandomNumberGenerator, n: int) -> PackedVe
 	return p
 
 
-## Soft glows (textured, batched): engine light, bussards, deflector, lamps.
+## Soft glows (textured, batched): engine light, drive rings, deflector, lamps.
 func _draw_glows() -> void:
 	if ship == null:
 		return
-	var live := ship.alive
-	if not live:
+	if not ship.alive:
 		return
 	var thr := maxf(_eng.x, maxf(_eng.y, _eng.z))
-	# impulse deck
+	var jg := _ring_glow
+	# impulse exhausts in the stern faces of the bay arms
 	for s: float in [-1.0, 1.0]:
 		for y: float in FrigateShape.IMPULSE_Y:
 			var p := Vector2(FrigateShape.IMPULSE_X, y * s) * PX
-			_glow(p + Vector2(-8, 0), Color(1.0, 0.35, 0.15, 0.35 * _idle + 0.55 * _eng.x), 40.0 + 60.0 * _eng.x)
-	# bussard collectors: slow breathing, brighter with the drive
+			_glow(p + Vector2(-8, 0), Color(1.0, 0.35, 0.15, 0.35 * _idle + 0.55 * _eng.x), 36.0 + 56.0 * _eng.x)
+	# drive rings: a halo that follows the emitter channel
 	for k in 2:
 		var s := -1.0 if k == 0 else 1.0
 		var e := _eng.y if k == 0 else _eng.z
-		var br := (0.45 + 0.1 * sin(_t * 1.7 + k)) * _idle + 0.45 * e
-		var p := Vector2(FrigateShape.BUSSARD_X, FrigateShape.NACELLE_Y * s) * PX
-		_glow(p, Color(0.35, 0.7, 1.0, br), 90.0 + 40.0 * e)
-		_glow(p + Vector2(8, 0), Color(0.8, 0.95, 1.0, br), 34.0)
-	# navigational deflector
-	_glow(Vector2(-140, 0), Color(0.45, 0.8, 1.0, 0.25 * _idle + 0.15 * thr), 160.0)
-	# field arc: a pale blue sheen that brightens with the drive
-	var arc: Array = FrigateShape.ARC_MID
-	for i in arc.size():
-		_glow((arc[i] as Vector2) * PX, Color(0.45, 0.55, 1.0, 0.12 * _idle + 0.3 * thr), 70.0)
+		var a := (0.1 + 0.03 * sin(_t * 1.7 + k)) * _idle + 0.22 * e + 0.22 * jg
+		var col := Color(0.4, 0.62, 1.0, a).lerp(Color(0.7, 0.8, 1.0, a), jg)
+		var rad := 62.0 + 26.0 * e + 40.0 * jg
+		for i in range(0, _ring_mid.size(), 2):
+			_glow(Vector2(_ring_mid[i].x, _ring_mid[i].y * s), col, rad)
+	if jg > 0.02:
+		# the drive charging: the whole stern lights up
+		for s: float in [-1.0, 1.0]:
+			_glow(Vector2(FrigateShape.RING_CENTRE.x, FrigateShape.RING_CENTRE.y * s) * PX, Color(0.5, 0.65, 1.0, 0.16 * jg), 380.0 + 40.0 * sin(_t * 9.0) * jg)
+	# navigational deflector in the nose
+	_glow(FrigateShape.DEFLECTOR * PX, Color(0.45, 0.8, 1.0, 0.3 * _idle + 0.2 * thr + 0.3 * jg), 110.0 + 60.0 * jg)
 	# nav lights: red to port, green to starboard, white strobes on the tails
 	var nav := 0.75 + 0.25 * sin(_t * 2.0)
 	if _alert > 0.0:
 		nav = lerpf(nav, 0.5 + 0.5 * sin(_t * 8.0), _alert)
-	_glow(Vector2(360, -232), Color(1.0, 0.25, 0.25, 0.8 * nav), 46.0)
-	_glow(Vector2(360, 232), Color(0.25, 1.0, 0.45, 0.8 * nav), 46.0)
-	var ph := fmod(_t, 1.8)
-	if ph < 0.08:
+	var wide := Vector2(22.0, FrigateShape.half_beam(22.0)) * PX
+	var ring_tip := Vector2(FrigateShape.RING_CENTRE.x, FrigateShape.HALF_BEAM) * PX
+	for at: Vector2 in [wide, ring_tip]:
+		_glow(Vector2(at.x, -at.y), Color(1.0, 0.25, 0.25, 0.8 * nav), 46.0)
+		_glow(at, Color(0.25, 1.0, 0.45, 0.8 * nav), 46.0)
+	var tail := FrigateShape.RCS_AFT * PX
+	if fmod(_t, 1.8) < 0.08:
 		for s: float in [-1.0, 1.0]:
-			_glow(Vector2(-765, 280 * s), Color(1, 1, 1, 0.95), 70.0)
+			_glow(Vector2(tail.x, tail.y * s), Color(1, 1, 1, 0.95), 70.0)
 	if fmod(_t + 0.9, 1.8) < 0.07:
-		_glow(Vector2(-650, 0), Color(1, 1, 1, 0.8), 60.0)
+		_glow(Vector2(FrigateShape.BOW_X * PX - 20.0, 0), Color(1, 1, 1, 0.8), 60.0)
 	# bridge beacon
-	_glow(Vector2(530, 0), Color(1.0, 0.3, 0.25, 0.5 + 0.5 * maxf(0.0, sin(_t * 3.0))), 30.0)
+	_glow(FrigateShape.BRIDGE * PX + Vector2(10, 0), Color(1.0, 0.3, 0.25, 0.5 + 0.5 * maxf(0.0, sin(_t * 3.0))), 30.0)
+	# flight deck: the atmosphere field's glow across the bay mouth
+	var bay := FrigateShape.BAY
+	var fa := 0.14 + 0.04 * sin(_t * 2.3)
+	for i in 5:
+		var y := lerpf(bay.position.y + 2.0, bay.end.y - 2.0, i / 4.0)
+		_glow(Vector2(bay.position.x, y) * PX, Color(0.45, 0.85, 1.0, fa), 60.0)
 	# hot breach edges
 	for b in ship.damage.breaches:
 		var heat := float(b.heat)
@@ -351,61 +380,62 @@ func _glow(p: Vector2, col: Color, radius: float) -> void:
 	_glows.draw_texture_rect(_glow_tex, Rect2(p - Vector2(radius, radius), Vector2(radius, radius) * 2.0), false, col)
 
 
-## Shapes (one batched triangle array): plumes, grille flow, field arc, RCS.
+## Shapes (one batched triangle array): plumes, ring flow, bay field, RCS.
 func _draw_fx() -> void:
 	if ship == null or not ship.alive:
 		return
 	var pen := OnFootPainter.new(_fx, 0.9)
+	var jg := _ring_glow
 	# --- impulse plumes
 	for s: float in [-1.0, 1.0]:
 		for y: float in FrigateShape.IMPULSE_Y:
 			var base := Vector2(FrigateShape.IMPULSE_X, y * s) * PX
 			var e := _eng.x
 			if e > 0.02:
-				var L := 30.0 + 110.0 * e + sin(_t * 37.0 + y) * 4.0
-				var w := 7.0 + 3.0 * e
+				var L := 30.0 + 120.0 * e + sin(_t * 37.0 + y) * 4.0
+				var w := 6.0 + 3.0 * e
 				pen.fill(PackedVector2Array([base + Vector2(0, -w), base + Vector2(-L, 0), base + Vector2(0, w)]), Color(1.0, 0.4, 0.18, 0.5 * e), false)
 				pen.fill(PackedVector2Array([base + Vector2(0, -w * 0.45), base + Vector2(-L * 0.5, 0), base + Vector2(0, w * 0.45)]), Color(1.0, 0.85, 0.6, 0.7 * e), false)
-			pen.rect_flat(Rect2(base + Vector2(-2, -7), Vector2(5, 14)), Color(1.0, 0.45, 0.2, 0.35 * _idle + 0.6 * e))
-	# --- drive grilles: light flows aft along each nacelle with the throttle
-	var gx: Vector2 = FrigateShape.GRILLE_X
+			pen.rect_flat(Rect2(base + Vector2(-2, -5), Vector2(5, 10)), Color(1.0, 0.45, 0.2, 0.35 * _idle + 0.6 * e))
+	# --- drive rings: light runs round each emitter channel, faster with the
+	# throttle; spooling the quantum drive turns the whole hoop white-hot
+	var n := _ring_mid.size()
 	for k in 2:
 		var s := -1.0 if k == 0 else 1.0
 		var e := _eng.y if k == 0 else _eng.z
-		var cy := FrigateShape.NACELLE_Y * s * PX
-		var n := 22
-		var speed := 0.6 + 2.6 * e
+		var speed := 0.6 + 2.6 * e + 9.0 * jg
 		for i in n:
-			var x0 := lerpf(gx.y, gx.x, float(i) / n) * PX
-			var x1 := lerpf(gx.y, gx.x, float(i + 1) / n) * PX
-			var flow := 0.5 + 0.5 * sin(float(i) * 0.9 - _t * speed * 6.0)
-			var a := (0.32 + 0.18 * flow) * _idle + (0.35 + 0.25 * flow) * e
-			pen.rect_flat(Rect2(Vector2(x1 + 1.0, cy - 12.0), Vector2(x0 - x1 - 2.0, 24.0)), Color(0.35, 0.65, 1.0, a))
-			pen.rect_flat(Rect2(Vector2(x1 + 1.0, cy - 4.0), Vector2(x0 - x1 - 2.0, 8.0)), Color(0.75, 0.9, 1.0, a * 0.8))
-	# --- field arc emitter (pulses run from the tips to the centre)
-	var arc: Array = FrigateShape.ARC_MID
+			var a0 := Vector2(_ring_mid[i].x, _ring_mid[i].y * s)
+			var a1 := Vector2(_ring_mid[(i + 1) % n].x, _ring_mid[(i + 1) % n].y * s)
+			var flow := 0.5 + 0.5 * sin(float(i) * TAU * 3.0 / n - _t * speed * 2.2)
+			var a := (0.3 + 0.2 * flow) * _idle + (0.3 + 0.3 * flow) * e
+			a = lerpf(a, 0.85 + 0.15 * flow, jg)
+			var col := Color(0.35, 0.62, 1.0, a).lerp(Color(0.8, 0.88, 1.0, a), jg)
+			pen.line(a0, a1, col, 9.0 + 6.0 * jg)
+			pen.line(a0, a1, Color(0.85, 0.94, 1.0, a * 0.8), 3.0 + 2.0 * jg)
+	# --- deflector crescent in the nose
 	var thr := maxf(_eng.y, _eng.z)
-	for i in arc.size() - 1:
-		var a0: Vector2 = (arc[i] as Vector2) * PX
-		var a1: Vector2 = (arc[i + 1] as Vector2) * PX
-		var mid_i := float(arc.size() - 1) * 0.5
-		var dcen := absf(float(i) + 0.5 - mid_i) / mid_i
-		var flow := 0.5 + 0.5 * sin(dcen * 6.0 + _t * (2.0 + 6.0 * thr))
-		var a := (0.25 + 0.2 * flow) * _idle + (0.3 + 0.3 * flow) * thr
-		pen.line(a0, a1, Color(0.5, 0.6, 1.0, a), 10.0)
-		pen.line(a0, a1, Color(0.85, 0.9, 1.0, a * 0.8), 3.0)
-	# --- deflector crescent
-	var dc := Color(0.5, 0.85, 1.0, 0.45 * _idle + 0.2 * thr)
-	pen.arc(Vector2(-220, 0), 78.0, -PI * 0.4, PI * 0.4, dc, 9.0, 20)
-	pen.arc(Vector2(-220, 0), 78.0, -PI * 0.4, PI * 0.4, Color(1.0, 0.85, 0.55, dc.a * 0.7), 3.0, 20)
+	var dc := Color(0.5, 0.85, 1.0, 0.5 * _idle + 0.25 * thr + 0.25 * jg)
+	var dpos := FrigateShape.DEFLECTOR * PX - Vector2(18, 0)
+	pen.arc(dpos, 36.0, -PI * 0.36, PI * 0.36, dc, 7.0, 16)
+	pen.arc(dpos, 36.0, -PI * 0.36, PI * 0.36, Color(1.0, 0.85, 0.55, dc.a * 0.7), 2.4, 16)
+	# --- flight deck atmosphere field: a shimmering curtain across the mouth
+	var bay := FrigateShape.BAY
+	var x := bay.position.x * PX + 3.0
+	var y0 := bay.position.y * PX
+	var segs := 24
+	var h := bay.size.y * PX / segs
+	for i in segs:
+		var sh := 0.5 + 0.5 * sin(float(i) * 1.3 + _t * 3.1) * sin(float(i) * 0.37 - _t * 1.7)
+		pen.line(Vector2(x, y0 + i * h + 1.0), Vector2(x, y0 + (i + 1) * h - 1.0), Color(0.5, 0.9, 1.0, 0.22 + 0.3 * sh), 3.0)
 	# --- RCS puffs (short cones at the quads that fire)
-	for q in QUADS_BOW.size():
-		_puff(pen, (QUADS_BOW[q][0] as Vector2) * PX, QUADS_BOW[q][1], _rcs[q % 2])
-	for q in QUADS_STERN.size():
-		_puff(pen, (QUADS_STERN[q][0] as Vector2) * PX, QUADS_STERN[q][1], _rcs[2 + q % 2])
-	for p: Vector2 in QUADS_FORE:
+	for q in _quads_bow.size():
+		_puff(pen, (_quads_bow[q][0] as Vector2) * PX, _quads_bow[q][1], _rcs[q % 2])
+	for q in _quads_stern.size():
+		_puff(pen, (_quads_stern[q][0] as Vector2) * PX, _quads_stern[q][1], _rcs[2 + q % 2])
+	for p: Vector2 in _quads_fore:
 		_puff(pen, p * PX, Vector2(1, 0), _rcs[4])
-	for p: Vector2 in QUADS_AFT:
+	for p: Vector2 in _quads_aft:
 		_puff(pen, p * PX, Vector2(-1, 0), _rcs[5])
 	pen.flush()
 

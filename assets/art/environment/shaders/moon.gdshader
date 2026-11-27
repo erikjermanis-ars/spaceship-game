@@ -8,6 +8,15 @@ render_mode blend_premul_alpha, unshaded;
 uniform vec3 light_dir = vec3(-0.55, -0.80, 0.22);
 uniform float extent = 1.15;
 uniform float gain = 0.85;
+// Surface character, so the same sphere can be Meridian's grey moon (the
+// defaults), an icy moon or a dark cratered one.
+uniform vec3 tint = vec3(0.86, 0.88, 0.92);
+uniform float albedo_hi = 0.62;
+uniform float albedo_lo = 0.36;
+uniform vec3 night_color = vec3(0.025, 0.035, 0.06);   // light bounced off the parent world
+uniform vec3 rim_color = vec3(0.25, 0.35, 0.55);
+uniform vec3 seed = vec3(5.0, 1.0, 3.0);
+uniform float crater_scale = 2.4;
 
 void fragment() {
 	vec2 c = (UV * 2.0 - 1.0) * extent;
@@ -19,16 +28,16 @@ void fragment() {
 	if (r < 1.0) {
 		float z = sqrt(max(1.0 - r * r, 0.0));
 		vec3 n = vec3(c, z);
-		vec3 p = n * 2.3 + vec3(5.0, 1.0, 3.0);
+		vec3 p = n * 2.3 + seed;
 		float maria = smoothstep(0.0, 0.25, fbm3(p * 0.9, 4));
-		float crater = ridged3(p * 2.4, 3);
-		float albedo = mix(0.62, 0.36, maria) * (0.82 + 0.3 * crater);
+		float crater = ridged3(p * crater_scale, 3);
+		float albedo = mix(albedo_hi, albedo_lo, maria) * (0.82 + 0.3 * crater);
 		float ndl = dot(n, L);
 		float lit = smoothstep(-0.03, 0.35, ndl);
-		rgb = vec3(0.86, 0.88, 0.92) * albedo * lit * gain;
+		rgb = tint * albedo * lit * gain;
 		// Earthshine: the night side is faintly lit by the planet below-left.
-		rgb += vec3(0.025, 0.035, 0.06) * (1.0 - lit);
-		rgb += vec3(0.25, 0.35, 0.55) * pow(1.0 - z, 3.0) * lit * 0.25;
+		rgb += night_color * (1.0 - lit);
+		rgb += rim_color * pow(1.0 - z, 3.0) * lit * 0.25;
 	}
 	// Barely-there halo so it sits in the sky rather than on it.
 	float h = max(r - 1.0, 0.0);

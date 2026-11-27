@@ -27,6 +27,12 @@ uniform float nebula_gain = 0.24;
 uniform vec3 base_color : source_color = vec3(0.012, 0.018, 0.038);
 uniform vec3 sun_sky_tint : source_color = vec3(0.07, 0.065, 0.085);
 uniform float star_gain = 1.0;
+// Per-look star field: density = star_base + star_band * nebula brightness.
+// (Another place gets different constellations by offsetting cam_pos, not by
+// reseeding: the hashes are so sensitive that a seed uniform changed stars.)
+uniform float star_base = 0.75;
+uniform float star_band = 1.6;
+uniform vec2 nebula_offset = vec2(0.37, 0.61);
 
 float layer_scale(float p) {
 	return 1.0 / (p / max(cam_zoom, 0.001) + 1.0 - p);
@@ -113,7 +119,7 @@ void fragment() {
 	// ---- nebula ----
 	float sn;
 	vec2 qn = layer_coord(frag_c, nebula_parallax, sn);
-	vec4 neb = texture(nebula_tex, qn / nebula_tile + vec2(0.37, 0.61));
+	vec4 neb = texture(nebula_tex, qn / nebula_tile + nebula_offset);
 	vec3 neb_col = neb.rgb * nebula_gain;
 	float dust = neb.a;
 	col += neb_col * (1.0 - 0.55 * dust);
@@ -121,7 +127,7 @@ void fragment() {
 	float neb_l = dot(neb.rgb, vec3(0.33));
 
 	// ---- stars (density follows the bright band of the nebula) ----
-	float dens = 0.75 + 1.6 * neb_l;
+	float dens = star_base + star_band * neb_l;
 	float star_occl = 1.0 - 0.8 * dust;
 	vec3 stars = vec3(0.0);
 	float s0;

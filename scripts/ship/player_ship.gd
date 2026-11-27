@@ -119,6 +119,10 @@ var powered: bool = true
 @export var start_as_player := true
 ## Shown on location cards and toasts.
 @export var vehicle_name := "WREN"
+## The frigate carrying this ship on its flight deck (set by FrigateBay while
+## the ship is parked there and the frigate is under way), and where on it.
+var carrier: PlayerShip
+var carrier_local := Transform2D.IDENTITY
 ## Reach of the prop sensor that caches neighbours' pre-contact velocity
 ## (must cover the hull: the frigate needs far more than the WREN).
 var sensor_radius_m := 9.0
@@ -264,6 +268,10 @@ func _physics_process(delta: float) -> void:
 ## raw physics transform made the whole world judder; instead both use this
 ## transform, interpolated between the last two physics steps.
 func render_transform() -> Transform2D:
+	# Parked on a frigate's flight deck: drawn where the frigate is drawn, so
+	# the two never slide against each other between physics steps.
+	if carrier != null and is_instance_valid(carrier):
+		return carrier.render_transform() * carrier_local
 	var xf := global_transform
 	if not alive or not xf.is_equal_approx(_tick_xf) \
 			or _tick_prev_xf.origin.distance_squared_to(_tick_xf.origin) > 2500.0 * 2500.0:
@@ -273,8 +281,11 @@ func render_transform() -> Transform2D:
 
 func _process(_delta: float) -> void:
 	# The hull art sits at the interpolated transform (see render_transform).
+	var off := global_transform.affine_inverse() * render_transform()
 	if _visuals:
-		_visuals.transform = global_transform.affine_inverse() * render_transform()
+		_visuals.transform = off
+	if carrier != null and has_landed_model():
+		_landed.transform = off
 
 
 ## Override: may the pilot's inputs drive this ship right now?
@@ -319,6 +330,13 @@ func _act(action: StringName) -> float:
 			return 0.0
 		_latched.erase(action)
 	return Input.get_action_strength(action)
+
+
+## For attachments (the WREN's guns): an action as the pilot presses it, with
+## the same rules as the flight keys (0 while the controls are off, and a key
+## held when you boarded reads 0 until it is released once).
+func pilot_action(action: StringName) -> float:
+	return _act(action) if _controls_active() and powered else 0.0
 
 
 func _latch_held_actions() -> void:
@@ -629,9 +647,31 @@ func uses_pad_clamps() -> bool:
 	return true
 
 
-## Override: where a destroyed ship is brought back when not racing.
+## Override: where a destroyed ship is brought back when not racing. Away
+## from its home station (it rode there on a frigate) the recovery drone
+## brings it to the nearest pad of the station it is at.
 func home_transform() -> Transform2D:
+	var away := nearest_pad_transform()
+	if Sectors.at(global_position) != Sectors.MERIDIAN and away != Transform2D.IDENTITY:
+		return away
 	return GameplayUtil.spawn_transform(get_tree())
+
+
+## The closest station docking pad in this ship's sector (IDENTITY if none).
+## Pads on a frigate's flight deck don't count: they move.
+func nearest_pad_transform() -> Transform2D:
+	var here := Sectors.at(global_position)
+	var best := Transform2D.IDENTITY
+	var best_d := INF
+	for n in get_tree().get_nodes_in_group(&"docking_pad"):
+		var pad := n as Node2D
+		if pad == null or pad.get_parent() is FrigateBayPad or Sectors.at(pad.global_position) != here:
+			continue
+		var d := pad.global_position.distance_squared_to(global_position)
+		if d < best_d:
+			best_d = d
+			best = Transform2D(pad.global_rotation, pad.global_position)
+	return best
 
 
 ## Override: how much further out the flight camera sits for this ship

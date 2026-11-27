@@ -1,21 +1,27 @@
 class_name FrigateShip
 extends PlayerShip
-## KESTREL: a 158 m civil exploration frigate, berthed on Pier 7 East.
+## A KESTREL-class frigate: a 150 m civil exploration ship with an open
+## flight deck in its stern and two quantum-drive rings. Two of them exist:
+## the KESTREL (Berth E2) and the HALCYON (Berth E1).
 ##
 ## You don't climb into it from the deck like the WREN or the PETREL. You
-## cross the personnel gangway, walk its corridors to the bridge and take the
-## captain's chair (see OnFootDirector.take_helm). Leaving the chair (X)
-## takes you back to the bridge on foot, when the ship is clamped in its
-## berth or at all stop.
+## cross the personnel gangway (or land a small ship on its flight deck),
+## walk its corridors to the bridge and take the captain's chair (see
+## OnFootDirector.take_helm). Leaving the chair (X) takes you back to the
+## bridge on foot, when the ship is clamped in a berth or at all stop.
 ##
 ## Flight: the same PlayerShip model with capital-ship numbers (120 t,
 ## 3 m/s² at full throttle, a slow turn couple), flight assist ON by
 ## default, plus:
-##   * main thrust from three engines: the impulse deck (40 %) and the two
-##     drive nacelles (30 % each), each at its real position, so a damaged
-##     nacelle makes the ship pull to one side (FrigateDamage);
+##   * main thrust from three engines: the impulse deck in the stern (40 %)
+##     and the two drive rings (30 % each), each at its real position, so a
+##     damaged ring makes the ship pull to one side (FrigateDamage);
 ##   * Space = ALL STOP: every thruster brakes the drift and the spin;
-##   * berth docking with clamp pylons and a gangway (FrigateDock).
+##   * berth docking with clamp pylons and a gangway (FrigateDock), at ANY
+##     free frigate berth, at either station;
+##   * the FLIGHT DECK (FrigateBay): small ships land on it and ride along;
+##   * the QUANTUM DRIVE: JumpSystem flies the ship between stations at light
+##     speed (it takes the helm through `jump_ctl` for the sequence).
 
 signal dock_event(event: String)
 ## "hit" {shield, hull, sec, pos, breach, shield_fell}, "shields_down",
@@ -23,6 +29,19 @@ signal dock_event(event: String)
 signal damage_event(kind: String, data: Dictionary)
 
 const INTERIOR := "res://scenes/onfoot/interiors/frigate_deck.tscn"
+
+## The frigate whose deck the player is walking (set by the on-foot director
+## before it loads the interior, which reads its state from here).
+static var aboard: FrigateShip
+
+
+## The frigate clamped into berth `id` with its gangway sealed, or null.
+static func docked_at(tree: SceneTree, id: String) -> FrigateShip:
+	for n in tree.get_nodes_in_group(&"frigate"):
+		var f := n as FrigateShip
+		if f and f.alive and f.gangway_ready() and f.berth_name() == id:
+			return f
+	return null
 
 ## The KESTREL's flight model (also the "KESTREL default" tuning preset).
 const FRIGATE_DEFAULTS := {
@@ -34,11 +53,14 @@ const FRIGATE_DEFAULTS := {
 }
 ## Share of the main thrust per engine: impulse deck, port, starboard nacelle.
 const ENGINE_SHARE := Vector3(0.4, 0.3, 0.3)
-## Where each engine pushes from (local metres).
-const IMPULSE_AT := Vector2(-4.6, 0.0)
-const NACELLE_AT := Vector2(-40.0, 28.0)
+## Where each engine pushes from (local metres): the impulse deck in the
+## stern, and the centre of the starboard drive ring (port mirrors y).
+const IMPULSE_AT := Vector2(-66.0, 0.0)
+const NACELLE_AT := Vector2(-38.0, 34.0)
 const VENT_FORCE_N := 2500.0
 
+## HOME berth: where the session starts and where a lost ship comes back.
+## (It can dock at any free berth: `dock.berth` is the one it is using.)
 @export var berth_id := "E2"
 @export var livery := Color("2A9D8F")
 @export var registry := "MFF-07"
@@ -47,6 +69,17 @@ const VENT_FORCE_N := 2500.0
 
 var damage := FrigateDamage.new()
 var dock := FrigateDock.new()
+## The flight deck: landing pads, the deck surface and stowed ships.
+var bay: FrigateBay
+var home_berth: Node2D
+## Read by LandingProbe / WalkSite for the deck's name (like a pad module).
+var pad_name := ""
+## Quantum drive glow for the visuals, 0..1 (JumpSystem drives it).
+var jump_glow := 0.0
+## While a jump runs, JumpSystem flies the ship: an object with
+## `apply(state: PhysicsDirectBodyState2D, ship: FrigateShip)`. Pilot input
+## is ignored meanwhile.
+var jump_ctl: Object
 ## Space held: 0..1.
 var all_stop := 0.0
 var red_alert := false
@@ -66,6 +99,8 @@ var _release_grace := 0.0
 var _was_online := true
 var _hull_emit_t := 0.0
 var _core_announced := false
+var _berth_scan := 0.0
+var _warp_velocity := Vector2.ZERO
 
 
 func _init() -> void:
@@ -89,7 +124,13 @@ func _ready() -> void:
 	super._ready()
 	flight_assist = true
 	max_contacts_reported = 12
+	# Under the small ships: the ones parked on the flight deck draw on top.
+	z_index = Game.Z_CAPITAL
 	add_to_group(&"frigate")
+	pad_name = "%s flight deck" % vehicle_name
+	bay = FrigateBay.new()
+	add_child(bay)
+	bay.setup(self)
 	# A 158 m hull is a landmark on the radar and the station map, not a blip.
 	add_to_group(&"radar_structure")
 	_find_berth()
@@ -102,9 +143,53 @@ func _ready() -> void:
 func _find_berth() -> void:
 	for n in get_tree().get_nodes_in_group(&"frigate_berth"):
 		if String(n.get(&"berth_id")) == berth_id:
-			dock.berth = n as Node2D
-			n.set(&"ship", self)
+			home_berth = n as Node2D
+			_claim(home_berth)
 			return
+
+
+## Use berth `b` from now on (its clamps and guidance follow this ship).
+func _claim(b: Node2D) -> void:
+	if dock.berth == b:
+		if b and b.get(&"ship") == null:
+			b.set(&"ship", self)
+		return
+	if dock.berth and is_instance_valid(dock.berth) and dock.berth.get(&"ship") == self:
+		dock.berth.set(&"ship", null)
+	dock.berth = b
+	if b:
+		b.set(&"ship", self)
+
+
+## Is another frigate holding (or docking at) berth `b`?
+func _berth_taken(b: Node2D) -> bool:
+	for n in get_tree().get_nodes_in_group(&"frigate"):
+		var f := n as FrigateShip
+		if f and f != self and f.alive and f.dock.berth == b and f.dock.state != FrigateDock.State.FREE:
+			return true
+	return false
+
+
+## Adrift with the helm manned: aim the docking guidance at the nearest
+## free berth (any station's), so the ship can put in wherever there is room.
+func _pick_berth() -> void:
+	var best: Node2D = null
+	var best_d := INF
+	for n in get_tree().get_nodes_in_group(&"frigate_berth"):
+		var b := n as Node2D
+		if b == null or _berth_taken(b):
+			continue
+		var d := b.global_position.distance_squared_to(global_position)
+		if d < best_d:
+			best_d = d
+			best = b
+	if best:
+		_claim(best)
+
+
+## The berth this ship is using (clamped in, or approaching).
+func berth_name() -> String:
+	return String(dock.berth.get(&"berth_id")) if dock.berth and is_instance_valid(dock.berth) else "--"
 
 
 ## Session start: clamped in the berth, gangway out, nobody aboard.
@@ -117,7 +202,7 @@ func _go_home() -> void:
 # ================================================================ vehicle
 
 func ship_id() -> StringName:
-	return &"kestrel"
+	return StringName(vehicle_name.to_lower())
 
 
 func uses_pad_clamps() -> bool:
@@ -133,14 +218,15 @@ func landed_model() -> Node2D:
 	return null
 
 
-## Radar outline (global px): primary and engineering hulls, both nacelles.
+## Radar outline (global px): the hull with its bay notch, and both rings.
 func get_radar_polygons() -> Array[PackedVector2Array]:
 	var out: Array[PackedVector2Array] = []
 	if not alive:
 		return out
 	var xf := global_transform
-	for key: String in ["primary", "secondary", "nacelle_s", "nacelle_p"]:
-		out.append(xf * PackedVector2Array(FrigateShape.PARTS[key]))
+	var all := FrigateShape.outlines()
+	for i: int in [0, 1, 3]:
+		out.append(xf * all[i])
 	return out
 
 
@@ -153,8 +239,8 @@ func gangway_ready() -> bool:
 
 
 func home_transform() -> Transform2D:
-	if dock.berth:
-		return dock.target()
+	if home_berth and is_instance_valid(home_berth):
+		return home_berth.call(&"docked_transform")
 	return super.home_transform()
 
 
@@ -164,11 +250,24 @@ func can_disembark() -> bool:
 		return false
 	if dock.state == FrigateDock.State.LOCKED:
 		return dock.gangway_ready()
-	return dock.state == FrigateDock.State.FREE and speed_mps() < 0.4 and absf(angular_velocity) < 0.01
+	return dock.state == FrigateDock.State.FREE and jump_ctl == null and speed_mps() < 0.4 and absf(angular_velocity) < 0.01
 
 
 func exit_label() -> String:
 	return "Leave the bridge"
+
+
+## Put the ship somewhere else with a given velocity (the quantum drive's
+## arrival). Uses the in-callback teleport, so the solver can't sweep the
+## hull through whatever lies between here and there.
+func warp_to(xf: Transform2D, velocity: Vector2) -> void:
+	global_transform = xf
+	_tick_xf = xf
+	_tick_prev_xf = xf
+	_teleport_xform = xf
+	_pending_teleport = true
+	_warp_velocity = velocity
+	_contacts_prev.clear()
 
 
 func disembark_hint() -> String:
@@ -177,6 +276,8 @@ func disembark_hint() -> String:
 			return "Docking sequence in progress"
 		FrigateDock.State.LOCKED:
 			return "Gangway extending…"
+	if jump_ctl != null:
+		return "Quantum drive running"
 	return "All stop first  ·  hold Space until the ship is still"
 
 
@@ -184,6 +285,13 @@ func park() -> void:
 	super.park()
 	_zero_outputs()
 	all_stop = 0.0
+
+
+## Someone takes the helm: whatever is parked on the flight deck now rides
+## with the ship.
+func take_control() -> void:
+	super.take_control()
+	bay.refresh()
 
 
 ## Boarded (from the captain's chair): in the clamps it stays frozen until
@@ -205,7 +313,8 @@ func damage_scale(other: Node, _speed_mps: float) -> float:
 # ================================================================== input
 
 func _controls_active() -> bool:
-	return controls_enabled and alive and powered and Game.player == self and Game.mode == Game.Mode.FLIGHT
+	return controls_enabled and alive and powered and jump_ctl == null \
+		and Game.player == self and Game.mode == Game.Mode.FLIGHT
 
 
 func _read_input(delta: float) -> void:
@@ -237,7 +346,12 @@ func _physics_process(delta: float) -> void:
 	var locked := dock.state == FrigateDock.State.LOCKED
 	_release_grace = maxf(0.0, _release_grace - delta)
 	damage.tick(delta, locked and alive)
-	var ev := dock.tick(self, delta, Game.player == self and alive and powered)
+	var manned := Game.player == self and alive and powered
+	_berth_scan -= delta
+	if manned and dock.state == FrigateDock.State.FREE and _berth_scan <= 0.0:
+		_berth_scan = 0.5
+		_pick_berth()
+	var ev := dock.tick(self, delta, manned and jump_ctl == null)
 	if ev != "":
 		_on_dock_event(ev)
 	_tick_damage_state(delta)
@@ -246,6 +360,16 @@ func _physics_process(delta: float) -> void:
 
 
 func _apply_flight_forces(state: PhysicsDirectBodyState2D, xf: Transform2D, v: Vector2, w: float) -> void:
+	if _warp_velocity != Vector2.ZERO:
+		state.linear_velocity = _warp_velocity
+		_warp_velocity = Vector2.ZERO
+	if jump_ctl != null:
+		# The quantum drive has the ship (JumpSystem): no pilot forces.
+		jump_ctl.call(&"apply", state, self)
+		dbg_main_force = Vector2.ZERO
+		dbg_side_force = Vector2.ZERO
+		dbg_strafe_force = Vector2.ZERO
+		return
 	if dock.state == FrigateDock.State.CAPTURE:
 		dock.apply_capture(state, self)
 		_zero_outputs()
@@ -372,7 +496,7 @@ func _on_dock_event(ev: String) -> void:
 			Game.toast("SOFT CAPTURE  ·  clamps engaging  ·  hands off the helm", 3.0)
 		"lock":
 			_lock_at_berth.call_deferred()
-			Game.toast("HARD DOCK  ·  BERTH %s  ·  gangway extending" % berth_id, 3.0)
+			Game.toast("HARD DOCK  ·  BERTH %s  ·  gangway extending" % berth_name(), 3.0)
 			if Game.camera and Game.camera.has_method(&"add_trauma"):
 				Game.camera.call(&"add_trauma", 0.25)
 		"gangway":
@@ -461,6 +585,9 @@ func destroy() -> void:
 	for cp in _parts:
 		cp.set_deferred(&"disabled", true)
 	dock.reset_free()
+	jump_ctl = null
+	jump_glow = 0.0
+	bay.release_all()
 	super.destroy()
 	_zero_outputs()
 	damage_event.emit("destroyed", {})
@@ -475,9 +602,12 @@ func respawn_at(xform: Transform2D) -> void:
 	for cp in _parts:
 		cp.set_deferred(&"disabled", false)
 	dock.reset_free()
+	jump_ctl = null
+	jump_glow = 0.0
 	_zero_outputs()
 	# Home is the berth: come back clamped in, gangway out.
-	if dock.berth and xform.origin.distance_to(dock.target().origin) < 1.0:
+	if home_berth and xform.origin.distance_to(home_transform().origin) < 1.0:
+		_claim(home_berth)
 		_respawn_docked.call_deferred()
 
 
@@ -489,7 +619,8 @@ func _harness_hits(n: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
 	for i in n:
-		var keys := FrigateShape.PARTS.keys()
+		# Mostly the main body (the rings are thin: most hits there miss).
+		var keys := ["bow", "mid", "waist", "flare", "block", "arm_s", "arm_p", "ring_s04", "ring_p12", "bow", "mid"]
 		var poly: Array = FrigateShape.PARTS[keys[rng.randi() % keys.size()]]
 		var p: Vector2 = poly[rng.randi() % poly.size()] * 0.9
 		var was := dock.state

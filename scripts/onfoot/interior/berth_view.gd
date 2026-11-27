@@ -9,6 +9,8 @@ extends Node2D
 
 const PX := 10.0
 
+@export var berth_id := "E2"
+
 var _ship_root: Node2D
 var _berth: Node2D
 
@@ -19,10 +21,10 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	material = OnFootArt.unshaded()
-	var f := get_tree().get_first_node_in_group(&"frigate") as Node2D
+	var f := FrigateShip.docked_at(get_tree(), berth_id) as Node2D
 	var berth: Node2D = null
 	for n in get_tree().get_nodes_in_group(&"frigate_berth"):
-		if f and String(n.get(&"berth_id")) == String(f.get(&"berth_id")):
+		if String(n.get(&"berth_id")) == berth_id:
 			berth = n
 	_berth = berth
 	if berth:
@@ -32,7 +34,7 @@ func _ready() -> void:
 		add_child(pylons)
 		pylons.global_transform = berth.global_transform
 	# Only a ship that is actually clamped in shows outside.
-	if f == null or not f.has_method(&"gangway_ready") or not bool(f.call(&"gangway_ready")):
+	if f == null:
 		return
 	_ship_root = Node2D.new()
 	_ship_root.name = "Frigate"

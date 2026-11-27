@@ -29,6 +29,7 @@ var _screens: Node2D
 var _light: PointLight2D
 var _t := 0.0
 var _docked := false
+var _berth := ""
 var _alert := false
 
 
@@ -68,7 +69,8 @@ func _ready() -> void:
 	_light.color = Color(0.45, 0.8, 1.0)
 	_light.energy = 0.55
 	add_child(_light)
-	var f := get_tree().get_first_node_in_group(&"frigate")
+	var f := FrigateShip.aboard
+	_berth = f.berth_name() if f else ""
 	_docked = f != null and bool(f.call(&"gangway_ready"))
 	_alert = f != null and bool(f.get(&"red_alert"))
 
@@ -153,9 +155,9 @@ func _draw_screens() -> void:
 	pen.line(hc, hc + Vector2.from_angle(sw) * 1.6 * PX, Color(tint, 0.45), 0.12)
 	# own ship: the hull parts, scaled down, bow up
 	var k_s := 0.009
-	for key: String in FrigateShape.PARTS:
+	for outline in FrigateShape.outlines():
 		var poly := PackedVector2Array()
-		for v: Vector2 in FrigateShape.PARTS[key]:
+		for v in outline:
 			poly.append(hc + Vector2(v.y, -v.x) * k_s)
 		poly.append(poly[0])
 		pen.polyline(poly, Color(tint, 0.85), 0.1)
@@ -163,7 +165,7 @@ func _draw_screens() -> void:
 		for h: Vector2 in [FrigateShape.CLAMP_FWD, FrigateShape.CLAMP_AFT]:
 			var p0 := hc + Vector2(h.y + 2.0, -h.x) * PX * k_s
 			pen.line(p0, p0 + Vector2(40.0, 0) * PX * k_s, Color(OnFootArt.NAV_GREEN, 0.8), 0.15)
-		pen.text(hc + Vector2(2.6, -0.8) * PX, "BERTH E2 · CLAMPED", 1.5, Color(OnFootArt.NAV_GREEN, 0.9))
+		pen.text(hc + Vector2(2.6, -0.8) * PX, "BERTH %s · CLAMPED" % _berth, 1.5, Color(OnFootArt.NAV_GREEN, 0.9))
 	else:
 		pen.text(hc + Vector2(2.6, -0.8) * PX, "ALL STOP", 1.5, Color(tint, 0.9))
 	# drifting contacts

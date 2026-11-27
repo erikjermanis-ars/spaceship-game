@@ -34,7 +34,7 @@ func _ready() -> void:
 	_screen.material = OnFootArt.unshaded()
 	_screen.draw.connect(_draw_screen)
 	add_child(_screen)
-	_ship = get_tree().get_first_node_in_group(&"frigate") as FrigateShip
+	_ship = FrigateShip.aboard
 
 
 func _process(delta: float) -> void:
@@ -92,7 +92,7 @@ func _draw_screen() -> void:
 	var d := _ship.damage
 	# ship top-down, bow to the right, fitted to the screen height
 	var k := (r.size.y * 0.8) / (FrigateShape.HALF_BEAM * 2.0 * OnFootArt.PX)
-	var c := r.get_center() + Vector2(-4.0, 0)
+	var c := r.get_center() + Vector2(-4.0 - FrigateShape.CENTRE_X * OnFootArt.PX * k, 0)
 	for key: String in FrigateShape.PARTS:
 		var poly := PackedVector2Array()
 		var sum := Vector2.ZERO
@@ -103,8 +103,9 @@ func _draw_screen() -> void:
 		var col := _sec_col(d.integrity[FrigateDamage.section_at(mid)])
 		pen.fill(poly, Color(col, 0.28))
 		poly.append(poly[0])
-		pen.polyline(poly, Color(col, 0.9), 0.12)
+		pen.polyline(poly, Color(col, 0.9), 0.08)
 	# shield ring
+	c.x += FrigateShape.CENTRE_X * OnFootArt.PX * k
 	var half := Vector2(FrigateShape.HALF_LENGTH + 8.0, FrigateShape.HALF_BEAM + 6.0) * OnFootArt.PX * k
 	var sh := clampf(d.shield / FrigateDamage.SHIELD_MAX, 0.0, 1.0)
 	var n := 32
@@ -115,9 +116,9 @@ func _draw_screen() -> void:
 		pen.line(c + Vector2(cos(a0) * half.x, sin(a0) * half.y), c + Vector2(cos(a1) * half.x, sin(a1) * half.y),
 			Color(0.5, 0.9, 1.0, 0.8 if on else 0.12), 0.15)
 	for b in d.breaches:
-		var p: Vector2 = c + (b.pos as Vector2) * OnFootArt.PX * k
+		var p: Vector2 = c + ((b.pos as Vector2) - Vector2(FrigateShape.CENTRE_X, 0)) * OnFootArt.PX * k
 		pen.circle(p, 0.6 + 0.3 * sin(_t * 8.0), Color(1.0, 0.5, 0.2, 0.95))
 	if _ship.dock.state == FrigateDock.State.LOCKED:
-		pen.text(Vector2(r.end.x - 9.0, r.position.y + 2.2), "BERTH E2", 1.6, Color(OnFootArt.NAV_GREEN, 0.9))
+		pen.text(Vector2(r.end.x - 9.0, r.position.y + 2.2), "BERTH %s" % _ship.berth_name(), 1.6, Color(OnFootArt.NAV_GREEN, 0.9))
 	pen.text(Vector2(r.position.x + 7.0, r.position.y + 2.2), "SHIELD %d%%" % int(sh * 100.0), 1.5, Color(0.5, 0.9, 1.0, 0.9))
 	pen.flush()

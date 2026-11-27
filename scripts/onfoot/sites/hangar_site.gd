@@ -19,6 +19,10 @@ const DOOR_X := -440.0
 ## of an open door, even after landing the shuttle in the doorway.
 const DOOR_LINE_X := -550.0
 const BAY := Rect2(316, -318, 88, 176)          # shuttle parking bay
+## Where you stand in front of the crew room's airlock (ExteriorDoors "hangar2",
+## world 6290, -4350), for the painted lane that leads there.
+const CREW_DOOR := Vector2(490, -100)
+const CREW_LABEL_X := 395.0
 
 var pen: OnFootPainter
 
@@ -73,6 +77,21 @@ func _paint() -> void:
 	while x < BAY.position.x - 8.0:
 		pen.fill(PackedVector2Array([Vector2(x, -158), Vector2(x + 4, -154), Vector2(x, -150), Vector2(x - 1.5, -150), Vector2(x + 2.5, -154), Vector2(x - 1.5, -158)]), Color(0.5, 0.9, 1.0, 0.35))
 		x += 14.0
+
+	# --- crew lane: from the foot of the stairs south, then east to airlock H2
+	#     in the east wall (the ExteriorDoor paints its own last 2 m)
+	var x0 := STAIRS.end.x + 4.0
+	var top := STAIRS.end.y + 6.0
+	for k: float in [-1.0, 1.0]:
+		var corner := Vector2(x0 + 8.5 + 8.5 * k, CREW_DOOR.y - 8.5 * k)
+		_dashes(Vector2(corner.x, top), corner, lane)
+		_dashes(corner, Vector2(CREW_DOOR.x - 24.0, corner.y), lane)
+	x = x0 + 32.0
+	while x < CREW_DOOR.x - 30.0:
+		if absf(x - CREW_LABEL_X) > 16.0:
+			pen.fill(PackedVector2Array([Vector2(x, CREW_DOOR.y - 4), Vector2(x + 4, CREW_DOOR.y), Vector2(x, CREW_DOOR.y + 4), Vector2(x - 1.5, CREW_DOOR.y + 4), Vector2(x + 2.5, CREW_DOOR.y), Vector2(x - 1.5, CREW_DOOR.y - 4)]), Color(0.5, 0.9, 1.0, 0.35))
+		x += 14.0
+	pen.text(Vector2(CREW_LABEL_X, CREW_DOOR.y + 1.3), "CREW ROOM", 3.6, Color(0.85, 0.92, 1.0, 0.5), HORIZONTAL_ALIGNMENT_CENTER, 60.0)
 
 	# --- shuttle parking bay: corner brackets, hatched apron, painted label
 	var b := BAY

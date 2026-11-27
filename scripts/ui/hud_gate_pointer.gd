@@ -17,6 +17,9 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# The Meridian Circuit is Meridian's: nothing to show at another station.
+	if Game.sector != Sectors.MERIDIAN:
+		return
 	var race := get_tree().get_first_node_in_group(&"race_system") as RaceSystem
 	if race == null or not GameplayUtil.player_alive():
 		return

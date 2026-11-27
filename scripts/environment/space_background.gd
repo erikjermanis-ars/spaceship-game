@@ -13,8 +13,25 @@ extends CanvasLayer
 ##
 ## Cost: two fullscreen shader passes (sky, sun glare), one partial (planet),
 ## a few cached _draw() silhouettes, and two one-off bakes at startup.
+##
+## Looks: the backdrop can show more than one place. A SkyLook holds a place's
+## parallax layers and its overrides for the two shared fullscreen passes;
+## set_look() swaps them instantly (the jump hides the cut under a flash).
+## Meridian is built at startup. Other looks are built a moment later, hidden,
+## so startup is no slower and the swap itself does not hitch.
 
 const SHADERS := "res://assets/art/environment/shaders/"
+
+const GROUP := &"space_background"
+const LOOK_MERIDIAN := &"meridian"
+const LOOK_VESPER := &"vesper"
+## World position (px) of VESPER ROCK: the origin `--sky-look=vesper` uses.
+const VESPER_ORIGIN := Vector2(90000.0, 0.0)
+## Seconds after startup before the other looks are baked in the background.
+const PREBAKE_DELAY := 1.5
+## Frames a freshly built look is drawn hidden behind the sky, so its shaders
+## compile then and not on the frame of the swap.
+const WARM_FRAMES := 3
 
 ## Layer-space layout, chosen for the view from the world origin (where the
 ## station sits): planet lower-left, sun top-right, moon top-centre.
@@ -35,12 +52,17 @@ const SUN_DEPTH := -1.3
 ## Overall brightness multiplier of the sun glare (1 = default look).
 @export var sun_intensity := 1.0
 
-var _layers: Array[Dictionary] = []   # {node: Node2D, p: float, anchor: Vector2}
+var _looks := {}                      # StringName -> SkyLook
+var _active: SkyLook
+var _origin := Vector2.ZERO           # world position the active look is composed around
+var _prebake_in := PREBAKE_DELAY
+var _prebuilding: SkyLook             # look being built ahead of time, a step per frame
+var _warming: SkyLook                 # look being drawn under the sky to compile its shaders
+var _warm_left := 0
 var _sky: ColorRect
 var _sky_mat: ShaderMaterial
 var _sun: ColorRect
 var _sun_mat: ShaderMaterial
-var _moon_mat: ShaderMaterial
 var _planet: PlanetSystem
 var _light_dir := Vector3(0.62, -0.45, -0.64)
 var _time := 0.0
@@ -48,20 +70,118 @@ var _time := 0.0
 
 func _ready() -> void:
 	layer = -10
+	# The jump sequence finds the backdrop through this group to call set_look().
+	add_to_group(GROUP)
 	follow_viewport_enabled = false
 	# Run after cameras/rigs so we read this frame's final canvas transform.
 	process_priority = 1000
 	_light_dir = _compute_light_dir()
-	var nebula_tex := _make_bake("nebula_bake.gdshader", Vector2i(nebula_bake_size, nebula_bake_size))
-	var planet_tex := _make_bake("planet_bake.gdshader", planet_bake_size)
+	var nebula_tex := make_bake("nebula_bake.gdshader", Vector2i(nebula_bake_size, nebula_bake_size))
+	var planet_tex := make_bake("planet_bake.gdshader", planet_bake_size)
 	_build_sky(nebula_tex)
+	_active = SkyLook.new(LOOK_MERIDIAN)
+	_active.sun_screen = SUN_SCREEN
+	# Only the texture is listed: every other Meridian value is the shader's
+	# default, which set_look() restores by clearing the other look's overrides.
+	_active.sky_params = {"nebula_tex": nebula_tex}
+	_looks[LOOK_MERIDIAN] = _active
+	add_child(_active.root)
 	_build_moon()
 	_build_planet(planet_tex)
 	_build_far_traffic()
 	_build_stations()
 	_build_near_traffic()
 	_build_sun()
+	if Game.cmd.has("sky-look"):
+		set_look(StringName(String(Game.cmd["sky-look"])), VESPER_ORIGIN)
 	_update_view()
+
+
+## Switch the whole backdrop to another place. Instant (called under a white flash).
+## `world_origin` = the world position (px) the composition is designed around:
+## parallax is computed from (camera - world_origin), so each look frames its
+## own station the way the Meridian look frames (0, 0).
+func set_look(id: StringName, world_origin: Vector2) -> void:
+	var next := _ensure_look(id)
+	if next == null:
+		return
+	# Needed now: finish whatever the ahead-of-time build had left.
+	next.finish()
+	if next == _prebuilding:
+		_prebuilding = null
+	_origin = world_origin
+	if next != _active:
+		_end_warm()
+		_show_look(_active, false)
+		# Clear the old look's overrides (back to the shader defaults, which
+		# are Meridian's values), then apply the new look's.
+		for k: String in _active.sky_params:
+			_sky_mat.set_shader_parameter(k, null)
+		for k: String in _active.sun_params:
+			_sun_mat.set_shader_parameter(k, null)
+		_active = next
+		for k: String in next.sky_params:
+			_sky_mat.set_shader_parameter(k, next.sky_params[k])
+		for k: String in next.sun_params:
+			_sun_mat.set_shader_parameter(k, next.sun_params[k])
+		_sun_mat.set_shader_parameter("intensity", sun_intensity * next.sun_gain)
+		_show_look(next, true)
+	_update_view()
+
+
+## The id of the look on screen (`&"meridian"` at startup).
+func look() -> StringName:
+	return _active.id
+
+
+## World position (px) the active look is composed around.
+func look_origin() -> Vector2:
+	return _origin
+
+
+## Returns the look, building it now if this is the first time it is needed.
+func _ensure_look(id: StringName) -> SkyLook:
+	if _looks.has(id):
+		return _looks[id]
+	if id != LOOK_VESPER:
+		push_warning("SpaceBackground: unknown sky look '%s'" % id)
+		return null
+	var built := VesperSky.build(self)
+	_looks[id] = built
+	_show_look(built, false)
+	add_child(built.root)
+	# Between the sky and the sun glare, like the Meridian layers.
+	var meridian: SkyLook = _looks[LOOK_MERIDIAN]
+	move_child(built.root, meridian.root.get_index() + 1)
+	return built
+
+
+## A hidden look is also stopped, so its per-frame work costs nothing.
+func _show_look(l: SkyLook, on: bool) -> void:
+	l.root.visible = on
+	l.root.process_mode = Node.PROCESS_MODE_INHERIT if on else Node.PROCESS_MODE_DISABLED
+
+
+## Ahead-of-time build of the other look, part 2 (part 1 is its build steps,
+## one per frame, in _process): draw it for a few frames UNDER the opaque sky
+## pass. The bakes render and every shader compiles while nothing can be
+## seen, so the swap during a jump is just a visibility flip.
+func _start_warm(l: SkyLook) -> void:
+	if l == _active:
+		return
+	_warming = l
+	_warm_left = WARM_FRAMES
+	l.root.z_index = -1
+	l.root.visible = true
+
+
+func _end_warm() -> void:
+	if _warming == null:
+		return
+	_warming.root.z_index = 0
+	if _warming != _active:
+		_warming.root.visible = false
+	_warming = null
 
 
 ## Direction towards the sun in planet view space: on screen it points from
@@ -74,9 +194,11 @@ func _compute_light_dir() -> Vector3:
 	return Vector3(d.x, d.y, SUN_DEPTH).normalized()
 
 
-func _make_bake(shader_file: String, size: Vector2i) -> Texture2D:
+## Renders `shader_file` once into a texture (SubViewport, UPDATE_ONCE).
+## `params` are uniforms for that one bake: looks share the bake shaders.
+func make_bake(shader_file: String, size: Vector2i, params := {}, node_name := "") -> Texture2D:
 	var vp := SubViewport.new()
-	vp.name = shader_file.get_basename().to_pascal_case()
+	vp.name = node_name if node_name != "" else shader_file.get_basename().to_pascal_case()
 	vp.size = size
 	vp.disable_3d = true
 	vp.transparent_bg = true
@@ -85,6 +207,8 @@ func _make_bake(shader_file: String, size: Vector2i) -> Texture2D:
 	rect.size = Vector2(size)
 	var mat := ShaderMaterial.new()
 	mat.shader = load(SHADERS + shader_file)
+	for k: String in params:
+		mat.set_shader_parameter(k, params[k])
 	rect.material = mat
 	vp.add_child(rect)
 	add_child(vp)
@@ -110,27 +234,36 @@ func _build_sky(nebula_tex: Texture2D) -> void:
 	_sky_mat.set_shader_parameter("sun_uv", SUN_SCREEN)
 
 
+## Meridian's builders below add to the look being built (the active one).
 func _add_layer(node: Node2D, p: float, anchor: Vector2) -> void:
-	add_child(node)
-	_layers.append({"node": node, "p": p, "anchor": anchor})
+	_active.add_layer(node, p, anchor)
 
 
-func _build_moon() -> void:
+## A small lit sphere on its own quad (moon.gdshader). `params` override the
+## shader's surface uniforms; with none it is Meridian's grey moon.
+func make_moon(moon_name: String, radius: float, light: Vector3, params := {}) -> Node2D:
 	var holder := Node2D.new()
-	holder.name = "Moon"
+	holder.name = moon_name
 	var r := ColorRect.new()
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ext := 1.15
-	r.position = Vector2(-MOON_RADIUS, -MOON_RADIUS) * ext
-	r.size = Vector2(MOON_RADIUS, MOON_RADIUS) * 2.0 * ext
-	_moon_mat = ShaderMaterial.new()
-	_moon_mat.shader = load(SHADERS + "moon.gdshader")
-	# The moon gets a less backlit sun so it reads as a crescent, not a hole.
-	_moon_mat.set_shader_parameter("light_dir", Vector3(_light_dir.x, _light_dir.y, -0.25))
-	_moon_mat.set_shader_parameter("extent", ext)
-	r.material = _moon_mat
+	r.position = Vector2(-radius, -radius) * ext
+	r.size = Vector2(radius, radius) * 2.0 * ext
+	var mat := ShaderMaterial.new()
+	mat.shader = load(SHADERS + "moon.gdshader")
+	mat.set_shader_parameter("light_dir", light)
+	mat.set_shader_parameter("extent", ext)
+	for k: String in params:
+		mat.set_shader_parameter(k, params[k])
+	r.material = mat
 	holder.add_child(r)
-	_add_layer(holder, MOON_PARALLAX, MOON_ANCHOR)
+	return holder
+
+
+func _build_moon() -> void:
+	# The moon gets a less backlit sun so it reads as a crescent, not a hole.
+	var moon := make_moon("Moon", MOON_RADIUS, Vector3(_light_dir.x, _light_dir.y, -0.25))
+	_add_layer(moon, MOON_PARALLAX, MOON_ANCHOR)
 
 
 func _build_planet(surface_tex: Texture2D) -> void:
@@ -138,6 +271,8 @@ func _build_planet(surface_tex: Texture2D) -> void:
 	_planet.name = "PlanetSystem"
 	_planet.setup(PLANET_RADIUS, _light_dir, -32.0, 36.0, surface_tex)
 	_add_layer(_planet, PLANET_PARALLAX, PLANET_ANCHOR)
+	_active.disk = _planet
+	_active.disk_radius = PLANET_RADIUS
 
 
 func _build_far_traffic() -> void:
@@ -196,6 +331,18 @@ func _build_sun() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if _warming != null:
+		_warm_left -= 1
+		if _warm_left <= 0:
+			_end_warm()
+	elif _prebuilding != null:
+		if not _prebuilding.step():
+			_start_warm(_prebuilding)
+			_prebuilding = null
+	elif _prebake_in > 0.0:
+		_prebake_in -= delta
+		if _prebake_in <= 0.0 and not _looks.has(LOOK_VESPER):
+			_prebuilding = _ensure_look(LOOK_VESPER)
 	_update_view()
 
 
@@ -210,16 +357,15 @@ func _update_view() -> void:
 	var zoom := maxf(ct.get_scale().x, 0.001)
 	var rot := ct.get_rotation()
 	var center := view * 0.5
-	var cam := ct.affine_inverse() * center
+	# Camera position relative to the place this look is composed around.
+	var cam := ct.affine_inverse() * center - _origin
 
-	for l in _layers:
-		var p: float = l["p"]
-		var s := 1.0 / (p / zoom + 1.0 - p)
-		var off: Vector2 = (Vector2(l["anchor"]) - cam * p).rotated(rot) * s
-		var n: Node2D = l["node"]
-		n.transform = Transform2D(rot, Vector2(s, s), 0.0, center + off)
+	_place_layers(_active, cam, zoom, rot, center)
+	if _warming != null:
+		# The warm-up draws the look as it will appear from its own origin.
+		_place_layers(_warming, Vector2.ZERO, zoom, rot, center)
 
-	_sky_mat.set_shader_parameter("cam_pos", cam)
+	_sky_mat.set_shader_parameter("cam_pos", cam + _active.sky_offset)
 	_sky_mat.set_shader_parameter("cam_zoom", zoom)
 	_sky_mat.set_shader_parameter("cam_rot", rot)
 	_sky_mat.set_shader_parameter("view_size", view)
@@ -227,15 +373,24 @@ func _update_view() -> void:
 
 	# Sun: pinned near a screen corner with a whisper of parallax.
 	var s_sun := 1.0 / (SUN_PARALLAX / zoom + 1.0 - SUN_PARALLAX)
-	var sun_off := ((SUN_SCREEN - Vector2(0.5, 0.5)) * view - cam * SUN_PARALLAX * s_sun).rotated(rot)
+	var sun_off := ((_active.sun_screen - Vector2(0.5, 0.5)) * view - cam * SUN_PARALLAX * s_sun).rotated(rot)
 	var sun_pos := center + sun_off
 	_sun_mat.set_shader_parameter("view_size", view)
 	_sun_mat.set_shader_parameter("sun_pos", sun_pos)
 	_sky_mat.set_shader_parameter("sun_uv", sun_pos / view)
 	# Eclipse: fade the glare when the planet disk slides over the sun.
-	var pl: Node2D = _planet
+	var pl := _active.disk
 	var pc := pl.transform.origin
-	var pr := PLANET_RADIUS * pl.transform.get_scale().x
+	var pr := _active.disk_radius * pl.transform.get_scale().x
 	var dist := sun_pos.distance_to(pc)
 	var vis := smoothstep(pr * 0.985, pr * 1.06, dist)
 	_sun_mat.set_shader_parameter("sun_vis", vis)
+
+
+func _place_layers(l: SkyLook, cam: Vector2, zoom: float, rot: float, center: Vector2) -> void:
+	for d in l.layers:
+		var p: float = d["p"]
+		var s := 1.0 / (p / zoom + 1.0 - p)
+		var off: Vector2 = (Vector2(d["anchor"]) - cam * p).rotated(rot) * s
+		var n: Node2D = d["node"]
+		n.transform = Transform2D(rot, Vector2(s, s), 0.0, center + off)

@@ -129,7 +129,7 @@ func _draw_berth(c: Vector2, ship: FrigateShip) -> Vector2:
 		return exit_at
 	var r := Rect2(Vector2(c.x - 250.0, 70.0), Vector2(500, 150))
 	var col := HudStyle.CYAN
-	var title := "BERTH %s  ·  APPROACH" % ship.berth_id
+	var title := "BERTH %s  ·  APPROACH" % ship.berth_name()
 	match dk.state:
 		FrigateDock.State.CAPTURE:
 			title = "SOFT CAPTURE  ·  CLAMPS ENGAGING"

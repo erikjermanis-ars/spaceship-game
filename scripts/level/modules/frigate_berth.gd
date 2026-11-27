@@ -1,7 +1,8 @@
 @tool
 class_name FrigateBerth
 extends StationModule
-## A frigate berth on the pier's east face.
+## A frigate berth: on Pier 7's east face at Meridian, on the docking spar at
+## Vesper Rock. Any frigate can put in at any free berth.
 ##
 ## Local frame = the docked frigate's frame: the origin is where the ship's
 ## centre sits when it is clamped in, +X is its docked heading (bow), and
@@ -19,9 +20,10 @@ extends StationModule
 ##     a slim truss that runs out overhead to the airlock once the ship is
 ##     hard-docked, and folds back into its housing on the pier to undock;
 ##   * approach guidance for the pilot: the berth's ghost outline, the
-##     centre line, the capture box and where the ship's centre is now;
-##   * `occupied_static`: a parked frigate that never leaves (the HALCYON):
-##     same art, static collision, clamps and gangway shown connected.
+##     centre line, the capture box and where the ship's centre is now.
+## `gangway_scene` / `gangway_arrival` say which station interior the gangway
+## leads into (and the marker you arrive at), so a frigate's airlock opens
+## onto whatever station it is docked at.
 
 @export var berth_id := "E2":
 	set(v): berth_id = v; queue_rebuild()
@@ -31,14 +33,12 @@ extends StationModule
 ## Distance (m) from the ship's centre line to the pier wall.
 @export var pier_dist_m := 71.0:
 	set(v): pier_dist_m = v; queue_rebuild()
-@export var occupied_static := false:
-	set(v): occupied_static = v; queue_rebuild()
-@export var static_name := "HALCYON":
-	set(v): static_name = v; queue_rebuild()
-@export var static_registry := "MFF-04":
-	set(v): static_registry = v; queue_rebuild()
-@export var static_livery := Color("E76F51"):
-	set(v): static_livery = v; queue_rebuild()
+## The station interior behind this berth's gangway, and the node in it where
+## someone coming off the ship arrives.
+@export_file("*.tscn") var gangway_scene := "res://scenes/onfoot/interiors/pier7_concourse.tscn"
+@export var gangway_arrival := "FromFrigate"
+## Shown on location cards ("Berth E2 gangway · back on the station").
+@export var station_name := "Meridian Station"
 
 const GAP_M := 3.5            ## pylon tip to the hull hardpoint
 const STOWED_GANGWAY_M := 7.0
@@ -86,15 +86,6 @@ func _build() -> void:
 	hazard(D, _rect(a.x - 3.8, pier_dist_m - 6.0, a.x + 3.8, pier_dist_m - 5.2), 0.7)
 	lamp(_pt(a.x - 3.6, pier_dist_m - 3.0), A.CYAN, 26.0)
 	lamp(_pt(a.x + 3.6, pier_dist_m - 3.0), A.CYAN, 26.0)
-	if occupied_static:
-		for key: String in FrigateShape.PARTS:
-			var poly := PackedVector2Array(FrigateShape.PARTS[key])
-			pieces.append(poly)
-		radar_polys.append(PackedVector2Array(FrigateShape.PARTS["primary"]))
-		radar_polys.append(PackedVector2Array(FrigateShape.PARTS["secondary"]))
-		radar_polys.append(PackedVector2Array(FrigateShape.PARTS["nacelle_s"]))
-		radar_polys.append(PackedVector2Array(FrigateShape.PARTS["nacelle_p"]))
-		solids.append(PackedVector2Array(FrigateShape.PARTS["primary"]))
 
 
 ## A heavy clamp pylon from the pier to GAP_M off hardpoint `h` (m).
@@ -119,7 +110,12 @@ func _pylon(h: Vector2, s: float, D: int) -> void:
 	# label plate, readable from the approach (the arms run across the screen)
 	var mid := (tip + 5.0 + pier_dist_m - 9.0) * 0.5
 	fill(D, _rect(h.x - 1.9, mid - 9.0, h.x + 1.9, mid + 9.0), A.NAVY)
-	text(D, _pt(h.x, mid), "BERTH %s  %s" % [berth_id, "FWD" if h.x > 0.0 else "AFT"], 24, A.PEARL, -rotation)
+	# The text runs along the arm, turned whichever way reads left to right
+	# (or top to bottom) on screen for this berth's heading.
+	var along := PI * 0.5
+	if cos(along + rotation) < -0.01:
+		along -= PI
+	text(D, _pt(h.x, mid), "BERTH %s  %s" % [berth_id, "FWD" if h.x > 0.0 else "AFT"], 24, A.PEARL, along)
 	# hydraulic ram housing on the head + hazard face toward the ship
 	fill(D, _rect(h.x - 2.0, tip + 0.8, h.x + 2.0, tip + 4.6), Color("5C6878"))
 	hazard(D, _rect(h.x - 6.0, tip + 0.2, h.x - 2.4, tip + 4.6), 0.8)
@@ -154,8 +150,6 @@ func _after_build() -> void:
 	if not Engine.is_editor_hint():
 		A.depth_layers.append([_gangway, A.OVER_SCALE, Vector2.ZERO])
 		A.depth_layers.append([_gangway_shadow, 1.0, A.OVER_SHADOW_OFFSET])
-	if occupied_static:
-		_build_occupant()
 
 
 func _layer(n: String, z: int, cb: Callable) -> Node2D:
@@ -169,85 +163,21 @@ func _layer(n: String, z: int, cb: Callable) -> Node2D:
 	return ci
 
 
-## A parked frigate that never leaves: the ship's art layers plus a static
-## glow pass (drive asleep, windows lit).
-func _build_occupant() -> void:
-	var root := Node2D.new()
-	root.name = "Occupant"
-	root.z_as_relative = false
-	root.z_index = G.Z_SHIP
-	add_child(root)
-	_generated.append(root)
-	var shadow := _sprite(root, "res://assets/art/ship/frigate_hull.svg", 0.5, Color(0, 0.01, 0.03, 0.34))
-	shadow.z_as_relative = false
-	shadow.z_index = G.Z_BELOW_DECK + 4
-	shadow.position = Vector2(26.0, 40.0).rotated(-rotation)
-	_sprite(root, "res://assets/art/ship/frigate_hull.svg", 0.5, Color.WHITE)
-	_sprite(root, "res://assets/art/ship/frigate_livery.svg", 1.0, static_livery)
-	var lights := _sprite(root, "res://assets/art/ship/frigate_lights.svg", 1.0, Color.WHITE)
-	lights.material = A.add_material()
-	var deco := Node2D.new()
-	deco.draw.connect(_draw_occupant.bind(deco))
-	root.add_child(deco)
-	var glow_node := Node2D.new()
-	glow_node.material = A.add_material()
-	glow_node.draw.connect(_draw_occupant_glow.bind(glow_node))
-	root.add_child(glow_node)
-
-
-func _sprite(parent: Node, path: String, scl: float, mod: Color) -> Sprite2D:
-	var sp := Sprite2D.new()
-	if ResourceLoader.exists(path):
-		sp.texture = load(path)
-	sp.scale = Vector2.ONE * scl
-	sp.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	sp.modulate = mod
-	parent.add_child(sp)
-	return sp
-
-
-func _draw_occupant(ci: Node2D) -> void:
-	var f := A.font()
-	var col := Color(0.11, 0.21, 0.34, 0.82)
-	ci.draw_set_transform(Vector2(240, 132), 0.0)
-	ci.draw_string(f, Vector2.ZERO, " ".join(static_name.split("")), HORIZONTAL_ALIGNMENT_CENTER, 300, 30, col)
-	ci.draw_set_transform(Vector2(240, -112), 0.0)
-	ci.draw_string(f, Vector2.ZERO, static_registry, HORIZONTAL_ALIGNMENT_CENTER, 300, 30, col)
-	ci.draw_set_transform(Vector2.ZERO)
-
-
-func _draw_occupant_glow(ci: Node2D) -> void:
-	var g := A.glow_texture()
-	var dim := Color(0.35, 0.65, 1.0, 0.18)
-	for s: float in [-1.0, 1.0]:
-		var cy := FrigateShape.NACELLE_Y * s * PX
-		ci.draw_rect(Rect2(Vector2(FrigateShape.GRILLE_X.x * PX, cy - 10.0), Vector2((FrigateShape.GRILLE_X.y - FrigateShape.GRILLE_X.x) * PX, 20.0)), dim)
-		var b := Vector2(FrigateShape.BUSSARD_X, FrigateShape.NACELLE_Y * s) * PX
-		ci.draw_texture_rect(g, Rect2(b - Vector2(70, 70), Vector2(140, 140)), false, Color(0.35, 0.7, 1.0, 0.35))
-		for y: float in FrigateShape.IMPULSE_Y:
-			var p := Vector2(FrigateShape.IMPULSE_X, y * s) * PX
-			ci.draw_texture_rect(g, Rect2(p - Vector2(30, 30), Vector2(60, 60)), false, Color(1.0, 0.35, 0.15, 0.25))
-
-
 # ================================================================ per frame
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_t += delta
-	var ct := 1.0
-	var gt := 1.0
+	var ct := 0.0
+	var gt := 0.0
 	var live_ship := ship != null and is_instance_valid(ship)
-	if live_ship:
+	if live_ship and bool(ship.get(&"alive")):
 		var dk: FrigateDock = ship.get(&"dock")
-		ct = dk.clamp_t
-		gt = dk.gangway_t
-		if not bool(ship.get(&"alive")):
-			ct = 0.0
-			gt = 0.0
-	elif not occupied_static:
-		ct = 0.0
-		gt = 0.0
+		# Only while it is really using THIS berth (it may have gone elsewhere).
+		if dk.berth == self:
+			ct = dk.clamp_t
+			gt = dk.gangway_t
 	var moving_parts := absf(ct - _clamp_t) > 0.0005 or absf(gt - _gang_t) > 0.0005
 	_blink_acc += delta
 	var in_motion := (ct > 0.0 and ct < 1.0) or (gt > 0.0 and gt < 1.0)
@@ -262,7 +192,7 @@ func _process(delta: float) -> void:
 	var guide := false
 	if live_ship and ship == Game.player and bool(ship.get(&"alive")):
 		var dk: FrigateDock = ship.get(&"dock")
-		guide = dk.in_range and dk.state == FrigateDock.State.FREE
+		guide = dk.berth == self and dk.in_range and dk.state == FrigateDock.State.FREE
 	_guide.visible = guide
 	if guide:
 		_guide.queue_redraw()
@@ -379,8 +309,7 @@ func _draw_guide() -> void:
 	var ok := dk.hint == "" and dk.in_box
 	var col := Color(0.3, 1.0, 0.5, 0.8) if ok else Color(0.5, 0.9, 1.0, 0.55)
 	# ghost of the docked hull
-	for key: String in FrigateShape.PARTS:
-		var poly := PackedVector2Array(FrigateShape.PARTS[key])
+	for poly in FrigateShape.outlines():
 		pen.polyline(poly, Color(col, 0.22), 2.0, true)
 	# centre line, dashed, along the berth axis
 	var x := -2400.0

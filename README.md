@@ -1,15 +1,25 @@
 # Meridian Approach
 
-A small Godot 4.7 proof of concept: fly a light courier ship around **Meridian Station**, a big, busy orbital
-station in a hopeful near-future setting (rotating habitat ring, commerce pier, drydock, cargo yard, solar
-field, traffic lanes). It is a single sandbox level meant to show off **ship handling**, **level design**,
-**art direction** and **sound design**. Dock on a pad and you can **get out and walk**: around the pad, and on
-Pad 2 through an airlock into the pier's crew concourse (see [On foot](#on-foot)). In Hangar 2 a second ship
-waits: the **PETREL**, a heavy cargo hover shuttle with a magnetic towline that can land on any station deck
-(see [The PETREL](#the-petrel)). Behind Pad 2 the frigate **KESTREL** sits clamped in Berth E2: walk the
-pier's south wing and its gangway aboard, go up to the bridge and take the captain's chair to fly a 158 m ship
-(see [The KESTREL](#the-kestrel)). Everything (graphics, sound, shaders) is made from scratch in
-GDScript, SVG, shader code and a small Python synthesiser. There are no add-ons and no imported asset packs.
+A small Godot 4.7 proof of concept of a space-travel game: fly ships around **Meridian Station**, a big, busy
+orbital station in a hopeful near-future setting (rotating habitat ring, commerce pier, drydock, cargo yard,
+solar field, traffic lanes), get out and walk its interiors, and take a frigate at light speed to a second
+station. It is a sandbox meant to show off **ship handling**, **level design**, **art direction** and **sound
+design**, and what a few connected systems add up to:
+
+* The **WREN**, a light courier with twin pulse cannons (see [Weapons](#weapons-and-the-gunnery-range)).
+* The **PETREL**, a heavy cargo hover shuttle that lands on any deck, tows with a magnetic line and takes ten
+  containers into its hold (see [The PETREL](#the-petrel)).
+* Two frigates, the **KESTREL** and the **HALCYON**: 150 m ships you walk aboard, fly from the bridge, land the
+  small ships on, and jump between stations with (see [The frigates](#the-frigates)).
+* **On foot**: pads, airlocks, the pier's concourses, a transit line between four stops, the frigates' decks and
+  the outpost's hab (see [On foot](#on-foot)).
+* **Vesper Rock**, a mining outpost in an asteroid belt, reachable only by a frigate's quantum drive (see
+  [Vesper Rock](#vesper-rock)).
+* **Contracts** that tie it together: haul freight, shoot drones, break rocks, bring ore home (see
+  [Contracts](#contracts)).
+
+Everything (graphics, sound, shaders) is made from scratch in GDScript, SVG, shader code and a small Python
+synthesiser. There are no add-ons and no imported asset packs.
 
 Renderer: **Compatibility** (OpenGL), so the project can also be exported to the web.
 
@@ -35,6 +45,7 @@ After that it runs at the display's refresh rate (110–120 fps measured on an M
 | **Q / E** | Strafe thrusters (pure sideways push, no rotation) |
 | **Shift / Ctrl or Z** | Throttle up / down (hold). W fires the main engine at this setting; 100 % is full power |
 | **F** | Flight assist: damps spin and sideways slip (off by default) |
+| **Space / left mouse (hold)** | Pulse cannons (WREN only). They build heat and lock out at 100 %: watch the HEAT gauge |
 | **R** | Race: teleport to the pad and start a 3-2-1 countdown |
 | **T** | Reset to the last gate you passed (or the spawn pad) |
 | **C** | Camera: north-up, or rotate with the ship |
@@ -66,23 +77,26 @@ Flying the PETREL (the hangar shuttle):
 | **A D / ← →** | Turn in place: the bow and stern thrusters push opposite ways |
 | **Space (hold)** | Hover: brake to a stop with the heading held; W/S and Q/E slide, A/D yaw. Keep holding over any station deck to land |
 | **Left mouse / V (hold)** | Mag-line: hook the highlighted cargo, structure or traffic; let go to release (fling) |
-| **Right mouse / B (hold)** | Reel the line in |
+| **Right mouse / B (hold)** | Reel the line in. A container reeled alongside goes into the hold |
+| **U (hold to repeat)** | Unload one container out of the stern (in flight, with clear space behind) |
 | **L** | Floodlights |
 | **X** | Get out (when landed). Any flight input lifts off |
 
-Flying the KESTREL (the frigate):
+Flying a frigate (the KESTREL or the HALCYON):
 
 | Key | Action |
 |---|---|
-| **W S A D Q E, Shift / Ctrl·Z, F** | As the WREN: impulse and drive nacelles at the throttle setting, retro, turn, strafe, throttle, flight assist (ON by default) |
+| **W S A D Q E, Shift / Ctrl·Z, F** | As the WREN: impulse and drive rings at the throttle setting, retro, turn, strafe, throttle, flight assist (ON by default) |
 | **A D / ← →** | Turn in place: the bow and engineering RCS fire as a couple |
 | **Space (hold)** | All stop: every thruster brakes the drift and the spin |
 | **any flight key (hold, docked)** | Undock: the gangway retracts, the clamps open and push the ship off |
-| **X** | Leave the bridge (clamped in the berth, or at all stop) |
+| **N** | Star map: A/D or the mouse picks a destination, E lays in the course, C clears it |
+| **J (hold)** | Quantum drive: spool for 3.2 s, then jump (undocked, a ship's length clear of structure) |
+| **X** | Leave the bridge (clamped in a berth, or at all stop) |
 
 Gamepads work too: left stick steers, the triggers are main engine and retro, D-pad up/down move the throttle
-setting, Y is flight assist and the shoulder buttons strafe. In the PETREL, A hovers, B hooks, X reels and the
-left-stick click switches the floodlights.
+setting, Y is flight assist and the shoulder buttons strafe. In the WREN, A fires the cannons. In the PETREL, A
+hovers, B hooks, X reels, the left-stick click switches the floodlights and the right-stick click unloads cargo.
 
 ## What to try
 
@@ -119,14 +133,32 @@ left-stick click switches the floodlights.
   floor, the fuel depot, a pad, back in the hangar. Get out, walk around, and board whichever ship is parked
   nearby. Hook a container with the **left mouse button** and fling it, or hook a pier corner at speed and swing
   round it.
-* **Take the frigate.** Get out on Pad 2, go in through Airlock 7B and walk south through the concourse to the
+* **Haul freight.** In the PETREL, hook a container in Cargo Yard C and hold the **right mouse button** to reel
+  it in: the hold swallows it (ten slots, shown on the HUD and as lamps across the stern). Fly the load round
+  the ring to the **Yards Supply Intake**, the striped pad south of the drydock under the MERIDIAN YARDS sign
+  (the HUD shows its bearing and distance while you carry cargo). Hover over the pad and hold **U**: the
+  containers slide out of the stern and the intake takes them one by one.
+* **Take a frigate.** Get out on Pad 2, go in through Airlock 7B and walk south through the concourse to the
   Berth E2 lounge. With the KESTREL clamped in, the gangway door opens: ride the moving walkway out to the ship,
-  press **E** at the hatch, walk up the main corridor to the bridge and press **E** at the captain's chair. Hold
-  any flight key to undock. To come back, fly the ship's centre into the capture box beside the pier (the berth
-  guidance shows the box, your heading error and closing speed), parallel to the pier, under 1.2 m/s: the clamp
-  arms reach out, close on the hardpoints and draw the ship onto its mark, then the gangway runs out to the
-  airlock. Hit something to see the deflector shield ripple; keep hitting things to lose it, breach the hull and
-  watch a hurt nacelle drag the ship off line. Press **X** at all stop to walk the ship in deep space.
+  press **E** at the hatch, take the lift (or walk the main corridor) to the bridge and press **E** at the
+  captain's chair. Hold any flight key to undock. To come back, fly the ship's centre into the capture box of any
+  free berth (the guidance shows the box, your heading error and closing speed), parallel to the pier, under
+  1.2 m/s: the clamp arms reach out, close on the hardpoints and draw the ship onto its mark, then the gangway
+  runs out to the airlock. Hit something to see the deflector shield ripple; keep hitting things to lose it,
+  breach the hull and watch a hurt drive ring drag the ship off line. Press **X** at all stop to walk the ship in
+  deep space. The **HALCYON** in Berth E1 is the same class: ride the transit pod to Pier 7 North for its gangway.
+* **Land on the flight deck.** Fly the WREN in through the open stern of a berthed frigate (dead astern, slowly)
+  and settle on pad A or B like on any station pad; or hold Space over the deck in the PETREL. Press **X**: you
+  step out into the frigate's hangar, next to your ship. Whatever is parked on the deck when someone takes the
+  helm rides with the frigate.
+* **Jump to Vesper Rock.** At the KESTREL's helm (or at the nav table on its bridge) open the star map with
+  **N**, pick VESPER ROCK and press **E**. Undock, back away from the pier until the drive strip says DRIVE
+  READY, and hold **J**: the rings spool, the stars stretch, and five seconds later you drop out beside a ringed
+  gas giant with the outpost's berth dead ahead. Dock at Berth V1 and cross the gangway into the hab, or take
+  the lift aft to the hangar and fly the WREN you brought into the asteroid belt.
+* **Work the contracts** (the panel top right). Carry containers from Cargo Yard C to the Yards intake; burst
+  drones at the gunnery range; take a hold full of containers to Vesper's supply drop; break up belt rocks and
+  bring the ore canisters they leave home to Meridian.
 * **Watch the traffic.** Eleven AI shuttles, tugs and freighters follow lanes and do not avoid you.
 * **Tune the physics live** (Tab, in either ship). Move any slider (thrust, thrust points, turn couple,
   inertia, drag, bounce and so on). "WREN default" and "PETREL default" load either ship's stock numbers into
@@ -177,6 +209,25 @@ parallax from the camera's canvas transform. It has a sky shader with a baked ne
 moon, and a planet with oceans, clouds, city lights on the night side and an atmosphere rim. Around the planet
 are an orbital ring, space elevators and satellites. Further in are distant traffic, 15 distant station
 silhouettes, and an additive sun-glare pass with lens ghosts.
+
+The backdrop has two *looks*, one per place, and `SpaceBackground.set_look(id, world_origin)` swaps them in one
+frame (`look()` returns the current id; the node is in group `space_background`). Parallax is computed from
+`camera - world_origin`, so each look frames its own station. `&"meridian"` is the sky above, around (0, 0).
+`&"vesper"` is VESPER ROCK, around (90000, 0): a ringed gas giant with storms (`GasGiant`, globe and rings in one
+shader quad so each shadows the other), a smaller and whiter sun in the lower-left, an icy and a dark moon, a
+warm dust nebula with a denser star band, and three parallax depths of drifting asteroid-belt rocks with a dust
+band (`AsteroidBelt`, one mesh per depth) in place of stations and traffic. A look is a `SkyLook`: its parallax
+layers under one root node plus uniform overrides for the shared sky and sun passes. The Vesper look
+(`VesperSky`) is built and baked about 1.5 s after startup, a step per frame, and drawn hidden under the sky for
+three frames so its shaders are compiled before the first jump.
+
+**Light-speed effect** (`scripts/environment/warp_fx.gd`, shaders `assets/art/fx/warp_*`). `WarpFX` is a
+CanvasLayer at layer 5 (above the world, below the HUD) that the jump sequence drives every frame through plain
+properties: `charge` (motes spiral in and the picture is pinched towards the ship), `streak` (the stars on screen
+smear into radial streaks, with a shock ring), `flash`, `tunnel` (an opaque log-polar tunnel of layered streaks,
+filaments and a breathing vanishing point ahead of the ship), `progress` and `direction` (the tunnel's colour
+drifts between Meridian's cool blue and Vesper's amber) and `heading`. `set_ship_snapshot()` draws a texture of
+the ship over the tunnel inside a warp bubble with a bow shock. With every property at zero its rects are hidden.
 
 **Gameplay systems** (`scripts/systems/`). `ImpactFX` turns `Game.impact` and `Game.scrape` into sparks,
 flashes, debris, scorch decals, sound and camera feedback, in three tiers by closing speed. `DamageSystem`
@@ -290,6 +341,25 @@ own numbers and a few tools of its own.
   flinging when you let go). Fixed or moving structure only pulls you: hook a corner at speed and you swing
   round it. A slip clutch pays out line above 45 kN (up to 40 m), and the line snaps if overloaded at full
   length. The winch reels in at 4 m/s and stalls under load.
+* **Cargo hold and freight** (`scripts/ship/cargo_hold.gd`, `cargo_handler.gd`,
+  `scripts/level/modules/freight_receiver.gd`). The hold has 10 slots: a 6 m container takes one, a 12 m one
+  two. **Stow:** hook a container and reel. When it is within 1.5 m of the hull and closing slower than 5 m/s, the
+  stern hatch takes it (towing without reeling never stows). The container is taken out of the scene tree and
+  kept, so the same node, livery and serial comes back out. A full hold refuses, once per attempt. **Unload:** U
+  pushes the last one stowed out of the stern at 1.5 m/s (the ship gets the opposite nudge); holding U repeats
+  every 0.4 s once the space behind is clear. Only in flight (cruise or hover). **Weight:** each used slot adds
+  160 kg, so a full hold makes the 2.6 t shuttle 4.2 t: slower to accelerate, turn and stop, and slower flat out.
+  `mass_kg` carries the cargo; the dry mass is kept apart, so tuning presets and respawns can't lose it.
+  **Losing the ship** spills the hold around the wreck with the ship's momentum. Parking, landing and getting
+  out keep it. The HUD shows `HOLD n/10` over ten slot boxes in the liveries aboard, the added weight and the way
+  to the nearest intake; ten lamps across the stern show the same count on the hull. A `FreightReceiver` is a
+  below-deck set-down pad with an intake hatch: any container resting inside its striped border (under 1 m/s for
+  0.6 s; a soft mag-brake slows cargo there) is drawn into the hatch and freed, whether you unloaded it there or
+  shoved it in with the hull. It can be limited to some brands (`accepts`). Each delivery emits
+  `Game.cargo_delivered(brand, receiver_id, slots)` and is tallied in `FreightLedger`. Meridian has one, the
+  **Yards Supply Intake** (`receiver_id` `yards`) at (0, −420) m, 100 m south of the drydock, with a conveyor
+  trunk running under the Yards traffic lane to the dock. The containers start in Cargo Yard C on the far side
+  of the ring.
 * **Two ships, one game.** Systems follow `Game.player`; boarding emits `Game.player_changed`. Damage, docking,
   race (best laps are stored per ship), camera, flight guide and tuning panel react to it. A ship nobody is in is
   *parked*: frozen on the static world layer (so the other ship and the walker bump into it), silent, and shown
@@ -310,60 +380,198 @@ own numbers and a few tools of its own.
   station-keeping) uses the WREN's hiss loop and valve puffs, and S also adds a low rumble to the engine bed.
   `tests/ship_audio_test.gd` (run windowed) checks which sound every flight key makes on both ships.
 
-## The KESTREL
+## The frigates
 
-A third ship: a 158 m civil exploration frigate (the HALCYON in Berth E1 is its static twin). Where the WREN and
-the PETREL are boarded from the deck, the frigate is a place: you walk aboard and fly it from its bridge.
+Two KESTREL-class civil exploration frigates: the **KESTREL** (teal, home Berth E2) and the **HALCYON** (coral,
+home Berth E1). Where the WREN and the PETREL are boarded from the deck, a frigate is a place: you walk aboard,
+fly it from its bridge, park the small ships on its flight deck and jump it to another station.
 
+* **The hull** is generated (`tools/art/frigate_svg.py`): a 152 m arrowhead hull with the bridge near the bow and
+  rows of warm windows along the rim, a waist, and a hangar block whose stern is an open **flight deck** recessed
+  between two engine arms. Either side hangs a **drive ring** on two pylons: a closed hoop 60 m long with an
+  emitter channel that lights up with the throttle and blazes when the quantum drive spools (the WREN can thread
+  a ring). The script writes three art layers (painted hull, livery tinted per ship, window lights) and
+  `scripts/ship/frigate_shape.gd`: 43 convex collision parts, the outlines, hardpoints, airlock, bay rectangle and
+  pad positions. Art, physics, docking, the HUD schematic and the deck plan all read that one file.
 * **Flight** (`scripts/ship/frigate_ship.gd`, a `PlayerShip` subclass). 120 t, 360 kN of main thrust (3 m/s² at
   full throttle, 50 m/s terminal at 100 %), a slow turn couple (bow RCS one way, Engineering's the other, about
-  14°/s at most), flight assist on by default, and **Space = all stop**. The main thrust comes from three engines at
-  their real positions: the impulse deck (40 %) and the two drive nacelles (30 % each). The stock numbers are
-  `FrigateShip.FRIGATE_DEFAULTS` ("KESTREL default" in the tuning panel, whose slider ranges stretch to fit). The
-  camera sits further out for it (`camera_zoom_scale()`).
-* **Docking** (`frigate_dock.gd`, `scripts/level/modules/frigate_berth.gd`). The berth has two heavy clamp pylons,
-  sized to the ship's hardpoints (the forward one on the primary hull's rim, the aft one on the outer face of the
-  nacelle), and a third, lighter pylon: the telescoping personnel gangway. Fly the ship's centre into a small
-  capture box (5 m fore/aft, 2.5 m toward the pier, 5 m away), within 4° of the berth heading, under 1.2 m/s and not
-  turning, and hold it for 1 s. Then **soft capture**: the clamp rams run out and their jaws close while a critically
-  damped spring draws the ship onto its mark. **Hard dock** freezes it, the gangway telescopes out to the airlock and
-  the berth repairs the ship. Holding any flight key undocks (gangway in, clamps open, a gentle push off the pier).
-  Approach guidance draws the berth's ghost outline, the centre line and the box in the world, and a HUD scope.
+  14°/s at most), flight assist on by default, and **Space = all stop**. The main thrust comes from three engines
+  at their real positions: the impulse deck in the stern (40 %) and the two drive rings (30 % each). The stock
+  numbers are `FrigateShip.FRIGATE_DEFAULTS` ("KESTREL default" in the tuning panel, whose slider ranges stretch
+  to fit). The camera sits further out for it (`camera_zoom_scale()`).
+* **Docking** (`frigate_dock.gd`, `scripts/level/modules/frigate_berth.gd`). A berth has two heavy clamp pylons
+  sized to the ship's hardpoints (the forward one on the hull's rim, the aft one on the outer face of a drive
+  ring) and a third, lighter pylon: the telescoping personnel gangway. A frigate can put in at **any free berth**
+  (E1 and E2 at Meridian, V1 at Vesper Rock), either side to the pier: adrift, its guidance aims at the nearest
+  free one. Fly the ship's centre into a small capture box (5 m fore/aft, 2.5 m toward the pier, 5 m away), within
+  4° of the berth heading, under 1.2 m/s and not turning, and hold it for 1 s. Then **soft capture**: the clamp
+  rams run out and their jaws close while a critically damped spring draws the ship onto its mark. **Hard dock**
+  freezes it, the gangway telescopes out to the airlock and the berth repairs the ship. Holding any flight key
+  undocks (gangway in, clamps open, a gentle push off the pier). Each berth names the station interior behind its
+  gangway (`gangway_scene`, `gangway_arrival`), so a frigate's airlock opens onto whatever station it is docked at.
+* **The flight deck** (`frigate_bay.gd`, `frigate_bay_pad.gd`). The bay is 29 m wide and 29 m deep, open to space
+  astern behind an atmosphere field. Its two pads are ordinary docking triggers (`KESTREL Bay A`, `Bay B`), so
+  the WREN docks on them like on a station pad, and the deck is published as a landable deck that follows the
+  ship, so the PETREL sets down on it with Space. **X** in a ship parked there takes you into the frigate's
+  interior, standing by your ship in the hangar (`OnFootDirector._disembark_to_hangar`); **E** at its hatch flies
+  it again (`board_stowed`). When someone takes the helm, every ship parked on the deck is **stowed**: it is held
+  at its place on the deck each physics tick, the hull doesn't collide with it, and it is drawn at the frigate's
+  interpolated transform so the two never slide against each other. Frigates draw one z-step under the small
+  ships (`Game.Z_CAPITAL`).
+* **The quantum drive** (`scripts/systems/jump_system.gd`, `scripts/ui/star_map.gd`, `scripts/systems/sectors.gd`).
+  Every station lives in the same world scene, kilometres apart (Meridian at the origin, Vesper Rock at
+  (9000, 0) m); `Sectors` lists them with their bounds, arrival points and star-map positions. `JumpSystem`
+  watches where the player's ship is and keeps `Game.sector`, `Game.world_bounds` and the sky in step, whatever
+  moved the ship. The **star map** (N at the helm, or the nav table on the bridge) lays in a course; charted
+  places without a jump beacon are shown but can't be picked. The **jump**: hold J for 3.2 s to spool (needs an
+  undocked ship and 40 m of clear space beyond the hull; letting go aborts), then the drive takes the helm
+  (`FrigateShip.jump_ctl`), the stars stretch, a flash hides the cut, 4.6 s in the tunnel while the ship and
+  everything on its flight deck are moved to the destination's arrival point, a second flash, and the ship drops
+  out at 60 m/s and brakes to a crawl in about 40 m. The look of each stage is `WarpFX`'s (see Environment); the
+  drive strip at the bottom of the HUD shows the course, why the drive won't spool, the spool bar and the route.
+  Small ships can't jump: the boundary keeps them in the sector they are in, and a ship lost away from home is
+  recovered to the nearest pad of the station it is at.
 * **Damage model** (`frigate_damage.gd`). A **deflector shield** takes hits first (1.5 shield points per hull point,
   10 % bleeds through), shows a hex ripple where it was hit (`assets/art/fx/frigate_shield.gdshader`) and regenerates
   after 2.5 s of quiet, powered by Engineering. What gets through lands on one of **six sections** (bow, port and
-  starboard hull, Engineering, two nacelles) by where you were hit; the HUD hull number is their weighted average.
-  Sections matter: a hurt nacelle loses thrust (so full throttle pulls to that side), sputters below 40 % and goes
-  dark when wrecked; the bow and Engineering carry the turn couple; the hull sides carry the strafe quads; a weak
-  Engineering means a weak shield. Hard hits leave **breaches** (scorched holes with glowing edges) that **vent
-  atmosphere** while their section is badly hurt, and the gas pushes the ship. **Red alert** (shields down, a section
-  under 35 % or a failing core) turns the window lights red. Engineering at zero is a **core breach**: an 8 s
-  countdown, then the ship is lost, and it comes back clamped in its berth. Inside, red alert lights the deck red,
-  hurt sections have failing lights and sparking conduits, the reactor stutters, and the systems table in
-  Engineering shows every section live.
-* **Walking aboard.** The Pier 7 concourse has a south wing (crew prep, a hall, the Berth E2 lounge) and the
-  52 m gangway tube with a two-way moving walkway (`Travelator`, which adds `Walker.conveyor`). Through its windows
-  you see the frigate's hull (`berth_view.gd`). The gangway door opens only while the ship is clamped in with the
-  gangway sealed (`gangway_gate.gd`). An `InteriorPortal` at the hatch swaps straight into the frigate's interior,
-  `scenes/onfoot/interiors/frigate_deck.tscn` (`FrigateDeck`, placed at the ship, north-up): bridge, ready room,
-  observation lounge, quarters, mess hall with a food synthesizer, sickbay, science lab, airlock and Engineering
-  with the reactor core. The bridge has helm and ops stations, a command ring, a split tactical rail, wall stations
-  and a floor-projected tactical hologram. **E at the captain's chair** (`OnFootDirector.take_helm`) cuts to the ship
-  outside with you at the helm; **X** (`leave_helm`) puts you back on the bridge. `InteriorLevel` now builds the hull
-  from room adjacency (an edge with a room on one side only), so an interior can grow a tube out of its pier.
-* **Art and sound.** The hull is generated by `tools/art/frigate_svg.py` (an elongated lens-shaped primary hull with
-  a mosaic of plating and rows of windows, a slim neck, the engineering hull, two drive nacelles on swept pylons
-  and a field-emitter arc joining their tails), as three layers: painted hull, livery (tinted per ship) and
-  window lights. The same script writes `scripts/ship/frigate_shape.gd` (collision parts, hardpoints, airlock), so
-  art, physics and docking share one geometry. `frigate_visuals.gd` adds the live glows (impulse, drive grilles whose
-  light flows aft with the throttle, bussards, the field arc, the deflector), RCS, nav lights, breaches, venting and
-  the shield. 22 new sounds (see `assets/audio/README.md`): drive hum and impulse throb, deep RCS thuds, clamp
-  engage and release, gangway extend and retract, shield hit/down/up, hull breach, venting, red alert, core breach,
-  hull groan, corridor door swish, bridge ambience, helm engage, the synthesizer and the walkway.
+  starboard hull, Engineering, two drive rings) by where you were hit; the HUD hull number is their weighted
+  average. Sections matter: a hurt ring loses thrust (so full throttle pulls to that side), sputters below 40 %
+  and goes dark when wrecked; the bow and Engineering carry the turn couple; the hull sides carry the strafe
+  quads; a weak Engineering means a weak shield. Hard hits leave **breaches** (scorched holes with glowing edges)
+  that **vent atmosphere** while their section is badly hurt, and the gas pushes the ship. **Red alert** (shields
+  down, a section under 35 % or a failing core) turns the window lights red. Engineering at zero is a **core
+  breach**: an 8 s countdown, then the ship is lost, and it comes back clamped in its home berth. Inside, red alert
+  lights the deck red, hurt sections have failing lights and sparking conduits, the reactor stutters, and the
+  systems table in Engineering shows every section live.
+* **The deck** (`scenes/onfoot/interiors/frigate_deck.tscn`, `scripts/onfoot/frigate/frigate_deck.gd`). One scene
+  serves both ships (`FrigateShip.aboard` says which one you are on; their saved states are kept apart). The 19
+  rooms sit at their **true positions inside the hull**, 1 m = 1 m, bow up, so the deck plan follows the ship's
+  shape: a ready room in the prow, the bridge behind it, the observation lounge and science lab, mess and crew
+  quarters where the hull is widest, sickbay and an arboretum, a port and a starboard airlock (the gangway hatch
+  works on whichever side faces the pier), Engineering with the reactor core at the waist (its windows look out
+  at the drive rings), stores and the quantum drive room in the flare, flight control and the pilots' ready room
+  over the hangar door, and the flight deck itself, with the pad markings, the atmosphere field across its mouth
+  and every parked ship as its detailed landed model. The hull's outline and both rings are drawn under the rooms
+  as a cut-away, notched where a window looks out. A **lift** runs along the keel between the bridge and the
+  hangar (`ShipLift`, `OnFootDirector.ride_lift`). The bridge has helm and ops stations, a command ring, a split
+  tactical rail, wall stations, a floor-projected tactical hologram and the **nav table** (the star map).
+  **E at the captain's chair** (`take_helm`) cuts to the ship outside with you at the helm; **X** (`leave_helm`)
+  puts you back on the bridge.
+* **Art and sound.** `frigate_visuals.gd` adds the live glows (impulse exhausts, the light that runs round the
+  drive rings, the nose deflector, the flight deck's field), RCS, nav lights, breaches, venting and the shield.
+  Sounds (see `assets/audio/README.md`): drive hum and impulse throb, deep RCS thuds, clamp engage and release,
+  gangway extend and retract, shield hit/down/up, hull breach, venting, red alert, core breach, hull groan,
+  corridor door swish, bridge ambience, helm engage, the synthesizer and the walkway, and for the drive: spool,
+  engage, the tunnel loop, arrival, abort, and the star map's cues.
+
+## Contracts
+
+Five standing contracts give the sandbox something to do (`scripts/systems/contracts.gd`, node
+`Main/Systems/Contracts`; the HUD panel is `scripts/ui/hud_contracts.gd`). Each one only counts things other
+systems already announce on the `Game` bus, so nothing else knows contracts exist:
+
+| Contract | What counts | Where |
+|---|---|---|
+| YARDS SUPPLY | a container delivered to the Yards Supply Intake (`cargo_delivered(brand, "yards")`) | Meridian |
+| GUNNERY QUAL | a target drone burst (`target_destroyed("drone")`) | Meridian |
+| VESPER RESUPPLY | a container delivered to Vesper's supply drop (`cargo_delivered(brand, "vesper")`) | Vesper Rock |
+| BELT CLEARANCE | a belt rock destroyed (`target_destroyed("asteroid")`) | Vesper Rock |
+| ORE RUN | an ORE canister delivered to the Yards intake | both: mined at Vesper, delivered at Meridian |
+
+Filling a target pays credits and raises the next target (x1.5, with a bigger reward). Credits are a score for
+the session; there is nothing to spend them on in this demo. The ORE RUN is the long loop that uses everything:
+land the WREN and the PETREL on a frigate's flight deck, jump to Vesper, crack ore-bearing rocks with the WREN's
+cannons, collect the canisters into the PETREL's hold, jump home and unload at the Yards intake. Vesper's supply
+drop turns ore away (`FreightReceiver.rejects`): the outpost ships it out.
+
+## Weapons and the gunnery range
+
+The WREN carries twin pulse cannons, and Meridian has a gunnery range to try them on: fly south-west of the ring
+to the amber "GUNNERY RANGE" sign at (−450, 425) m and hold **Space**.
+
+* **Guns** (`scripts/ship/wren_guns.gd`, node `Guns` in `player_ship.tscn`; the PETREL and the KESTREL have their
+  own scenes and no guns). Two fixed cannons at the wing roots fire alternately, 6 shots a second, toed in so the
+  two lines cross 90 m ahead. There is no recoil on the ship, only a small camera kick. **Heat:** each shot adds
+  4.5 %, so 23 shots (3.7 s of holding the trigger) lock the guns out. They cool at 28 % a second once they have
+  been quiet for 0.25 s, and a lockout ends when the heat is back under 30 % (2.5 s). You see it as barrel glow,
+  vent steam and the HEAT gauge in the flight panel (amber when hot, flashing red OVERHEAT). The guns are dead
+  while the controls are off, the ship is destroyed or parked, or you are on foot, and a trigger held while you
+  board stays latched until you let go (`PlayerShip.pilot_action()`).
+* **Bolts** (`scripts/systems/weapon_system.gd`, node `Main/Systems/Weapons`, group `weapon_system`). Anything can
+  shoot with `fire(origin, dir, inherit_velocity, shooter)`. A bolt flies at 260 m/s plus the shooter's velocity
+  for 500 m, then fades. Bolts are data in a fixed pool of 64, not nodes. Each physics tick a bolt casts a ray
+  from where it was to where it will be (station, props and traffic; never the shooter), so it cannot tunnel
+  through a thin wall. All of them are drawn by two `MultiMesh` layers, so a full spray costs two draw calls.
+  Additive light vanishes over the pearl station, so the bolt's body is a normal-blended dart (white core, orange
+  flank, dark red rim) and only its halo is additive.
+* **What a hit does.** Always sparks, a flash, a scorch mark with a cooling ember and a positional sound
+  (`weapon_hit_fx.gd`, pooled). Then: a collider with `take_shot(damage, at, dir, shooter)` gets that call (10
+  damage a bolt) and decides for itself; a free prop is shoved along the bolt (400 N·s: a 1.8 t container gains
+  0.22 m/s per hit); another ship takes a 1.5 hp scratch (a parked one never drops below half hull this way);
+  structure and traffic only show the effects. Every hit
+  also emits `Game.shot_hit(pos, normal, collider, shooter)`.
+* **Aim line** (`gun_aim_line.gd`). Shown only while firing and for a moment after. Bolts keep the ship's
+  velocity, so when you drift they do not go where the nose points: the line follows the track a bolt fired now
+  will take through the world. Its reticle sits on whatever the line touches and turns amber on a target.
+* **The range** (`scripts/level/modules/gunnery_range.gd`). A 150 × 104 m octagon of open space marked by a dashed
+  holographic boundary and eight amber buoys, with eight **target drones** (`scripts/level/target_drone.gd`, groups
+  `target_drone` and `radar_prop`). A drone is a light free body that holds station on an under-damped spring and
+  drifts along a gentle pattern (side to side, a circle or a figure of eight). The first hit staggers it and turns
+  its ring red, the second bursts it (`Game.target_destroyed("drone")`), and it shimmers back after 6 s. You can
+  bump them; they spring back. A scoreboard projected on the range floor (`range_scoreboard.gd`) shows hits,
+  kills, the current streak (drones destroyed with no more than 5 s between kills) and the best streak of the
+  session.
+* **Art and sound.** The gun pods (`assets/art/ship/wren_guns.svg`, an overlay on the hull) and the drone
+  (`assets/art/level/target_drone.svg` and `target_drone_hit.svg`) are hand-written SVGs imported at 6×; bolt and
+  muzzle textures are generated in `weapon_textures.gd`. Sounds are loaded if the files exist and skipped quietly
+  if not: `pulse_shot_1..3.wav` (your own guns, not positional), `pulse_hit_1..3.wav` (positional),
+  `gun_overheat.wav`, `gun_ready.wav`, `drone_pop.wav` (positional), all on the SFX bus.
+## Vesper Rock
+
+A second, remote station in the same world: a mining and survey outpost bolted onto an asteroid, in an asteroid
+field. It is the `Outpost` node of `level.tscn` (an instance of `scenes/level/outpost.tscn`) at world
+(90000, 0) px, 9 km east of Meridian, with a sector of ±800 m × ±650 m around that origin. Small ships cannot
+fly there; it is where the frigate's jump comes out. The sky, the sector switch and the interiors belong to other
+systems; this is the exterior.
+
+* **The rock** (`modules/rock_base.gd`, `rock_art.gd`). About 320 m × 245 m, a seeded low-poly mesh: the outline
+  plus a jittered grid of interior points are Delaunay-triangulated, and every triangle is one flat facet shaded
+  from a height field that rises from the edge to a plateau. So the sunward rim is bright, the far rim dark and
+  the top reads as level ground, with strata bands, bedding lines, craters, loose boulders and an open-cut pit.
+  The whole outline collides (convex pieces) and has the lit rim of colliding structure. It is one triangle array
+  in the STRUCTURE band.
+* **The works** (`modules/rock_works.gd`) are paint on top of it: HAB A (with the name on its roof) and HAB B, a
+  hydroponics dome and a survey dome, the ops block with the control cupola, the ore plant (pit head, conveyors,
+  crusher, screen house, stockpile, an elevated belt down to the apron), three tanks, a relay dish, the antenna
+  mast and two solar racks. Each block casts a short shadow on the ground.
+* **The landing apron** (`modules/outpost_apron.gd`) is a deck in a terrace cut into the rock's south face, so
+  the PETREL can land on it and you can walk on it. Pads **Vesper 1** and **Vesper 2** stand on it (heading
+  east), three colliding ore hoppers sit against the back wall, and a 30 m × 20 m patch east of the pads is kept
+  free for a freight intake.
+* **The docking spar** (`modules/outpost_spar.gd`) is a 220 m pier standing off the rock's north rim, joined to
+  HAB A by a pressurised trunk. Its north face is the wall of **Berth V1** (`FrigateBerth`, bow east, starboard
+  to the pier). The berth's capture position is Vesper's origin, and its axis is the frigate lane: clear from one
+  side of the sector to the other and lined with lane lights whose flashes run inbound (green to starboard and
+  red to port coming in from the west, amber on the way out to the east).
+* **The asteroid field** (`asteroid.gd`, `modules/asteroid_field.gd`, `rock_fx.gd`). About 40 `RigidBody2D` rocks
+  in three sizes (4 m, 9 m and 18 m across; 8 t, 70 t and 500 t), planted from a seed in loose clusters and kept
+  out of the lane, the apron and a 120 m ring around the pads. Each rock circles a home point on a very soft
+  tether with a soft speed limit, so the field drifts and tumbles but is still in place hours later. A rock is
+  one cached triangle array: its facets carry their normals in the UVs and `asteroid_lit.gdshader` lights them
+  in world space, so the lit side keeps facing the sun while the rock turns and nothing is redrawn. Rocks report
+  impacts like containers do (never contacts with the player). `take_shot(damage, at, dir, shooter)` chips a rock
+  (dust, a crack, a nudge); at zero hit points (30 / 90 / 240) it breaks into two or three rocks of the next
+  size down, or bursts if it is the smallest, and emits `Game.target_destroyed("asteroid")`. One rock in four
+  carries ore (teal veins that glint) and leaves an **ORE canister** when destroyed: a `cargo_box.gd` container,
+  so the mag-line can tow it. When fewer than 70 % of the rocks are left, the field adds one where nobody is
+  looking. The whole field sleeps (out of the physics space, not drawn) while no camera or ship is within 2.4 km.
+
+See it with `scenes/test/level_tour.tscn -- --cam=8960,200,0.24` (the outpost) or `--cam=9000,0,0.075` (the
+sector), or fly there: `scenes/main.tscn -- --no-intro --fly=kestrel@84400,0,0`.
 
 ## How the assets were made
 
-* **Sound:** all 99 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
+* **Sound:** all 126 WAVs in `assets/audio/` are synthesised by a pure-Python DSP script, with no external
   dependencies and fixed seeds, so the output is reproducible. Engines are tuned oscillators and filtered noise,
   impacts are inharmonic modal metal, and the music bed is a slow D-major pad. Loops are built to be seamless
   and carry WAV loop markers.
@@ -404,10 +612,17 @@ Any scene accepts these user arguments after `--` (they are parsed by `Game`):
 | `--cam-zoom=0.3`, `--cam-rotate`, `--tuning` | Set the camera zoom factor, use rotate mode, or open the tuning panel |
 | `--dock-at=2` | Put the ship on that pad and dock it straight away (add `--on-foot` to also get out) |
 | `--perf` | Print fps, frame time and draw calls every 2 s |
-| `--dock-at=HangarBay` | Any pad by name (spaces optional) |
+| `--sky-look=vesper` | Start with the Vesper sky look, composed around world (90000, 0) px (`env_test.tscn` moves its camera there) |
+| `--warp-demo` | `env_test.tscn` only: loop a scripted light-speed jump there and back (`--warp-heading=deg`, `--warp-ship=res://texture@scale`) |
+| `--dock-at=HangarBay` | Any pad by name (spaces optional), including `KESTRELBayA` (a frigate's flight deck) and `Vesper1` |
 | `--fly=petrel` or `--fly=petrel@x_px,y_px,deg` | Start aboard the PETREL (on its berth, or flying at that spot); the WREN is parked |
-| `--fly=kestrel` or `--fly=kestrel@x_px,y_px,deg` | Start at the KESTREL's helm (clamped in Berth E2, or adrift at that spot) |
+| `--fly=kestrel` or `--fly=kestrel@x_px,y_px,deg` | Start at the KESTREL's helm (clamped in Berth E2, or adrift at that spot); `--fly=halcyon` is the other frigate |
+| `--jump=vesper` | Lay in that course and jump as soon as a frigate is flown undocked (skips the spool and the clearance check) |
+| `--interior=res://scenes/onfoot/interiors/x.tscn@Marker` | Start on foot inside that interior, at that `Marker2D` (or its airlock). `--interior=frigate:kestrel@DeckStand` is a frigate's deck |
+| `--walk-to=Marker` | Each time an interior is entered, start at that marker |
+| `--foot-zoom=0.1` | On-foot camera zoom factor (1 = normal): small values show a whole interior |
 | `--frigate-hits=N` | N seeded 25 hp hits across the frigate's hull at start (shield, breaches, red alert) |
+| `--hold=N` | Start with N slots of generated containers in the PETREL's hold (use with `--fly=petrel`) |
 
 Example: dock at Pad 2, get out, run to the airlock and go inside (on-foot actions are `move_up/down/left/right`,
 `run`, `interact`, `flashlight`):
@@ -435,8 +650,12 @@ $G --headless --path . --fixed-fps 120 res://scenes/test/gameplay_race_test.tscn
 $G --headless --path . --fixed-fps 120 res://scenes/test/onfoot_flow_test.tscn      # disembark, airlock, interior, state, board
 $G --headless --path . --fixed-fps 120 res://scenes/test/vehicles_flow_test.tscn    # hangar stairs, board PETREL, land anywhere, swap ships
 $G --headless --path . --fixed-fps 120 res://scenes/test/shuttle_flight_test.tscn   # PETREL turn-in-place, terminal speed, hover, mag-line tow
+$G --headless --path . --fixed-fps 120 res://scenes/test/cargo_hold_test.tscn       # PETREL hold: stow on reel, slots, mass, unload, spill, freight delivery
 $G --headless --path . --fixed-fps 120 res://scenes/test/frigate_test.tscn          # KESTREL thrust, turn couple, all stop, shield, sections, core breach
 $G --headless --path . --fixed-fps 120 res://scenes/test/frigate_flow_test.tscn     # gangway, frigate deck, helm, undock, re-dock, leave helm, way back
+$G --headless --path . --fixed-fps 120 res://scenes/test/weapons_test.tscn          # bolts, take_shot protocol, drone kill and respawn, heat lockout
+$G --headless --path . --fixed-fps 120 res://scenes/test/outpost_test.tscn          # Vesper asteroid field: seed, shots, splits, ore canister, refill, sleep
+$G --headless --path . --fixed-fps 120 res://scenes/test/carrier_jump_test.tscn     # two frigates, flight deck, lift, stowed ship, quantum jump to Vesper, contracts
 $G --path . --fixed-fps 120 res://scenes/test/ship_audio_test.tscn                 # windowed (needs audio): which sound each flight key makes, all three ships
 $G --headless --path . --quit-after 600 res://scenes/main.tscn                     # whole game: should print nothing
 ```
@@ -446,4 +665,5 @@ Visual test scenes:
   (for example `--cam=0,0,0.085` shows the whole station), and `--show-gates` or `--fps` for overlays.
 * `scenes/test/ship_sandbox.tscn`: the ship in a test arena with walls, crates and a rotating bar.
 * `scenes/test/gameplay_sandbox.tscn`: the full game on a simple stand-in level.
-* `scenes/environment/env_test.tscn`: the background on its own.
+* `scenes/environment/env_test.tscn`: the background on its own (`--cam=x,y,zoom`, `--sky-look=vesper`), and
+  the light-speed effect with `--warp-demo` (charge from 1 s, leap at 4.2 s, tunnel 5.1 to 9.7 s, arrival after).

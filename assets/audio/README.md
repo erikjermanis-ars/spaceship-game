@@ -110,3 +110,36 @@ unless noted.
 | helm_engage | UI | -4 | sitting in the captain's chair: consoles power up, D-major arpeggio |
 | synth_materialize | SFX | -6 | the mess hall food synthesizer |
 | travelator_loop | SFX | -14 | the Berth E2 gangway's moving walkway, positional |
+
+### Weapons, cargo, jump drive, transit (27 files)
+
+The courier's pulse cannon fires up to six times a second, so its shots are short mid-band chirps with no tail
+and nothing above ~6 kHz. Rock is the opposite of the hull's ringing metal: damped, irregular modes and
+band-limited grit. Cargo handling reuses the small-mechanism sounds (servo, clack, clunk). The jump drive is
+built on D (whine ending on F#6, a D-major harmonic stack), so it grows out of the music bed. Times in the notes
+are offsets from the start of the file, for syncing visuals.
+
+| File | Bus | volume_db | Notes |
+|---|---|---|---|
+| pulse_shot_1..3 | SFX | -10 | pulse-cannon bolt (chirp ~1800 → 500 Hz, ~0.18 s); `Game.get_variations()`, random pitch 0.96–1.04; safe at 6 shots/s |
+| pulse_hit_1..3 | SFX | -9 | bolt on metal (sizzle + small metallic tick), positional at the impact; `Game.get_variations()` |
+| gun_overheat | SFX | -8 | steam vent + descending B5 → F#5 warning (tones at 0.06 s and 0.27 s) |
+| gun_ready | UI | -12 | soft rising double blip, D6 → A6: guns cooled |
+| drone_pop | SFX | -6 | target drone bursting (electric pop, glassy sparkle tail), positional |
+| rock_crack_1..2 | SFX | -8 … -4 | asteroid hit (stony crack, thud, gravel), positional; `Game.get_variations()` |
+| rock_shatter | SFX | -3 | asteroid breaking apart (cracks, deep boom, ~1.3 s gravel scatter) |
+| cargo_stow | SFX | -6 | servo whirr, clunk-lock at 0.49 s, confirm blip (D6) at 0.70 s |
+| cargo_eject | SFX | -6 | double latch clack, then pneumatic whoosh from 0.06 s |
+| cargo_deny | UI | -10 | low double buzz (hold full / nothing to unload) |
+| delivery_accept | SFX | -6 | conveyor clunk at 0.14 s, then a rising A5 → F#6 chime from 0.30 s |
+| contract_complete | UI | -6 | warm D-major mallet arpeggio into a pad swell (peaks ~0.8 s) |
+| jump_spool | Engine | -4 | exactly 3.2 s (141120 samples). Rising whine + harmonic stack, tremolo 3 → 26 Hz. **Ends at its peak** (10 ms fade): start `jump_engage` on its `finished` signal / at 3.2 s. Do not pitch-shift (it changes the length) |
+| jump_engage | SFX | -2 | crack + thump at 0 (covers the hand-over from the spool), upward "stretch" peaking 0.8–0.95 s, cut at 0.97 s, soft sub drop after |
+| warp_tunnel_loop | Engine | -10 | 4 s loop: rushing shimmer over a D drone, slow flanger (one sweep per loop). Fade in ~0.3 s under the end of `jump_engage`, fade out ~0.4 s into `jump_arrive` |
+| jump_arrive | SFX | -3 | reverse swell 0 – 0.5 s, the "thoom" lands at **0.50 s** (start it 0.5 s before the exit flash), shimmer tail |
+| jump_abort | Engine | -6 | drive spooling down (whine F#6 → 150 Hz, tremolo slowing); cut `jump_spool` with a ~30 ms fade when starting it |
+| starmap_open | UI | -10 | holographic map unfolding (airy shimmer, D-major glints) |
+| starmap_blip | UI | -14 | soft selection tick (D6); fine for rapid hover/scroll, random pitch 0.97–1.03 optional |
+| starmap_confirm | UI | -8 | three-note rise A5 → D6 → F#6: course laid in |
+| transit_pod | SFX | -6 | door-seal thunk at 0, maglev ride 0.25 – 3.0 s (fastest at ~1.6 s), arrival chime F#6 → D6 at 3.0 s |
+| force_field_loop | SFX | -24 | 3 s loop: quiet A2 electric hum with a faint shimmer. AudioStreamPlayer2D on the hangar field, max_distance ~1200 px |

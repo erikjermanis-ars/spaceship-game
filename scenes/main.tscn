@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/systems/impact_fx.gd" id="2"]
@@ -17,6 +17,9 @@
 [ext_resource type="Script" path="res://scripts/onfoot/on_foot_director.gd" id="15"]
 [ext_resource type="PackedScene" path="res://scenes/ship/shuttle.tscn" id="16"]
 [ext_resource type="PackedScene" path="res://scenes/ship/frigate.tscn" id="17"]
+[ext_resource type="Script" path="res://scripts/systems/jump_system.gd" id="18"]
+[ext_resource type="Script" path="res://scripts/systems/weapon_system.gd" id="19"]
+[ext_resource type="Script" path="res://scripts/systems/contracts.gd" id="20"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -30,6 +33,12 @@ script = ExtResource("1")
 [node name="Shuttle" parent="." instance=ExtResource("16")]
 
 [node name="Frigate" parent="." instance=ExtResource("17")]
+
+[node name="Halcyon" parent="." instance=ExtResource("17")]
+berth_id = "E1"
+livery = Color(0.906, 0.435, 0.318, 1)
+registry = "MFF-04"
+vehicle_name = "HALCYON"
 
 [node name="CameraRig" parent="." instance=ExtResource("13")]
 
@@ -55,6 +64,15 @@ script = ExtResource("7")
 
 [node name="FlightGuide" type="Node2D" parent="Systems"]
 script = ExtResource("8")
+
+[node name="JumpSystem" type="Node" parent="Systems"]
+script = ExtResource("18")
+
+[node name="Weapons" type="Node2D" parent="Systems"]
+script = ExtResource("19")
+
+[node name="Contracts" type="Node" parent="Systems"]
+script = ExtResource("20")
 
 [node name="HUD" parent="." instance=ExtResource("9")]
 

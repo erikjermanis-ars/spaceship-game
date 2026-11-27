@@ -50,6 +50,12 @@ EXPECTED = (
     + ["shield_down", "shield_up", "hull_breach", "venting_loop", "red_alert_loop", "core_breach_loop",
        "frigate_hull_groan", "door_swish", "bridge_ambience_loop", "helm_engage", "synth_materialize",
        "travelator_loop"]
+    # weapons / cargo / jump drive / transit
+    + ["pulse_shot_%d" % i for i in (1, 2, 3)] + ["pulse_hit_%d" % i for i in (1, 2, 3)]
+    + ["gun_overheat", "gun_ready", "drone_pop", "rock_crack_1", "rock_crack_2", "rock_shatter",
+       "cargo_stow", "cargo_eject", "cargo_deny", "delivery_accept", "contract_complete",
+       "jump_spool", "jump_engage", "warp_tunnel_loop", "jump_arrive", "jump_abort",
+       "starmap_open", "starmap_blip", "starmap_confirm", "transit_pod", "force_field_loop"]
 )
 STEREO = {"ambient_space_drone"}
 

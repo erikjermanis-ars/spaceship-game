@@ -1,0 +1,90 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/level/modules/rock_base.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/level/modules/outpost_apron.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/level/modules/docking_pad.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/level/modules/outpost_spar.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/level/modules/frigate_berth.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/level/modules/holo_sign.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/level/modules/asteroid_field.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/level/ambient_emitter.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/level/modules/freight_receiver.gd" id="9"]
+
+[node name="Outpost" type="Node2D"]
+
+[node name="Base" type="Node2D" parent="."]
+position = Vector2(0.0, 2300.0)
+
+[node name="VesperRock" type="Node2D" parent="Base"]
+script = ExtResource("1")
+
+[node name="VesperApron" type="Node2D" parent="Base"]
+script = ExtResource("2")
+
+[node name="PadV1" type="Node2D" parent="Base"]
+script = ExtResource("3")
+position = Vector2(-1200.0, 1000.0)
+pad_name = "Vesper 1"
+label = "V1"
+accent = Color(1, 0.69, 0, 1)
+
+[node name="PadV2" type="Node2D" parent="Base"]
+script = ExtResource("3")
+position = Vector2(-480.0, 1000.0)
+pad_name = "Vesper 2"
+label = "V2"
+accent = Color(1, 0.69, 0, 1)
+
+[node name="HumRock" type="Node2D" parent="Base"]
+script = ExtResource("8")
+position = Vector2(-300.0, -400.0)
+pitch = 0.7
+
+[node name="HumCrusher" type="Node2D" parent="Base"]
+script = ExtResource("8")
+position = Vector2(-650.0, 240.0)
+max_distance_m = 180.0
+volume_db = -3.0
+pitch = 0.55
+
+[node name="HumApron" type="Node2D" parent="Base"]
+script = ExtResource("8")
+position = Vector2(-600.0, 1000.0)
+max_distance_m = 200.0
+pitch = 1.05
+
+[node name="Spar" type="Node2D" parent="."]
+script = ExtResource("4")
+
+[node name="HumSpar" type="Node2D" parent="Spar"]
+script = ExtResource("8")
+position = Vector2(0.0, 830.0)
+pitch = 0.9
+
+[node name="BerthV1" type="Node2D" parent="."]
+script = ExtResource("5")
+berth_id = "V1"
+pier_side = 1.0
+pier_dist_m = 71.0
+gangway_scene = "res://scenes/onfoot/interiors/vesper_rock.tscn"
+gangway_arrival = "FromFrigate"
+station_name = "Vesper Rock"
+
+[node name="SupplyDrop" type="Node2D" parent="."]
+script = ExtResource("9")
+position = Vector2(120.0, 3300.0)
+receiver_id = "vesper"
+title = "VESPER SUPPLY DROP"
+rejects = PackedStringArray("ORE")
+size_m = Vector2(26, 16)
+
+[node name="HoloVesper" type="Node2D" parent="."]
+script = ExtResource("6")
+position = Vector2(-3200.0, 1500.0)
+title = "VESPER ROCK"
+subtitle = "MINING & SURVEY OUTPOST  ·  POP. 212"
+
+[node name="Field" type="Node2D" parent="."]
+script = ExtResource("7")
+clear_rects_m = Array[Rect2]([Rect2(-800, -100, 1600, 200), Rect2(-220, 60, 350, 330)])
+clear_circles_m = Array[Vector3]([Vector3(-560, 0, 140), Vector3(-120, 330, 120), Vector3(-48, 330, 120)])

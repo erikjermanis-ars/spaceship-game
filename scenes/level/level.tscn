@@ -20,6 +20,9 @@
 [ext_resource type="Script" path="res://scripts/level/ambient_emitter.gd" id="18"]
 [ext_resource type="Script" path="res://scripts/level/modules/transit_line.gd" id="19"]
 [ext_resource type="Script" path="res://scripts/level/modules/holo_sign.gd" id="20"]
+[ext_resource type="Script" path="res://scripts/level/modules/freight_receiver.gd" id="21"]
+[ext_resource type="Script" path="res://scripts/level/modules/gunnery_range.gd" id="22"]
+[ext_resource type="PackedScene" path="res://scenes/level/outpost.tscn" id="21_outpost"]
 
 [node name="Level" type="Node2D"]
 script = ExtResource("1")
@@ -117,10 +120,8 @@ rotation = -1.570796
 berth_id = "E1"
 pier_side = -1.0
 pier_dist_m = 71.0
-occupied_static = true
-static_name = "HALCYON"
-static_registry = "MFF-04"
-static_livery = Color(0.906, 0.435, 0.318, 1)
+gangway_scene = "res://scenes/onfoot/interiors/pier7_north.tscn"
+gangway_arrival = "FromFrigate"
 
 [node name="BerthE2" type="Node2D" parent="Spaceport"]
 script = ExtResource("8")
@@ -164,6 +165,14 @@ rotation = -1.570796
 [node name="Drydock" type="Node2D" parent="."]
 script = ExtResource("9")
 position = Vector2(0.0, -6000.0)
+
+[node name="YardsIntake" type="Node2D" parent="."]
+script = ExtResource("21")
+position = Vector2(0.0, -4200.0)
+receiver_id = "yards"
+title = "YARDS SUPPLY INTAKE"
+size_m = Vector2(48, 30)
+trunk_m = 88.0
 
 [node name="CargoYard" type="Node2D" parent="."]
 script = ExtResource("10")
@@ -421,3 +430,20 @@ metadata/width_m = 50.0
 position = Vector2(4500.0, 3000.0)
 rotation = -1.570796
 metadata/width_m = 60.0
+
+[node name="Range" type="Node2D" parent="."]
+
+[node name="GunneryRange" type="Node2D" parent="Range"]
+script = ExtResource("22")
+position = Vector2(-4500.0, 4250.0)
+
+[node name="HoloRange" type="Node2D" parent="Range"]
+script = ExtResource("20")
+position = Vector2(-4500.0, 3560.0)
+title = "GUNNERY RANGE"
+subtitle = "LIVE FIRE  ·  TARGET DRONES  ·  HOLD SPACE TO FIRE"
+size_m = Vector2(64, 16)
+tint = Color(1, 0.75, 0.3, 1)
+
+[node name="Outpost" parent="." instance=ExtResource("21_outpost")]
+position = Vector2(90000.0, 0.0)

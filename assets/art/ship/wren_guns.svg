@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- WREN twin pulse cannons: an overlay for ship_hull.svg (same viewBox, same
+     scale, nose toward +X). One pod at each wing root, hugging the fuselage.
+     Muzzles at (18, -13.3) and (18, 13.3): WrenGuns.MUZZLES must match. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="110" height="64" viewBox="-55 -32 110 64">
+  <defs>
+    <linearGradient id="podP" gradientUnits="userSpaceOnUse" x1="0" y1="-15.4" x2="0" y2="-11.3">
+      <stop offset="0" stop-color="#F4F7FA"/>
+      <stop offset="0.5" stop-color="#C9D2DC"/>
+      <stop offset="1" stop-color="#8E9AA8"/>
+    </linearGradient>
+    <linearGradient id="podS" gradientUnits="userSpaceOnUse" x1="0" y1="11.3" x2="0" y2="15.4">
+      <stop offset="0" stop-color="#DCE3EA"/>
+      <stop offset="0.5" stop-color="#B4BFCB"/>
+      <stop offset="1" stop-color="#7C8896"/>
+    </linearGradient>
+    <linearGradient id="barrelG" gradientUnits="userSpaceOnUse" x1="7" y1="0" x2="18" y2="0">
+      <stop offset="0" stop-color="#5B6674"/>
+      <stop offset="1" stop-color="#2A313B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ===== port cannon ===== -->
+  <!-- barrel + muzzle brake -->
+  <rect x="6.5" y="-14.05" width="10.2" height="1.5" fill="url(#barrelG)" stroke="#1E242C" stroke-width="0.3"/>
+  <rect x="9.6" y="-14.35" width="1.1" height="2.1" fill="#3A4350"/>
+  <rect x="15.4" y="-14.6" width="2.6" height="2.6" rx="0.5" fill="#1E242C" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="17.5" y="-13.75" width="0.7" height="0.9" fill="#FF9A4A" opacity="0.9"/>
+  <!-- pod fairing -->
+  <path d="M -8.5 -13.2 C -7 -15 -4 -15.5 0 -15.4 L 5.5 -15.2 C 7.6 -15 8.4 -14.2 8.4 -13.3 C 8.4 -12.3 7.6 -11.6 5.5 -11.4 L -6 -11.3 Z"
+        fill="url(#podP)" stroke="#4A5563" stroke-width="0.6"/>
+  <path d="M -5.5 -14.6 C -3 -15 1 -15 5 -14.7" stroke="#FFFFFF" stroke-width="0.55" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M -1.6 -15.2 L -1.6 -11.4 M 3.4 -15.1 L 3.4 -11.5" stroke="#8E9AA8" stroke-width="0.35"/>
+  <rect x="-0.6" y="-13.9" width="3" height="1.1" rx="0.4" fill="#1D3557"/>
+  <rect x="-0.2" y="-13.65" width="2.2" height="0.6" rx="0.3" fill="#FFB000"/>
+
+  <!-- ===== starboard cannon ===== -->
+  <rect x="6.5" y="12.55" width="10.2" height="1.5" fill="url(#barrelG)" stroke="#1E242C" stroke-width="0.3"/>
+  <rect x="9.6" y="12.25" width="1.1" height="2.1" fill="#3A4350"/>
+  <rect x="15.4" y="12" width="2.6" height="2.6" rx="0.5" fill="#1E242C" stroke="#56616E" stroke-width="0.3"/>
+  <rect x="17.5" y="12.85" width="0.7" height="0.9" fill="#FF9A4A" opacity="0.9"/>
+  <path d="M -8.5 13.2 C -7 15 -4 15.5 0 15.4 L 5.5 15.2 C 7.6 15 8.4 14.2 8.4 13.3 C 8.4 12.3 7.6 11.6 5.5 11.4 L -6 11.3 Z"
+        fill="url(#podS)" stroke="#4A5563" stroke-width="0.6"/>
+  <path d="M -1.6 15.2 L -1.6 11.4 M 3.4 15.1 L 3.4 11.5" stroke="#8E9AA8" stroke-width="0.35"/>
+  <rect x="-0.6" y="12.8" width="3" height="1.1" rx="0.4" fill="#1D3557"/>
+  <rect x="-0.2" y="13.05" width="2.2" height="0.6" rx="0.3" fill="#FFB000"/>
+</svg>

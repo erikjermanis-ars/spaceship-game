@@ -4,6 +4,8 @@ extends Node2D
 ## Checks the scene contract (spawn, gates, pads, radar), that gates and the
 ## spawn are not blocked by colliding geometry, that traffic lanes are clear of
 ## static structure, and that cargo containers report prop impacts.
+## Vesper Rock (the Outpost subtree, 9 km east) has its own section: berth V1
+## and its approach, the pads, the apron deck, the asteroid field.
 
 const G := preload("res://scripts/autoload/game.gd")
 
@@ -39,6 +41,7 @@ func _physics_process(delta: float) -> void:
 	_sim += delta
 	if _frames == 3:
 		_static_checks()
+		_outpost_checks()
 		_spawn_collision_pair()
 	if _sim >= 30.0:
 		print("[props] container impacts in 30 s: %d (with player: %d)" % [_impacts, _player_impacts])
@@ -110,6 +113,110 @@ func _static_checks() -> void:
 			worst += _hits(space, circle, xf, G.LAYER_WORLD, [lane.body.get_rid()] if lane.body else [])
 			d += 50.0
 		_check(worst == 0, "lane %s clear of structure (%d blocked samples)" % [lane.name, worst])
+
+
+## Vesper Rock. Lengths in metres; `PX` converts.
+func _outpost_checks() -> void:
+	const PX := 10.0
+	print("[outpost]")
+	var outpost := $Level.get_node_or_null(^"Outpost") as Node2D
+	_check(outpost != null, "Outpost node in the level")
+	if outpost == null:
+		return
+	var space := get_world_2d().direct_space_state
+	var solid := G.LAYER_WORLD | G.LAYER_PROPS | G.LAYER_TRAFFIC
+	# --- everything solid stays inside Vesper's sector (+-800 x +-650 m)
+	var sector := Rect2(outpost.global_position - Vector2(800, 650) * PX, Vector2(1600, 1300) * PX)
+	var inside := true
+	for s in get_tree().get_nodes_in_group(&"radar_structure"):
+		if outpost.is_ancestor_of(s):
+			for poly: PackedVector2Array in s.get_radar_polygons():
+				for p in poly:
+					inside = inside and sector.has_point(p)
+	_check(inside, "outpost structure is inside its sector")
+	# --- berth V1: the ship's place and the approach lane are free
+	var berth: Node2D = null
+	for b in get_tree().get_nodes_in_group(&"frigate_berth"):
+		if b.get("berth_id") == "V1" and outpost.is_ancestor_of(b):
+			berth = b
+	_check(berth != null, "Berth V1 exists under Outpost")
+	var field := outpost.get_node_or_null(^"Field")
+	if berth != null:
+		var side: float = berth.get("pier_side")
+		# Frigates drop out of their jump 560 m astern of the berth (Vesper
+		# (-560, 0) m, heading +X) and fly straight in. Open side: a 90 m
+		# strip along the axis from beyond the arrival point to 350 m ahead
+		# of the berth (the pylons are all on the pier side).
+		var strip := RectangleShape2D.new()
+		strip.size = Vector2(1162, 90) * PX
+		_check(_hits(space, strip, berth.global_transform * Transform2D(0.0, Vector2(-119, -45.0 * side) * PX), solid) == 0, "berth V1: nothing within 90 m of the axis on the ship's side")
+		# the hull's place, pier side (152 m long, 44.4 m half-beam): only
+		# the berth's own pylons reach in
+		var slot := RectangleShape2D.new()
+		slot.size = Vector2(156, 45) * PX
+		_check(_hits(space, slot, berth.global_transform * Transform2D(0.0, Vector2(8, 22.5 * side) * PX), solid, [berth.body.get_rid()]) == 0, "berth V1: the hull's place is free")
+		# the lane at full width, outward from the ends of the pier
+		var lane_in := RectangleShape2D.new()
+		lane_in.size = Vector2(588, 180) * PX
+		var lane_out := RectangleShape2D.new()
+		lane_out.size = Vector2(350, 180) * PX
+		var astern := _hits(space, lane_in, berth.global_transform * Transform2D(0.0, Vector2(-406, 0) * PX), solid)
+		var ahead := _hits(space, lane_out, berth.global_transform * Transform2D(0.0, Vector2(287, 0) * PX), solid)
+		_check(astern == 0, "berth V1: straight lane from the jump arrival point (560 m astern, west) is clear")
+		_check(ahead == 0, "berth V1: 350 m straight lane ahead (east) is clear")
+		_check(berth.global_position.is_equal_approx(outpost.global_position) and absf(berth.global_rotation) < 0.001, "berth V1: capture position is Vesper's origin, bow east")
+		# the field sleeps in this scene, so check its rocks by position
+		var in_lane := 0
+		if field != null:
+			for r: Asteroid in field.rocks():
+				var q: Vector2 = berth.to_local(r.global_position) / PX
+				if absf(q.y) < 90.0 + r.radius_m() and q.x > -700.0 and q.x < 462.0:
+					in_lane += 1
+		_check(in_lane == 0, "berth V1: no asteroid starts in the lane")
+	# --- pads and apron
+	var apron_slot := outpost.to_global(Vector2(12, 330) * PX)
+	for pad_name: String in ["Vesper 1", "Vesper 2"]:
+		var pad: Area2D = null
+		for p in get_tree().get_nodes_in_group(&"docking_pad"):
+			if p.get_meta("pad_name", "") == pad_name and outpost.is_ancestor_of(p):
+				pad = p
+		var on_deck := false
+		if pad != null:
+			for e in LevelArt.walk_decks:
+				if e.module.name == &"VesperApron" and Geometry2D.is_point_in_polygon(pad.global_position, e.poly):
+					on_deck = true
+		_check(pad != null and on_deck, "pad %s exists and stands on the apron deck" % pad_name)
+	var slot_on_deck := false
+	for e in LevelArt.walk_decks:
+		if outpost.is_ancestor_of(e.module) and Geometry2D.is_point_in_polygon(apron_slot, e.poly):
+			slot_on_deck = true
+	var patch := RectangleShape2D.new()
+	patch.size = Vector2(30, 20) * PX
+	_check(slot_on_deck and _hits(space, patch, Transform2D(0.0, apron_slot), solid) == 0, "apron is a registered deck with the 30 x 20 m freight slot free")
+	# --- asteroid field
+	_check(field != null, "asteroid field exists")
+	if field == null:
+		return
+	var plan: Array[Dictionary] = field.plan()
+	var again: Array[Dictionary] = field.plan()
+	var rocks: Array[Asteroid] = field.rocks()
+	var same: bool = plan.size() == again.size() and plan.size() == rocks.size() and plan.size() == int(field.count)
+	for i in mini(plan.size(), rocks.size()):
+		same = same and plan[i].home == again[i].home and plan[i].cls == again[i].cls
+		same = same and rocks[i].size_class == int(plan[i].cls) and rocks[i].home.distance_to(field.to_global((plan[i].home as Vector2) * PX)) < 0.5
+	_check(same, "field: %d rocks, seeded (plan is repeatable and the rocks match it)" % rocks.size())
+	var buried := 0
+	var ore := 0
+	for r in rocks:
+		ore += 1 if r.ore else 0
+		var probe := CircleShape2D.new()
+		probe.radius = (r.radius_m() + 2.0) * PX
+		buried += _hits(space, probe, Transform2D(0.0, r.global_position), G.LAYER_WORLD)
+		if not sector.has_point(r.global_position):
+			buried += 1
+	_check(buried == 0, "field: no rock starts inside structure or outside the sector")
+	_check(ore >= 5 and ore <= rocks.size() / 2, "field: %d of %d rocks are ore-bearing" % [ore, rocks.size()])
+	_check(rocks[0].has_method(&"take_shot") and rocks[0].is_in_group(&"asteroid") and rocks[0].is_in_group(&"radar_prop"), "rocks are shootable radar props")
 
 
 func _hits(space: PhysicsDirectSpaceState2D, shape: Shape2D, xf: Transform2D, mask: int, exclude: Array = []) -> int:

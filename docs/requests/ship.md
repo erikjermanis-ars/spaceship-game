@@ -46,14 +46,18 @@
   (dummy audio driver never releases playbacks; windowed runs exit clean). The ship's audio node skips creating
   players when `DisplayServer.get_name() == "headless"`. Other code can use the same guard to keep test logs clean.
 
-## KESTREL (frigate) notes
+## Frigate notes (KESTREL and HALCYON)
 - `FrigateShip` overrides `_apply_flight_forces()` completely: three main engines at their positions (impulse at
-  (−4.6, 0) m, nacelles at (−40, ±28) m), the turn couple with per-section efficiency, strafe, assist / all stop, venting
-  forces, drag. During soft capture it applies only `FrigateDock.apply_capture()` (pilot forces are ignored).
+  (−66, 0) m, drive rings at (−38, ±34) m), the turn couple with per-section efficiency, strafe, assist / all
+  stop, venting forces, drag. During soft capture it applies only `FrigateDock.apply_capture()`, and during a
+  quantum jump only `jump_ctl.apply()` (pilot forces are ignored in both).
 - Hull damage goes through `take_damage()` into `FrigateDamage.hit()`; `hull` is the sections' weighted average.
-  Damage is ignored while clamped (frozen). `damage_scale()` is 0.3 for props.
-- Its collision is one convex `CollisionPolygon2D` per part from `FrigateShape.PARTS` (the first keeps the name
-  `CollisionPolygon2D`); `destroy()` / `respawn_at()` toggle all of them. `max_contacts_reported` is 12 and the prop
-  sensor radius 95 m.
+  Damage is ignored while clamped (frozen). `damage_scale()` is 0.3 for props. Sections by hit position:
+  drive rings beyond |y| 21 m (aft of x 0), bow forward of x 30 m, Engineering aft of x −18 m.
+- Its collision is one convex `CollisionPolygon2D` per part from `FrigateShape.PARTS` (43 parts: the hull in
+  slices, the hangar block, the two bay arms, four pylons and 16 quads per drive ring; the first keeps the name
+  `CollisionPolygon2D`); `destroy()` / `respawn_at()` toggle all of them. The flight deck between the arms has no
+  collision: small ships fly into it. `max_contacts_reported` is 12 and the prop sensor radius 95 m.
+- `warp_to(xf, velocity)` moves a live frigate safely (in-callback teleport); the jump uses it.
 - Signals for presentation: `dock_event(event)` ("capture", "lock", "gangway", "undock", "unclamp", "release") and
   `damage_event(kind, data)` ("hit", "shields_down", "shields_up", "alert", "core_breach", "destroyed").
